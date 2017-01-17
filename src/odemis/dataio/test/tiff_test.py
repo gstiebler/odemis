@@ -1248,6 +1248,31 @@ class TestTiffIO(unittest.TestCase):
         self.assertEqual(im.shape, tshape)
         self.assertEqual(im[0, 0].tolist(), [0, 255, 0])
 
+    def testExportSmallPyramid(self):
+        """
+        Checks that can both write and read back an pyramidal grayscale 16 bit image
+        """
+        size = (257, 295)
+        dtype = numpy.uint16
+        data = model.DataArray(numpy.zeros(size[::-1], dtype))
+        white = (12, 52) # non symmetric position
+        # less that 2**15 so that we don't have problem with PIL.getpixel() always returning an signed int
+        data[white[::-1]] = 124
+
+        # export
+        tiff.export(FILENAME, data, pyramid=True)
+
+        # check it's here
+        st = os.stat(FILENAME) # this test also that the file is created
+        self.assertGreater(st.st_size, 0)
+        im = Image.open(FILENAME)
+        self.assertEqual(im.format, "TIFF")
+        self.assertEqual(im.size, size)
+        self.assertEqual(im.getpixel(white), 124)
+
+        del im
+        os.remove(FILENAME)
+
 
 def rational2float(rational):
     """
