@@ -1826,11 +1826,58 @@ def _ensure_fs_encoding(filename):
         return filename.encode(sys.getfilesystemencoding())
 
 
-def write_image(tiff, arr, compression=None, write_rgb=False, pyramid=False):
+def write_image(f, arr, compression=None, write_rgb=False, pyramid=False):
     if pyramid:
+        TILE_SIZE = 256
+        def rescale_hq(data, shape):
+            """
+            Resize the image to the new given shape (smaller or bigger). It tries to
+            smooth the pixels. Metadata is updated.
+            data (DataArray of shape YX): data to be rescaled
+            shape (2 int>0): the new shape of the image (Y,X). The new data will fit
+            precisely, even if the ratio is different.
+            return (DataArray of shape YX): The image rescaled. If the metadata contains
+            information that is linked to the size (e.g, pixel size), it is also
+            updated.
+            """
+            # Note: as the scale is normally a power of 2, the whole function could be
+            # very optimised (by just a numpy.mean).
+            out = numpy.empty(shape, dtype=data.dtype)
+            scale = (shape[0] / data.shape[0], shape[1] / data.shape[1])
+            if len(shape) == 3:
+                scale = scale + (1,)
+            scipy.ndimage.interpolation.zoom(data, zoom=scale, output=out, order=1, prefilter=False)
+            return out
+
+        shape = arr.shape
+        num_resized_images = int(math.ceil(math.log(max(shape) / TILE_SIZE, 2)))
+        # LibTIFF will automatically write the next N directories as subdirectories
+        # when this tag is present.
+        f.SetField(T.TIFFTAG_SUBIFD, [0] * num_resized_images, count=num_resized_images)
+        # assums that if the array has 3 dimensions, the 3rd dimension is color
+        write_rgb = len(shape) == 3
+        f.write_tiles(arr, TILE_SIZE, TILE_SIZE, compression, write_rgb)
+        # Until the size is < 1 tile:
+        z = 0
+        while shape[0] > TILE_SIZE and shape[1] > TILE_SIZE:
+            # Resample the image by 0.5x0.5
+            # Add it as subpage, with tiles
+            z += 1
+            shape = (im.shape[0] // 2**z, im.shape[1] // 2**z)
+            if len(im.shape) == 3:
+                shape = shape + (3,)
+            subim = rescale_hq(im, shape)
+
+            # Before writting the actual data, we set the special metadata
+            # TODO: & T.FILETYPE_PAGE ? ImageMagick only put REDUCEDIMAGE
+            f.SetField(T.TIFFTAG_SUBFILETYPE, T.FILETYPE_REDUCEDIMAGE)
+
+            # set_image_tags(f, subim, compression)
+            f.write_tiles(subim, TILE_SIZE, TILE_SIZE, compression, write_rgb)
+
         raise NotImplemented("not implemented")
     else:
-        tiff.write_image(arr, compression=compression, write_rgb=write_rgb)
+        f.write_image(arr, compression=compression, write_rgb=write_rgb)
 
 def export(filename, data, thumbnail=None, compressed=True, multiple_files=False, pyramid=False):
     '''
@@ -1870,7 +1917,7 @@ def export(filename, data, thumbnail=None, compressed=True, multiple_files=False
     else:
         # TODO should probably not enforce it: respect duck typing
         assert(isinstance(data, model.DataArray))
-        _saveAsMultiTiffLT(filename, [data], thumbnail, compressed, pyramid)
+        _saveAsMultiTiffLT(filename, [data], thumbnail, compressed, pyramid=pyramid)
 
 def read_data(filename):
     """
