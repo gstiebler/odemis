@@ -60,3 +60,8 @@ doc/code/_gen
 # This directory contains the database from fluorophores.org
 # To fill it, run ./util/getfluodb.py
 install/linux/usr/share/odemis/fluodb/
+
+# Visual Studio Code
+launch.json
+
+*.ome.tiff
