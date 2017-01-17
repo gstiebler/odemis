@@ -60,6 +60,8 @@ EXTENSIONS = [u".ome.tiff", u".ome.tif", u".tiff", u".tif"]
 
 STIFF_SPLIT = ".0."  # pattern to replace with the "stiff" multiple file
 
+CAN_SAVE_PYRAMID = True # indicates the support for pyramidal export
+
 # We try to make it as much as possible looking like a normal (multi-page) TIFF,
 # with as much metadata as possible saved in the known TIFF tags. In addition,
 # we ensure it's compatible with OME-TIFF, which support much more metadata, and
@@ -1527,7 +1529,8 @@ def _mergeCorrectionMetadata(da):
     img.mergeMetadata(md)
     return model.DataArray(da, md) # create a view
 
-def _saveAsMultiTiffLT(filename, ldata, thumbnail, compressed=True, multiple_files=False, file_index=None, uuid_list=None):
+def _saveAsMultiTiffLT(filename, ldata, thumbnail, compressed=True, multiple_files=False, 
+                       file_index=None, uuid_list=None, pyramid=False):
     """
     Saves a list of DataArray as a multiple-page TIFF file.
     filename (string): name of the file to save
@@ -1681,7 +1684,7 @@ def _saveAsMultiTiffLT(filename, ldata, thumbnail, compressed=True, multiple_fil
                 c = None # libtiff doesn't support compression on these types
             else:
                 c = compression
-            f.write_image(data[i], write_rgb=write_rgb, compression=c)
+            write_image(f, data[i], write_rgb=write_rgb, compression=c, pyramid=pyramid)
 
 def _thumbsFromTIFF(filename):
     """
@@ -1823,7 +1826,13 @@ def _ensure_fs_encoding(filename):
         return filename.encode(sys.getfilesystemencoding())
 
 
-def export(filename, data, thumbnail=None, compressed=True, multiple_files=False):
+def write_image(tiff, arr, compression=None, write_rgb=False, pyramid=False):
+    if pyramid:
+        raise NotImplemented("not implemented")
+    else:
+        tiff.write_image(arr, compression=compression, write_rgb=write_rgb)
+
+def export(filename, data, thumbnail=None, compressed=True, multiple_files=False, pyramid=False):
     '''
     Write a TIFF file with the given image and metadata
     filename (unicode): filename of the file to create (including path)
@@ -1855,13 +1864,13 @@ def export(filename, data, thumbnail=None, compressed=True, multiple_files=False
             for i in xrange(nfiles):
                 # TODO: Take care of thumbnails
                 _saveAsMultiTiffLT(filename, data, None, compressed,
-                                   multiple_files, i, uuid_list)
+                                   multiple_files, i, uuid_list, pyramid)
         else:
             _saveAsMultiTiffLT(filename, data, thumbnail, compressed)
     else:
         # TODO should probably not enforce it: respect duck typing
         assert(isinstance(data, model.DataArray))
-        _saveAsMultiTiffLT(filename, [data], thumbnail, compressed)
+        _saveAsMultiTiffLT(filename, [data], thumbnail, compressed, pyramid)
 
 def read_data(filename):
     """
