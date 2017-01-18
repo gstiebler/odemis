@@ -35,6 +35,7 @@ import re
 import sys
 import time
 import uuid
+import scipy.ndimage
 
 import libtiff.libtiff_ctypes as T  # for the constant names
 import xml.etree.ElementTree as ET
@@ -1863,10 +1864,10 @@ def write_image(f, arr, compression=None, write_rgb=False, pyramid=False):
             # Resample the image by 0.5x0.5
             # Add it as subpage, with tiles
             z += 1
-            shape = (im.shape[0] // 2**z, im.shape[1] // 2**z)
-            if len(im.shape) == 3:
+            shape = (shape[0] // 2**z, shape[1] // 2**z)
+            if len(arr.shape) == 3:
                 shape = shape + (3,)
-            subim = rescale_hq(im, shape)
+            subim = rescale_hq(arr, shape)
 
             # Before writting the actual data, we set the special metadata
             # TODO: & T.FILETYPE_PAGE ? ImageMagick only put REDUCEDIMAGE
@@ -1874,8 +1875,6 @@ def write_image(f, arr, compression=None, write_rgb=False, pyramid=False):
 
             # set_image_tags(f, subim, compression)
             f.write_tiles(subim, TILE_SIZE, TILE_SIZE, compression, write_rgb)
-
-        raise NotImplemented("not implemented")
     else:
         f.write_image(arr, compression=compression, write_rgb=write_rgb)
 

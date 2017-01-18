@@ -1265,10 +1265,19 @@ class TestTiffIO(unittest.TestCase):
         # check it's here
         st = os.stat(FILENAME) # this test also that the file is created
         self.assertGreater(st.st_size, 0)
-        im = Image.open(FILENAME)
-        self.assertEqual(im.format, "TIFF")
-        self.assertEqual(im.size, size)
-        self.assertEqual(im.getpixel(white), 124)
+
+        im = libtiff.TIFF.open(FILENAME)
+        # get an array of offsets, one for each subimage
+        sub_ifds = im.GetField(T.TIFFTAG_SUBIFD)
+
+        full_image = im.read_image()
+        assert full_image.shape == (295, 257), repr(full_image.shape)
+
+        # set the offset of the current subimage
+        im.SetSubDirectory(sub_ifds[0])
+        # read the subimage
+        subimage = im.read_image()
+        assert subimage.shape == (147, 128), repr(subimage.shape)
 
         del im
         os.remove(FILENAME)
