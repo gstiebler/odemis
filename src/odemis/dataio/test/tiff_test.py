@@ -1254,10 +1254,8 @@ class TestTiffIO(unittest.TestCase):
         """
         size = (257, 295)
         dtype = numpy.uint16
-        data = model.DataArray(numpy.zeros(size[::-1], dtype))
-        white = (12, 52) # non symmetric position
-        # less that 2**15 so that we don't have problem with PIL.getpixel() always returning an signed int
-        data[white[::-1]] = 124
+        arr = numpy.array(range(size[0] * size[1])).reshape(size[::-1]).astype(dtype)
+        data = model.DataArray(arr)
 
         # export
         tiff.export(FILENAME, data, pyramid=True)
@@ -1271,13 +1269,21 @@ class TestTiffIO(unittest.TestCase):
         sub_ifds = im.GetField(T.TIFFTAG_SUBIFD)
 
         full_image = im.read_image()
-        assert full_image.shape == (295, 257), repr(full_image.shape)
+        assert full_image.shape == size[::-1], repr(full_image.shape)
+        assert full_image[0][0] == 0, full_image[0][0]
+        assert full_image[0][size[0] - 1] == 256, full_image[0][size[0] - 1]
+        assert full_image[size[1] - 1][0] == 10022, full_image[size[1] - 1][0]
+        assert full_image[size[1] - 1][size[0] - 1] == 10278, full_image[size[1] - 1][size[0] - 1]
 
         # set the offset of the current subimage
         im.SetSubDirectory(sub_ifds[0])
         # read the subimage
         subimage = im.read_image()
         assert subimage.shape == (147, 128), repr(subimage.shape)
+        assert subimage[0][0] == 0
+        assert subimage[0][127] == 256, subimage[0][127]
+        assert subimage[146][0] == 10022, subimage[146][0] 
+        assert subimage[146][127] == 10278, subimage[146][127]
 
         del im
         os.remove(FILENAME)
