@@ -65,3 +65,4 @@ install/linux/usr/share/odemis/fluodb/
 launch.json
 
 *.ome.tiff
+.directory
