@@ -1267,6 +1267,8 @@ class TestTiffIO(unittest.TestCase):
         im = libtiff.TIFF.open(FILENAME)
         # get an array of offsets, one for each subimage
         sub_ifds = im.GetField(T.TIFFTAG_SUBIFD)
+        # check that there is one resized image
+        self.assertEqual(len(sub_ifds), 1)
 
         full_image = im.read_image()
         self.assertEqual(full_image.shape, size[::-1])
@@ -1309,6 +1311,8 @@ class TestTiffIO(unittest.TestCase):
         im = libtiff.TIFF.open(FILENAME)
         # get an array of offsets, one for each subimage
         sub_ifds = im.GetField(T.TIFFTAG_SUBIFD)
+        # check that there is only one zoom level, the original image
+        self.assertIsNone(sub_ifds)
 
         full_image = im.read_image()
         assert full_image.shape == size[::-1], repr(full_image.shape)
