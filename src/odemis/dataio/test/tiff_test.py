@@ -1392,29 +1392,56 @@ class TestTiffIO(unittest.TestCase):
         st = os.stat(FILENAME) # this test also that the file is created
         self.assertGreater(st.st_size, 0)
 
-        # check data
-        rdata = tiff.read_data(FILENAME)
-        self.assertEqual(len(rdata), len(ldata))
+        f = libtiff.TIFF.open(FILENAME)
+        count = 0
 
-        # TODO: rdata and ldata don't have to be in the same order
-        for i, im in enumerate(rdata[:-1]):
-            md = metadata[i].copy()
-            img.mergeMetadata(md)
+        # read all images and subimages and store in main_images
+        main_images = []
+        for im in f.iter_images():
+            zoom_level_images = []
+            zoom_level_images.append(im)
+            # get an array of offsets, one for each subimage
+            sub_ifds = f.GetField(T.TIFFTAG_SUBIFD)
+            if not sub_ifds:
+                main_images.append(zoom_level_images)
+                f.SetDirectory(count)
+                count += 1
+                continue
 
-            # check "watermark"
-            self.assertEqual(im[i][i + 10], i)
+            for n in xrange(len(sub_ifds)):
+                # set the offset of the current subimage
+                f.SetSubDirectory(sub_ifds[n])
+                # read the subimage
+                subim = f.read_image()
+                zoom_level_images.append(subim)
+            
+            main_images.append(zoom_level_images)
 
-        # test the RGB image
-        im = rdata[3]
-        # check the "watermark"
-        self.assertTrue((im[3][3 + 10] == [5, 8, 13]).all())
+        # check the total number of main images
+        self.assertEqual(len(main_images), 5)
 
-        # check thumbnail
-        rthumbs = tiff.read_thumbnail(FILENAME)
-        self.assertEqual(len(rthumbs), 1)
-        im = rthumbs[0]
-        self.assertEqual(im.shape, tshape)
-        self.assertEqual(im[0, 0].tolist(), [0, 255, 0])
+        # check the number of zoom level images of the thumbnail
+        thumbnail_im = main_images[0]
+        self.assertEqual(len(thumbnail_im), 1)
+        # thumbnail size
+        self.assertEqual(thumbnail_im[0].shape, (32, 64, 3))
+        self.assertEqual(thumbnail_im[0][0, 0].tolist(), [0, 255, 0])
+
+        # check the sizes of each image
+        for main_image in main_images[1:-1]:
+            self.assertEqual(len(main_image), 1)
+            self.assertEqual(main_image[0].shape, (256, 512))
+
+        rgb_image = main_images[4]
+        # number of the RGB images
+        self.assertEqual(len(rgb_image), 3)
+        # size of RGB images with different zoom levels
+        self.assertEqual(rgb_image[0].shape, (514, 516, 3))
+        self.assertEqual(rgb_image[1].shape, (257, 258, 3))
+        self.assertEqual(rgb_image[2].shape, (64, 64, 3))
+
+        # TODO check pixel values
+        
 
 def rational2float(rational):
     """
