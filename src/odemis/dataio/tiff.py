@@ -1851,7 +1851,10 @@ def write_image(f, arr, compression=None, write_rgb=False, pyramid=False):
             return out
 
         shape = arr.shape
-        num_resized_images = max(0, int(math.ceil(math.log(min(shape) / TILE_SIZE, 2))))
+        # the minimum value between width and height of the image
+        smallest_dimension = min(shape[:2])
+        log_tile_size = math.log(smallest_dimension / TILE_SIZE, 2)
+        num_resized_images = max(0, int(math.ceil(log_tile_size)))
         # do not write the SUBIFD tag when there are no subimages
         if num_resized_images > 0:
             # LibTIFF will automatically write the next N directories as subdirectories
@@ -1914,7 +1917,7 @@ def export(filename, data, thumbnail=None, compressed=True, multiple_files=False
                 _saveAsMultiTiffLT(filename, data, None, compressed,
                                    multiple_files, i, uuid_list, pyramid)
         else:
-            _saveAsMultiTiffLT(filename, data, thumbnail, compressed)
+            _saveAsMultiTiffLT(filename, data, thumbnail, compressed, pyramid=pyramid)
     else:
         # TODO should probably not enforce it: respect duck typing
         assert(isinstance(data, model.DataArray))
