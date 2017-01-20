@@ -1269,25 +1269,57 @@ class TestTiffIO(unittest.TestCase):
         sub_ifds = im.GetField(T.TIFFTAG_SUBIFD)
 
         full_image = im.read_image()
-        assert full_image.shape == size[::-1], repr(full_image.shape)
-        assert full_image[0][0] == 0, full_image[0][0]
-        assert full_image[0][-1] == 256, full_image[0][-1]
-        assert full_image[-1][0] == 10022, full_image[-1][0]
-        assert full_image[-1][-1] == 10278, full_image[-1][-1]
+        self.assertEqual(full_image.shape, size[::-1])
+        # checking the values in the corner of the tile
+        self.assertEqual(full_image[0][0], 0)
+        self.assertEqual(full_image[0][-1], 256)
+        self.assertEqual(full_image[-1][0], 10022)
+        self.assertEqual(full_image[-1][-1], 10278)
 
         # set the offset of the current subimage
         im.SetSubDirectory(sub_ifds[0])
         # read the subimage
         subimage = im.read_image()
-        assert subimage.shape == (147, 128), repr(subimage.shape)
-        assert subimage[0][0] == 0
-        assert subimage[0][-1] == 256, subimage[0][-1] 
-        assert subimage[-1][0] == 10022, subimage[-1][0] 
-        assert subimage[-1][-1] == 10278, subimage[-1][-1]
+        self.assertEqual(subimage.shape, (147, 128))
+        # checking the values in the corner of the tile
+        self.assertEqual(subimage[0][0], 0)
+        self.assertEqual(subimage[0][-1], 256)
+        self.assertEqual(subimage[-1][0], 10022)
+        self.assertEqual(subimage[-1][-1], 10278)
 
         del im
         os.remove(FILENAME)
 
+    def testExportThinPyramid(self):    
+        """
+        Checks that can both write and read back a thin pyramidal grayscale 16 bit image
+        """
+        size = (2, 2049)
+        dtype = numpy.uint16
+        arr = numpy.array(range(size[0] * size[1])).reshape(size[::-1]).astype(dtype)
+        data = model.DataArray(arr)
+
+        # export
+        tiff.export(FILENAME, data, pyramid=True)
+
+        # check it's here
+        st = os.stat(FILENAME) # this test also that the file is created
+        self.assertGreater(st.st_size, 0)
+
+        im = libtiff.TIFF.open(FILENAME)
+        # get an array of offsets, one for each subimage
+        sub_ifds = im.GetField(T.TIFFTAG_SUBIFD)
+
+        full_image = im.read_image()
+        assert full_image.shape == size[::-1], repr(full_image.shape)
+        # checking the values in the corner of the tile
+        self.assertEqual(full_image[0][0], 0)
+        self.assertEqual(full_image[0][-1], 1)
+        self.assertEqual(full_image[-1][0], 4096)
+        self.assertEqual(full_image[-1][-1], 4097)
+
+        del im
+        os.remove(FILENAME)
 
 def rational2float(rational):
     """
