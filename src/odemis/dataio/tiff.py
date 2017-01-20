@@ -1851,16 +1851,19 @@ def write_image(f, arr, compression=None, write_rgb=False, pyramid=False):
             return out
 
         shape = arr.shape
-        num_resized_images = int(math.ceil(math.log(max(shape) / TILE_SIZE, 2)))
-        # LibTIFF will automatically write the next N directories as subdirectories
-        # when this tag is present.
-        f.SetField(T.TIFFTAG_SUBIFD, [0] * num_resized_images, count=num_resized_images)
+        num_resized_images = max(0, int(math.ceil(math.log(min(shape) / TILE_SIZE, 2))))
+        # do not write the SUBIFD tag when there are no subimages
+        if num_resized_images > 0:
+            # LibTIFF will automatically write the next N directories as subdirectories
+            # when this tag is present.
+            f.SetField(T.TIFFTAG_SUBIFD, [0] * num_resized_images, count=num_resized_images)
         # assums that if the array has 3 dimensions, the 3rd dimension is color
         write_rgb = len(shape) == 3
+        # write the original image
         f.write_tiles(arr, TILE_SIZE, TILE_SIZE, compression, write_rgb)
         # Until the size is < 1 tile:
         z = 0
-        while shape[0] > TILE_SIZE and shape[1] > TILE_SIZE:
+        for _n in xrange(num_resized_images):
             # Resample the image by 0.5x0.5
             # Add it as subpage, with tiles
             z += 1
