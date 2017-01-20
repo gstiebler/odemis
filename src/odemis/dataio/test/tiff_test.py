@@ -1271,9 +1271,9 @@ class TestTiffIO(unittest.TestCase):
         full_image = im.read_image()
         assert full_image.shape == size[::-1], repr(full_image.shape)
         assert full_image[0][0] == 0, full_image[0][0]
-        assert full_image[0][size[0] - 1] == 256, full_image[0][size[0] - 1]
-        assert full_image[size[1] - 1][0] == 10022, full_image[size[1] - 1][0]
-        assert full_image[size[1] - 1][size[0] - 1] == 10278, full_image[size[1] - 1][size[0] - 1]
+        assert full_image[0][-1] == 256, full_image[0][-1]
+        assert full_image[-1][0] == 10022, full_image[-1][0]
+        assert full_image[-1][-1] == 10278, full_image[-1][-1]
 
         # set the offset of the current subimage
         im.SetSubDirectory(sub_ifds[0])
@@ -1281,9 +1281,9 @@ class TestTiffIO(unittest.TestCase):
         subimage = im.read_image()
         assert subimage.shape == (147, 128), repr(subimage.shape)
         assert subimage[0][0] == 0
-        assert subimage[0][127] == 256, subimage[0][127]
-        assert subimage[146][0] == 10022, subimage[146][0] 
-        assert subimage[146][127] == 10278, subimage[146][127]
+        assert subimage[0][-1] == 256, subimage[0][-1] 
+        assert subimage[-1][0] == 10022, subimage[-1][0] 
+        assert subimage[-1][-1] == 10278, subimage[-1][-1]
 
         del im
         os.remove(FILENAME)
