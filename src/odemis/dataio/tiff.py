@@ -1857,8 +1857,7 @@ def write_image(f, arr, compression=None, write_rgb=False, pyramid=False):
             # LibTIFF will automatically write the next N directories as subdirectories
             # when this tag is present.
             f.SetField(T.TIFFTAG_SUBIFD, [0] * num_resized_images, count=num_resized_images)
-        # assums that if the array has 3 dimensions, the 3rd dimension is color
-        write_rgb = len(shape) == 3
+
         # write the original image
         f.write_tiles(arr, TILE_SIZE, TILE_SIZE, compression, write_rgb)
         # Until the size is < 1 tile:
