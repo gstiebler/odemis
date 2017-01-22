@@ -1845,34 +1845,45 @@ def write_image(f, arr, compression=None, write_rgb=False, pyramid=False):
             # very optimised (by just a numpy.mean).
             out = numpy.empty(shape, dtype=data.dtype)
             scale = (shape[0] / data.shape[0], shape[1] / data.shape[1])
+            # do not rescale the color channel
             if len(shape) == 3:
                 scale = scale + (1,)
             scipy.ndimage.interpolation.zoom(data, zoom=scale, output=out, order=1, prefilter=False)
             return out
 
-        shape = arr.shape
-        # the minimum value between width and height of the image
-        smallest_dimension = min(shape[:2])
-        log_tile_size = math.log(smallest_dimension / TILE_SIZE, 2)
-        num_resized_images = max(0, int(math.ceil(log_tile_size)))
+        def gen_resized_shapes(original_shape):
+            """
+            Generates a list of tuples with the size of the resized images
+            original_shape (tuple of shape YX or YXC): shape of the original image
+            return (list of tuples): List of the tuples with the size of the resized images
+            """
+            shape = original_shape
+            resized_shapes = []
+            z = 0
+            while shape[0] >= TILE_SIZE and shape[1] >= TILE_SIZE:
+                z += 1
+                # Resample the image by 0.5x0.5
+                # Add it as subpage, with tiles
+                shape = (original_shape[0] // 2**z, original_shape[1] // 2**z)
+                # do not resize the color channel
+                if len(original_shape) == 3:
+                    shape = shape + (original_shape[2],)
+                resized_shapes.append(shape)
+            return resized_shapes
+
+        resized_shapes = gen_resized_shapes(arr.shape)
+
         # do not write the SUBIFD tag when there are no subimages
-        if num_resized_images > 0:
+        if len(resized_shapes) > 0:
             # LibTIFF will automatically write the next N directories as subdirectories
             # when this tag is present.
-            f.SetField(T.TIFFTAG_SUBIFD, [0] * num_resized_images, count=num_resized_images)
+            f.SetField(T.TIFFTAG_SUBIFD, [0] * len(resized_shapes), count=len(resized_shapes))
 
         # write the original image
         f.write_tiles(arr, TILE_SIZE, TILE_SIZE, compression, write_rgb)
-        # Until the size is < 1 tile:
-        z = 0
-        for _n in xrange(num_resized_images):
-            # Resample the image by 0.5x0.5
-            # Add it as subpage, with tiles
-            z += 1
-            shape = (shape[0] // 2**z, shape[1] // 2**z)
-            if len(arr.shape) == 3:
-                shape = shape + (3,)
-            subim = rescale_hq(arr, shape)
+        # generate the rescaled images and write the tiled image
+        for resized_shape in resized_shapes:
+            subim = rescale_hq(arr, resized_shape)
 
             # Before writting the actual data, we set the special metadata
             # TODO: & T.FILETYPE_PAGE ? ImageMagick only put REDUCEDIMAGE

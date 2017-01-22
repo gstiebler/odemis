@@ -1393,10 +1393,10 @@ class TestTiffIO(unittest.TestCase):
         self.assertGreater(st.st_size, 0)
 
         f = libtiff.TIFF.open(FILENAME)
-        count = 0
 
         # read all images and subimages and store in main_images
         main_images = []
+        count = 0
         for im in f.iter_images():
             zoom_level_images = []
             zoom_level_images.append(im)
@@ -1414,6 +1414,9 @@ class TestTiffIO(unittest.TestCase):
                 # read the subimage
                 subim = f.read_image()
                 zoom_level_images.append(subim)
+
+            f.SetDirectory(count)
+            count += 1
             
             main_images.append(zoom_level_images)
 
@@ -1429,8 +1432,9 @@ class TestTiffIO(unittest.TestCase):
 
         # check the sizes of each image
         for main_image in main_images[1:-1]:
-            self.assertEqual(len(main_image), 1)
+            self.assertEqual(len(main_image), 2)
             self.assertEqual(main_image[0].shape, (256, 512))
+            self.assertEqual(main_image[1].shape, (128, 256))
 
         rgb_image = main_images[4]
         # number of the RGB images
@@ -1438,7 +1442,7 @@ class TestTiffIO(unittest.TestCase):
         # size of RGB images with different zoom levels
         self.assertEqual(rgb_image[0].shape, (514, 516, 3))
         self.assertEqual(rgb_image[1].shape, (257, 258, 3))
-        self.assertEqual(rgb_image[2].shape, (64, 64, 3))
+        self.assertEqual(rgb_image[2].shape, (128, 129, 3))
 
         # TODO check pixel values
         
