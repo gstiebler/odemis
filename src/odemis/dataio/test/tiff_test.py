@@ -1374,7 +1374,7 @@ class TestTiffIO(unittest.TestCase):
 
         # write a RGB image
         a = model.DataArray(numpy.zeros((514, 516, 3), dtype), metadata[3].copy())
-        a[3, 3 + 10] = [5, 8, 13] # "watermark" it
+        a[8:24, 24:40] = [5, 8, 13] # "watermark" a square
         ldata.append(a)
 
         # thumbnail : small RGB completely green
@@ -1428,6 +1428,7 @@ class TestTiffIO(unittest.TestCase):
         self.assertEqual(len(thumbnail_im), 1)
         # thumbnail size
         self.assertEqual(thumbnail_im[0].shape, (32, 64, 3))
+        # check the value of one pixel
         self.assertEqual(thumbnail_im[0][0, 0].tolist(), [0, 255, 0])
 
         # check the sizes of each image
@@ -1444,7 +1445,18 @@ class TestTiffIO(unittest.TestCase):
         self.assertEqual(rgb_image[1].shape, (257, 258, 3))
         self.assertEqual(rgb_image[2].shape, (128, 129, 3))
 
-        # TODO check pixel values
+        # check the watermark on the original image
+        self.assertEqual(rgb_image[0][16, 32].tolist(), [5, 8, 13])
+        # check the watermark on the resized images
+        self.assertEqual(rgb_image[1][8, 16].tolist(), [5, 8, 13])
+        self.assertEqual(rgb_image[2][4, 8].tolist(), [5, 8, 13])
+        # check the zeroes on some pixels
+        self.assertEqual(rgb_image[0][0, 0].tolist(), [0, 0, 0])
+        self.assertEqual(rgb_image[1][0, 0].tolist(), [0, 0, 0])
+        self.assertEqual(rgb_image[2][0, 0].tolist(), [0, 0, 0])
+
+
+        os.remove(FILENAME)
         
 
 def rational2float(rational):
