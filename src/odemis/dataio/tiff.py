@@ -1542,6 +1542,8 @@ def _saveAsMultiTiffLT(filename, ldata, thumbnail, compressed=True, multiple_fil
       files or not.
     file_index (int): index of this particular file.
     uuid_list (list of str): list that contains all the file uuids
+    pyramid (boolean): whether the file should be saved in the pyramid format or not.
+      In this format, each image is saved along with different zoom levels
     """
     if multiple_files:
         # Add index
@@ -1828,6 +1830,14 @@ def _ensure_fs_encoding(filename):
 
 
 def write_image(f, arr, compression=None, write_rgb=False, pyramid=False):
+    """
+    f (libtiff file handle): Handle of a TIFF file
+    arr (DataArray): DataArray to be written to the file
+    compression (boolean): Compression type to be used on the TIFF file
+    write_rgb (boolean): True if the image is RGB, False if the image is grayscale
+    pyramid (boolean): whether the file should be saved in the pyramid format or not.
+      In this format, each image is saved along with different zoom levels
+    """
     if pyramid:
         TILE_SIZE = 256
         def rescale_hq(data, shape):
