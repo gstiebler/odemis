@@ -1455,6 +1455,19 @@ class TestTiffIO(unittest.TestCase):
         self.assertEqual(rgb_image[1][0, 0].tolist(), [0, 0, 0])
         self.assertEqual(rgb_image[2][0, 0].tolist(), [0, 0, 0])
 
+        # set the directory to the RGB image
+        f.SetDirectory(4)
+        # get an array of offsets, one for each subimage
+        sub_ifds = f.GetField(T.TIFFTAG_SUBIFD)
+        # set the subdirectory to the 2nd zoom level
+        f.SetSubDirectory(sub_ifds[0])
+        # read the top left tile
+        tile = f.read_one_tile(0, 0)
+        self.assertEqual(tile.shape, (256, 256, 3))
+        # check the watermark on the tile
+        self.assertEqual(tile[8, 16].tolist(), [5, 8, 13])
+        # check the zero on some pixel
+        self.assertEqual(tile[0, 0].tolist(), [0, 0, 0])
 
         os.remove(FILENAME)
         
