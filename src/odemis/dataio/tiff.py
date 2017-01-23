@@ -1896,7 +1896,6 @@ def write_image(f, arr, compression=None, write_rgb=False, pyramid=False):
             subim = rescale_hq(arr, resized_shape)
 
             # Before writting the actual data, we set the special metadata
-            # TODO: & T.FILETYPE_PAGE ? ImageMagick only put REDUCEDIMAGE
             f.SetField(T.TIFFTAG_SUBFILETYPE, T.FILETYPE_REDUCEDIMAGE)
 
             # set_image_tags(f, subim, compression)
