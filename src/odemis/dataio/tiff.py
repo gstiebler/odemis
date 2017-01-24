@@ -1748,9 +1748,6 @@ def _gen_resized_shapes(original_shape):
         # Resample the image by 0.5x0.5
         # Add it as subpage, with tiles
         shape = (original_shape[0] // 2**z, original_shape[1] // 2**z)
-        # do not resize the color channel
-        if len(original_shape) == 3:
-            shape = shape + (original_shape[2],)
         resized_shapes.append(shape)
     return resized_shapes
 

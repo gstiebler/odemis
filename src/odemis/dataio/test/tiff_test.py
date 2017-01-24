@@ -1469,6 +1469,7 @@ class TestTiffIO(unittest.TestCase):
         # check the zero on some pixel
         self.assertEqual(tile[0, 0].tolist(), [0, 0, 0])
 
+        del f
         os.remove(FILENAME)
         
 
