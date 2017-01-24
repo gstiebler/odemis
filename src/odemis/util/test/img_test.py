@@ -678,6 +678,21 @@ class TestRGB2Greyscale(unittest.TestCase):
         self.assertEqual(gsim.shape, rgbim.shape[0:2])
         self.assertEqual(gsim[1, 1], 254)
 
+class TestRescaleHQ(unittest.TestCase):
+
+    def test_simple(self):
+        size = (1024, 512)
+        depth = 2 ** 12
+        img12 = numpy.zeros(size, dtype="uint16") + depth // 2
+        # write a square of 50 watermark
+        img12[20:40, 50:70] = 50
+
+        out = img.rescale_hq(img12, (512, 256))
+        self.assertEqual(out.shape, (512, 256))
+        # test if the 50 watermark is in the right place
+        self.assertEqual(out[15, 30], 50)
+        self.assertEqual(out[30, 60], depth // 2)
+
 
 # TODO: test guessDRange()
 
