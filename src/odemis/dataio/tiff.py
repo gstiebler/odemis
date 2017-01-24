@@ -1862,27 +1862,6 @@ def write_image(f, arr, compression=None, write_rgb=False, pyramid=False):
         f.write_image(arr, compression=compression, write_rgb=write_rgb)
         return
 
-    def rescale_hq(data, shape):
-        """
-        Resize the image to the new given shape (smaller or bigger). It tries to
-        smooth the pixels. Metadata is updated.
-        data (DataArray of shape YX): data to be rescaled
-        shape (2 int>0): the new shape of the image (Y,X). The new data will fit
-        precisely, even if the ratio is different.
-        return (DataArray of shape YX): The image rescaled. If the metadata contains
-        information that is linked to the size (e.g, pixel size), it is also
-        updated.
-        """
-        # Note: as the scale is normally a power of 2, the whole function could be
-        # very optimised (by just a numpy.mean).
-        out = numpy.empty(shape, dtype=data.dtype)
-        scale = (shape[0] / data.shape[0], shape[1] / data.shape[1])
-        # do not rescale the color channel
-        if len(shape) == 3:
-            scale = scale + (1,)
-        scipy.ndimage.interpolation.zoom(data, zoom=scale, output=out, order=1, prefilter=False)
-        return out
-
     resized_shapes = _gen_resized_shapes(arr.shape)
 
     # do not write the SUBIFD tag when there are no subimages
@@ -1895,7 +1874,7 @@ def write_image(f, arr, compression=None, write_rgb=False, pyramid=False):
     f.write_tiles(arr, TILE_SIZE, TILE_SIZE, compression, write_rgb)
     # generate the rescaled images and write the tiled image
     for resized_shape in resized_shapes:
-        subim = rescale_hq(arr, resized_shape)
+        subim = img.rescale_hq(arr, resized_shape)
 
         # Before writting the actual data, we set the special metadata
         f.SetField(T.TIFFTAG_SUBFILETYPE, T.FILETYPE_REDUCEDIMAGE)
