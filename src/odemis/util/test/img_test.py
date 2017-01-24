@@ -721,6 +721,18 @@ class TestRescaleHQ(unittest.TestCase):
         self.assertEqual(out.metadata[model.MD_BINNING], (2.0, 2.0))
         self.assertEqual(out.metadata[model.MD_AR_POLE], (126.55, 32.55))
 
+    def test_5d(self):
+        # C=3, T=2, Z=2, Y=1024, X=512
+        size = (3, 2, 2, 1024, 512)
+        background = 58
+        img_in = numpy.zeros(size, dtype="uint8") + background
+        metadata = {
+            model.MD_DIMS: "CTZYX"
+        }
+        img_in = model.DataArray(img_in, metadata)
+        out = img.rescale_hq(img_in, (512, 256))
+        self.assertEqual(out.shape, (3, 2, 2, 512, 256))
+
 
 # TODO: test guessDRange()
 

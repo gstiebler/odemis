@@ -454,7 +454,6 @@ def ensureYXC(data):
     return model.DataArray(data, md)
 
 
-# FIXME: test it
 def rescale_hq(data, shape):
     """
     Resize the image to the new given shape (smaller or bigger). It tries to
@@ -466,8 +465,25 @@ def rescale_hq(data, shape):
       information that is linked to the size (e.g, pixel size), it is also
       updated.
     """
-    # TODO: support RGB(A) images
     # TODO: make it faster
+
+    # get the shape with all the dimensions
+    if len(data.shape) > 2:
+        if hasattr(data, "metadata"):
+            dim_names = data.metadata.get(model.MD_DIMS, "CTZYX"[-data.ndim::])
+        else:
+            dim_names = "CTZYX"[-data.ndim::]
+        calculated_shape = []
+        for d_value, d_name in zip(data.shape, dim_names):
+            if d_name in {'X', 'Y'}:
+                # if the dimension is X or Y, get the value from the shape parameter
+                calculated_shape.append(shape[{'X': 1, 'Y': 0}[d_name]])
+            else:
+                # if the dimension is C, T or Z, get the value from data.shape
+                calculated_shape.append(d_value)
+
+        shape = tuple(calculated_shape)
+
     out = numpy.empty(shape, dtype=data.dtype)
     scale = tuple(n / o for o, n in zip(data.shape, shape))
     scipy.ndimage.interpolation.zoom(data, zoom=scale, output=out, order=1, prefilter=False)
