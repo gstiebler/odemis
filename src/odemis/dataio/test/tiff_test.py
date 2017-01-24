@@ -1477,7 +1477,6 @@ class TestTiffIO(unittest.TestCase):
         tile = f.read_one_tile(256, 256)
         # this tile is only 2 x 1 in size
         self.assertEqual(tile.shape, (1, 2, 3))
-
         del f
         os.remove(FILENAME)
         
