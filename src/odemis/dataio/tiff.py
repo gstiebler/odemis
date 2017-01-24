@@ -35,7 +35,6 @@ import re
 import sys
 import time
 import uuid
-import scipy.ndimage
 
 import libtiff.libtiff_ctypes as T  # for the constant names
 import xml.etree.ElementTree as ET
