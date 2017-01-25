@@ -1,3 +1,5 @@
+from abc import ABCMeta
+
 class DataArrayShadow():
     """
     This class contains information about a DataArray.
@@ -22,11 +24,13 @@ class DataArrayShadow():
             self.maxzoom = maxzoom
 
 class AcquisitionData():
+    __metaclass__ = ABCMeta
 
     def __init__(self, content, thumbnails=None):
         self.content = content
         self.thumbnails = thumbnails
 
+    @abstractmethod
     def getData(self, n):
         """
         Fetches the whole data (at full resolution) of image at index n.
@@ -36,6 +40,7 @@ class AcquisitionData():
         """
         pass
 
+    @abstractmethod
     def getSubData(self, n, z, rect):
         """
         Fetches a part of the data, for a given zoom. If the (complete) data has more
