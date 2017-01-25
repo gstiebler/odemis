@@ -40,9 +40,7 @@ class DataArrayShadow(object):
         self.shape = shape
         self.ndim = len(shape)
         self.dtype = dtype
-        if not metadata:
-            metadata = {}
-        self.metadata = metadata
+        self.metadata = metadata if metadata else {}
         if maxzoom:
             self.maxzoom = maxzoom
 
@@ -56,7 +54,7 @@ class AcquisitionData(object):
 
     def __init__(self, content, thumbnails=None):
         self.content = content
-        self.thumbnails = thumbnails
+        self.thumbnails = thumbnails if thumbnails else ()
 
     @abstractmethod
     def getData(self, n):
