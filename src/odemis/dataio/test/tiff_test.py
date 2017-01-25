@@ -1491,8 +1491,12 @@ class TestTiffIO(unittest.TestCase):
 
         # check data
         rdata = tiff.open_data(FILENAME)
-
         self.assertEqual(rdata.content[0].shape, size[::-1])
+
+        tiles = rdata.getSubData(0, 0, (0, 0, 256, 294))
+        self.assertEqual(len(tiles), 2)
+        self.assertEqual(len(tiles[0]), 2)
+        self.assertEqual(tiles[1][1].shape, (39, 1))
         
 
 def rational2float(rational):

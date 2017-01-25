@@ -2016,7 +2016,11 @@ class AcquisitionDataTIFF(AcquisitionData):
         return DataArray: the data, with its metadata (ie, identical to .content[n] but
             with the actual data)
         """
-        pass
+        # TODO check the code at _dataFromTIFF
+        f.SetDirectory(n)
+        image = self.tiff_file.read_image()
+        md = _readTiffTag(self.tiff_file) # reads tag of the current image
+        return model.DataArray(image, metadata=md)
 
     def getSubData(self, n, z, rect):
         """
@@ -2039,4 +2043,30 @@ class AcquisitionDataTIFF(AcquisitionData):
             MD_PIXEL_SIZE is not present, it will not be updated).
         raise ValueError: if the area or z is out of range, or if the raw data is not pyramidal.
         """
-        pass
+        # TODO check the code at _dataFromTIFF
+        # TODO check if n is valid
+        self.tiff_file.SetDirectory(n)
+
+        if z != 0:
+            # get an array of offsets, one for each subimage
+            sub_ifds = self.tiff_file.GetField(T.TIFFTAG_SUBIFD)
+            if not sub_ifds:
+                raise ValueError("Image does not have zoom levels")
+
+            # set the offset of the subimage
+            # TODO check if z is valid
+            self.tiff_file.SetSubDirectory(sub_ifds[z])
+        
+        num_tcols = self.tiff_file.GetField("TileWidth")
+        num_trows = self.tiff_file.GetField("TileLength")
+
+        x1, y1, x2, y2 = rect
+        tiles = []
+        for x in xrange(x1, x2 + 1, num_tcols):
+            tiles_column = []
+            for y in xrange(y1, y2 + 1, num_trows):
+                tiles_column.append(self.tiff_file.read_one_tile(x, y))
+
+            tiles.append(tuple(tiles_column))
+
+        return tuple(tiles)
