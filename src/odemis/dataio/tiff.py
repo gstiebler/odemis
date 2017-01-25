@@ -35,6 +35,7 @@ import re
 import sys
 import time
 import uuid
+from odemis.model._dataio import DataArrayShadow, AcquisitionData
 
 import libtiff.libtiff_ctypes as T  # for the constant names
 import xml.etree.ElementTree as ET
@@ -1956,3 +1957,86 @@ def read_thumbnail(filename):
     # TODO: support filename to be a File or Stream
     filename = _ensure_fs_encoding(filename)
     return _thumbsFromTIFF(filename)
+
+def open_data(fn):
+    """
+    TODO description
+    fn (string): path to the file
+    return: AcquisitionData: an opened file
+    """
+
+    tiff_file = TIFF.open(fn, mode='r')
+    return AcquisitionDataTIFF(tiff_file)
+
+class AcquisitionDataTIFF(AcquisitionData):
+    """
+    Implements AcquisitionData for TIFF files
+    """
+    def __init__(self, tiff_file):
+        """
+        Constructor
+        tiff_file (handle): A handle to a TIFF file returned from libtiff
+        """
+        self.tiff_file = tiff_file
+
+        content = []
+        thumbnails = []
+
+        def addToContent():
+            bits = tiff_file.GetField('BitsPerSample')
+            sample_format = tiff_file.GetField('SampleFormat')
+            typ = tiff_file.get_numpy_type(bits, sample_format)
+
+            width = tiff_file.GetField('ImageWidth')
+            height = tiff_file.GetField('ImageLength')
+            md = _readTiffTag(tiff_file) # reads tag of the current image
+
+            # TODO add ImageDepth and SamplesPerPixel to the shape
+            # TODO add maxzoom
+            new_content = DataArrayShadow((height, width), typ, md)
+
+            if _isThumbnail(tiff_file):
+                thumbnails.append(new_content)
+            else:
+                content.append(new_content)
+        
+        addToContent()
+        while not tiff_file.LastDirectory():
+            tiff_file.ReadDirectory()
+            addToContent()
+
+        tiff_file.SetDirectory(0)
+
+        AcquisitionData.__init__(self, tuple(content), tuple(thumbnails))
+
+    def getData(self, n):
+        """
+        Fetches the whole data (at full resolution) of image at index n.
+        n (0<=int): index of the image
+        return DataArray: the data, with its metadata (ie, identical to .content[n] but
+            with the actual data)
+        """
+        pass
+
+    def getSubData(self, n, z, rect):
+        """
+        Fetches a part of the data, for a given zoom. If the (complete) data has more
+        than two dimensions, all the extra dimensions (ie, non-spatial) are always fully
+        returned for the given part.
+        n (int): index of the image
+        z (0 <= int) : zoom level. The data returned will be with MD_PIXEL_SIZE * 2^z.
+            So 0 means to use the highest zoom, with the original pixel size. 1 will
+            return data half the width and heigh (The maximum possible value depends
+            on the data).
+        rect (4 ints): left, top, right, bottom coordinates (in px, at zoom=0) of the
+            area of interest.
+        return (tuple of tuple of DataArray): all the tiles in X&Y dimension, so that
+            the area of interest is fully covered (so the area can be larger than requested).
+            The first dimension is X, and second is Y. For example, if returning 3x7 tiles,
+            the most bottom-right tile will be accessed as ret[2][6]. For each
+            DataArray.metadata, MD_POS and MD_PIXEL_SIZE are updated appropriately
+            (if MD_POS is not present, (0,0) is used as default for the entire image, and if
+            MD_PIXEL_SIZE is not present, it will not be updated).
+        raise ValueError: if the area or z is out of range, or if the raw data is not pyramidal.
+        """
+        pass

@@ -1479,6 +1479,20 @@ class TestTiffIO(unittest.TestCase):
         self.assertEqual(tile.shape, (1, 2, 3))
         del f
         os.remove(FILENAME)
+
+    def testAcquisitionDataTIFF(self):
+        size = (257, 295)
+        dtype = numpy.uint16
+        arr = numpy.array(range(size[0] * size[1])).reshape(size[::-1]).astype(dtype)
+        data = model.DataArray(arr)
+
+        # export
+        tiff.export(FILENAME, data, pyramid=True)
+
+        # check data
+        rdata = tiff.open_data(FILENAME)
+
+        self.assertEqual(rdata.content[0].shape, size[::-1])
         
 
 def rational2float(rational):
