@@ -1,6 +1,29 @@
-from abc import ABCMeta
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+'''
+Created on 24 Jan 2017
 
-class DataArrayShadow():
+@author: Éric Piel
+
+Copyright © 2017 Éric Piel, Delmic
+
+This file is part of Odemis.
+
+Odemis is free software: you can redistribute it and/or modify it under the terms
+of the GNU General Public License version 2 as published by the Free Software
+Foundation.
+
+Odemis is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+Odemis. If not, see http://www.gnu.org/licenses/.
+'''
+from abc import ABCMeta, abstractmethod
+
+
+class DataArrayShadow(object):
     """
     This class contains information about a DataArray.
     It has all the useful attributes of a DataArray, but not the actual data.
@@ -23,7 +46,12 @@ class DataArrayShadow():
         if maxzoom:
             self.maxzoom = maxzoom
 
-class AcquisitionData():
+class AcquisitionData(object):
+    """
+    It's an abstract class to represent an opened file. It allows
+    to have random access to a sub-part of any image in the file. It's extended by
+    each dataio converter to actually support the specific file format.
+    """
     __metaclass__ = ABCMeta
 
     def __init__(self, content, thumbnails=None):
