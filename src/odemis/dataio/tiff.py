@@ -35,7 +35,7 @@ import re
 import sys
 import time
 import uuid
-from odemis.model._dataio import DataArrayShadow, AcquisitionData
+from odemis.model import DataArrayShadow, AcquisitionData
 
 import libtiff.libtiff_ctypes as T  # for the constant names
 import xml.etree.ElementTree as ET
