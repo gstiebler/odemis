@@ -1497,6 +1497,7 @@ class TestTiffIO(unittest.TestCase):
         self.assertEqual(len(tiles), 2)
         self.assertEqual(len(tiles[0]), 2)
         self.assertEqual(tiles[1][1].shape, (39, 1))
+        os.remove(FILENAME)
         
 
 def rational2float(rational):
