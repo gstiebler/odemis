@@ -24,7 +24,7 @@ from __future__ import division
 
 from odemis import model
 from odemis.util import conversion
-from odemis.util.conversion import convert_to_object, reproduce_typed_value
+from odemis.util.conversion import convert_to_object, reproduce_typed_value, get_img_transformation_matrix
 import unittest
 
 
@@ -156,6 +156,15 @@ class TestConversion(unittest.TestCase):
         for ex_val, str_val in tc:
             with self.assertRaises((ValueError, TypeError)):
                 out = reproduce_typed_value(ex_val, str_val)
+
+    def test_get_img_transformation_matrix(self):
+        md = {
+            model.MD_PIXEL_SIZE: (1e-6, 2e-5),
+            model.MD_ROTATION: 0.1,
+            model.MD_SHEAR: 0.12,
+        }
+        mat = get_img_transformation_matrix(md)
+        print mat
 
 
 if __name__ == "__main__":

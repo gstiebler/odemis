@@ -25,6 +25,8 @@ import logging
 import re
 import wx
 import yaml
+from odemis import model
+import numpy
 
 
 # Inspired by code from:
@@ -392,3 +394,19 @@ def ensure_tuple(v):
     else:
         return v
 
+def get_img_transformation_matrix(md):
+    """
+    Computes the 2D transformation matrix based on the given metadata.
+    md (dict str value): the metadata of a DataArray, possibly 5
+        containing the MD_PIXEL_SIZE, MD_ROTATION and MD_SHEAR metadata
+    return (numpy.array of 2,2 floats): the 2D transformation matrix
+    """
+    ps = md[model.MD_PIXEL_SIZE]
+    rotation = md[model.MD_ROTATION]
+    shear = md[model.MD_SHEAR]
+
+    ps_mat = numpy.matrix([[ps[0], 0], [0, ps[1]]])
+    cos, sin = numpy.cos(rotation), numpy.sin(rotation)
+    rot_mat = numpy.matrix([[cos, -sin], [sin, cos]])
+    shear_mat = numpy.matrix([[1, shear], [0, 1]])
+    return ps_mat * rot_mat * shear_mat 
