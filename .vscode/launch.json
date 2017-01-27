@@ -2,6 +2,28 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python Odemis GUI",
+            "type": "python",
+            "request": "launch",
+            "stopOnEntry": false,
+            "pythonPath": "${config.python.pythonPath}",
+            "program": "${workspaceRoot}/src/odemis/gui/main.py",
+            "cwd": "${workspaceRoot}",
+            "debugOptions": [
+                "WaitOnAbnormalExit",
+                "WaitOnNormalExit",
+                "RedirectOutput"
+            ],
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}/src:${workspaceRoot}/../../pylibtiff"
+            },
+            "args": [
+                "--log-level",
+                "2",
+                "--standalone"
+            ]
+        },
+        {
             "name": "Python img_test",
             "type": "python",
             "request": "launch",
@@ -41,7 +63,27 @@
                 //"TestTiffIO.testExportSmallPyramid",
                 //"TestTiffIO.testExportThinPyramid",
                 //"TestTiffIO.testExportMultiArrayPyramid"
-                "TestTiffIO.testAcquisitionDataTIFF"
+                "TestTiffIO.testExportNoWL"
+            ]
+        },
+        {
+            "name": "Python conversion",
+            "type": "python",
+            "request": "launch",
+            "stopOnEntry": false,
+            "pythonPath": "${config.python.pythonPath}",
+            "program": "${workspaceRoot}/src/odemis/util/test/conversion_test.py",
+            "cwd": "${workspaceRoot}",
+            "debugOptions": [
+                "WaitOnAbnormalExit",
+                "WaitOnNormalExit",
+                "RedirectOutput"
+            ],
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}/src:${workspaceRoot}/../../pylibtiff"
+            },
+            "args": [
+                "TestConversion.test_get_img_transformation_matrix"
             ]
         },
         {
