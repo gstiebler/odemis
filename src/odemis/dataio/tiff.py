@@ -1941,10 +1941,10 @@ def read_data(filename):
     # TODO: support filename to be a File or Stream (but it seems very difficult
     # to do it without looking at the .filename attribute)
     # see http://pytables.github.io/cookbook/inmemory_hdf5_files.html
-    filename = _ensure_fs_encoding(filename)
-    return _dataFromTIFF(filename)
-    #acd = open_data(filename)
-    #return [acd.getData(i) for i in range(len(acd.content))]
+    #filename = _ensure_fs_encoding(filename)
+    #return _dataFromTIFF(filename)
+    acd = open_data(filename)
+    return [acd.getData(i) for i in range(len(acd.content))]
 
 def read_thumbnail(filename):
     """
@@ -1967,8 +1967,7 @@ def open_data(fn):
     return: AcquisitionData: an opened file
     """
 
-    tiff_file = TIFF.open(fn, mode='r')
-    return AcquisitionDataTIFF(tiff_file)
+    return AcquisitionDataTIFF(fn)
 
 class AcquisitionDataTIFF(AcquisitionData):
     """
@@ -1983,8 +1982,6 @@ class AcquisitionDataTIFF(AcquisitionData):
         tiff_file = TIFF.open(filename, mode='r')
         # the handles of all referenced files
         self.tiff_info = []
-        self.tiff_file = tiff_file
-
 
         data = []
         thumbnails = []
@@ -2009,19 +2006,14 @@ class AcquisitionDataTIFF(AcquisitionData):
                 data.append(das)
                 self.tiff_info.append({'handle': tfile, 'dir_index': dir_index})
 
-
-        tiff_file.SetDirectory(0)
-        counter = 0
-        while not tiff_file.LastDirectory():
+        for counter in self._iter_images(tiff_file):
             processImage(tiff_file, counter)
-            tiff_file.ReadDirectory()
-            counter += 1
 
         # If looks like OME TIFF, reconstruct >2D data and add metadata
         # It's OME TIFF, if it has a valid ome-tiff XML in the first T.TIFFTAG_IMAGEDESCRIPTION
         # Warning: we support what we write, not the whole OME-TIFF specification.
-        f.SetDirectory(0)
-        desc = f.GetField(T.TIFFTAG_IMAGEDESCRIPTION)
+        tiff_file.SetDirectory(0)
+        desc = tiff_file.GetField(T.TIFFTAG_IMAGEDESCRIPTION)
 
         if (desc and ((desc.startswith("<?xml") and "<ome " in desc.lower())
                     or desc[:4].lower() == '<ome')):
@@ -2061,13 +2053,8 @@ class AcquisitionDataTIFF(AcquisitionData):
                         logging.warning("File '%s' enlisted in the OME-XML header is missing.", uuid_path)
                         continue
 
-
-                    f_link.SetDirectory(0)
-                    counter = 0
-                    while not f_link.LastDirectory():
+                    for counter in self._iter_images(f_link):
                         processImage(f_link, counter)
-                        f_link.ReadDirectory()
-                        counter += 1
 
                     file_read.add(uuid_data)
 
@@ -2087,6 +2074,16 @@ class AcquisitionDataTIFF(AcquisitionData):
 
         AcquisitionData.__init__(self, tuple(content), tuple(thumbnails))
 
+    def _iter_images(self, tiff_file):
+        tiff_file.SetDirectory(0)
+        counter = 0
+        yield counter
+        while not tiff_file.LastDirectory():
+            tiff_file.ReadDirectory()
+            counter += 1
+            yield counter
+        tiff_file.SetDirectory(0)
+
     def getData(self, n):
         """
         Fetches the whole data (at full resolution) of image at index n.
@@ -2094,10 +2091,11 @@ class AcquisitionDataTIFF(AcquisitionData):
         return DataArray: the data, with its metadata (ie, identical to .content[n] but
             with the actual data)
         """
-
-        self.tiff_file.SetDirectory(n)
-        image = self.tiff_file.read_image()
-        md = _readTiffTag(self.tiff_file) # reads tag of the current image
+        tiff_info = self.tiff_info[n]
+        tiff_file = tiff_info['handle']
+        tiff_file.SetDirectory(tiff_info['dir_index'])
+        image = tiff_file.read_image()
+        md = _readTiffTag(tiff_file) # reads tag of the current image
         return model.DataArray(image, metadata=md)
 
     def getSubData(self, n, z, rect):
@@ -2123,27 +2121,29 @@ class AcquisitionDataTIFF(AcquisitionData):
         """
         # TODO check the code at _dataFromTIFF
         # TODO check if n is valid
-        self.tiff_file.SetDirectory(n)
+        tiff_info = self.tiff_info[n]
+        tiff_file = tiff_info['handle']
+        tiff_file.SetDirectory(tiff_info['dir_index'])
 
         if z != 0:
             # get an array of offsets, one for each subimage
-            sub_ifds = self.tiff_file.GetField(T.TIFFTAG_SUBIFD)
+            sub_ifds = tiff_file.GetField(T.TIFFTAG_SUBIFD)
             if not sub_ifds:
                 raise ValueError("Image does not have zoom levels")
 
             # set the offset of the subimage
             # TODO check if z is valid
-            self.tiff_file.SetSubDirectory(sub_ifds[z])
+            tiff_file.SetSubDirectory(sub_ifds[z])
         
-        num_tcols = self.tiff_file.GetField("TileWidth")
-        num_trows = self.tiff_file.GetField("TileLength")
+        num_tcols = tiff_file.GetField("TileWidth")
+        num_trows = tiff_file.GetField("TileLength")
 
         x1, y1, x2, y2 = rect
         tiles = []
         for x in xrange(x1, x2 + 1, num_tcols):
             tiles_column = []
             for y in xrange(y1, y2 + 1, num_trows):
-                tiles_column.append(self.tiff_file.read_one_tile(x, y))
+                tiles_column.append(tiff_file.read_one_tile(x, y))
 
             tiles.append(tuple(tiles_column))
 
