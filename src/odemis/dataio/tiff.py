@@ -1943,6 +1943,8 @@ def read_data(filename):
     # see http://pytables.github.io/cookbook/inmemory_hdf5_files.html
     filename = _ensure_fs_encoding(filename)
     return _dataFromTIFF(filename)
+    #acd = open_data(filename)
+    #return [acd.getData(i) for i in range(len(acd.content))]
 
 def read_thumbnail(filename):
     """
@@ -1972,40 +1974,116 @@ class AcquisitionDataTIFF(AcquisitionData):
     """
     Implements AcquisitionData for TIFF files
     """
-    def __init__(self, tiff_file):
+    def __init__(self, filename):
         """
         Constructor
         tiff_file (handle): A handle to a TIFF file returned from libtiff
         """
+
+        tiff_file = TIFF.open(filename, mode='r')
+        # the handles of all referenced files
+        self.tiff_info = []
         self.tiff_file = tiff_file
 
-        content = []
+
+        data = []
         thumbnails = []
 
-        def addToContent():
-            bits = tiff_file.GetField('BitsPerSample')
-            sample_format = tiff_file.GetField('SampleFormat')
-            typ = tiff_file.get_numpy_type(bits, sample_format)
+        def processImage(tfile, dir_index):
+            bits = tfile.GetField('BitsPerSample')
+            sample_format = tfile.GetField('SampleFormat')
+            typ = tfile.get_numpy_type(bits, sample_format)
 
-            width = tiff_file.GetField('ImageWidth')
-            height = tiff_file.GetField('ImageLength')
-            md = _readTiffTag(tiff_file) # reads tag of the current image
+            width = tfile.GetField('ImageWidth')
+            height = tfile.GetField('ImageLength')
+            md = _readTiffTag(tfile)  # reads tag of the current image
 
             # TODO add ImageDepth and SamplesPerPixel to the shape
             # TODO add maxzoom
-            new_content = DataArrayShadow((height, width), typ, md)
+            das = DataArrayShadow((height, width), typ, md)
 
-            if _isThumbnail(tiff_file):
-                thumbnails.append(new_content)
+            if _isThumbnail(tfile):
+                data.append(None)
+                thumbnails.append(das)
             else:
-                content.append(new_content)
-        
-        addToContent()
-        while not tiff_file.LastDirectory():
-            tiff_file.ReadDirectory()
-            addToContent()
+                data.append(das)
+                self.tiff_info.append({'handle': tfile, 'dir_index': dir_index})
+
 
         tiff_file.SetDirectory(0)
+        counter = 0
+        while not tiff_file.LastDirectory():
+            processImage(tiff_file, counter)
+            tiff_file.ReadDirectory()
+            counter += 1
+
+        # If looks like OME TIFF, reconstruct >2D data and add metadata
+        # It's OME TIFF, if it has a valid ome-tiff XML in the first T.TIFFTAG_IMAGEDESCRIPTION
+        # Warning: we support what we write, not the whole OME-TIFF specification.
+        f.SetDirectory(0)
+        desc = f.GetField(T.TIFFTAG_IMAGEDESCRIPTION)
+
+        if (desc and ((desc.startswith("<?xml") and "<ome " in desc.lower())
+                    or desc[:4].lower() == '<ome')):
+            try:
+                # take care of multiple file distribution
+                file_data = data
+                path, basename = os.path.split(filename)
+                data = []
+                desc = re.sub('xmlns="http://www.openmicroscopy.org/Schemas/OME/....-.."',
+                            "", desc, count=1)
+                desc = re.sub('xmlns="http://www.openmicroscopy.org/Schemas/ROI/....-.."',
+                            "", desc)
+                root = ET.fromstring(desc)
+
+                # Keep track of the files that were already opened
+                file_read = set()
+    #             ifd_counter = 0
+                for tiff_data in root.findall("Image/Pixels/TiffData"):
+
+                    uuid = tiff_data.find("UUID")
+                    if uuid is None:
+                        # uuid attribute is only part of multiple files distribution
+                        continue
+                    else:
+                        uuid_data = uuid.get("FileName")
+    #                 tiff_data.set("IFD", ifd_counter)
+                    ifd_data = tiff_data.get("IFD")
+    #                 ifd_counter += 1
+                    # attach to the right path
+                    uuid_path = os.path.join(path, uuid_data)
+                    if uuid_data in file_read:
+                        continue
+                    # try to find and open the enlisted file
+                    try:
+                        f_link = TIFF.open(uuid_path, mode='r')
+                    except TypeError:
+                        logging.warning("File '%s' enlisted in the OME-XML header is missing.", uuid_path)
+                        continue
+
+
+                    f_link.SetDirectory(0)
+                    counter = 0
+                    while not f_link.LastDirectory():
+                        processImage(f_link, counter)
+                        f_link.ReadDirectory()
+                        counter += 1
+
+                    file_read.add(uuid_data)
+
+                # If this file was not enlisted in the xml data we assume it has
+                # been renamed. In this case we also include its data.
+                if basename not in file_read:
+                    data.extend(file_data)
+
+                data = _reconstructFromOMETIFF(desc, data, os.path.basename(filename))
+            except Exception:
+                # fallback to pretend there was no OME XML
+                logging.exception("Failed to decode OME XML string: '%s'", desc)
+
+        # Remove all the None (=thumbnails) from the list
+        # TODO also remove items from self.tiff_handles
+        content = [i for i in data if i is not None]
 
         AcquisitionData.__init__(self, tuple(content), tuple(thumbnails))
 
@@ -2016,8 +2094,8 @@ class AcquisitionDataTIFF(AcquisitionData):
         return DataArray: the data, with its metadata (ie, identical to .content[n] but
             with the actual data)
         """
-        # TODO check the code at _dataFromTIFF
-        f.SetDirectory(n)
+
+        self.tiff_file.SetDirectory(n)
         image = self.tiff_file.read_image()
         md = _readTiffTag(self.tiff_file) # reads tag of the current image
         return model.DataArray(image, metadata=md)
