@@ -2254,7 +2254,7 @@ class AcquisitionDataTIFF(AcquisitionData):
         def readImage(tiff_info_item):
             tiff_file = tiff_info_item['handle']
             tiff_file.SetDirectory(tiff_info_item['dir_index'])
-            image = tiff_file.read_image()
+            return tiff_file.read_image()
 
         tiff_info = self.content[n].tiff_info
         if type(tiff_info) is list:
@@ -2304,9 +2304,8 @@ class AcquisitionDataTIFF(AcquisitionData):
             MD_PIXEL_SIZE is not present, it will not be updated).
         raise ValueError: if the area or z is out of range, or if the raw data is not pyramidal.
         """
-        # TODO check the code at _dataFromTIFF
         # TODO check if n is valid
-        tiff_info = self.tiff_info[n]
+        tiff_info = self.content[n].tiff_info
         tiff_file = tiff_info['handle']
         tiff_file.SetDirectory(tiff_info['dir_index'])
 
