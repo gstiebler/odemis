@@ -935,7 +935,7 @@ def _mergeDA(das, hdim_index):
     return (DataArray): the merge of all the DAs. The shape is hdim_index.shape
      + shape of original DataArray. The metadata is the metadata of the first
      DataArray inserted
-    """
+    """ 
     fim = das[hdim_index.flat[0]]
     tshape = hdim_index.shape + fim.shape
     imset = numpy.empty(tshape, fim.dtype)
@@ -2251,11 +2251,36 @@ class AcquisitionDataTIFF(AcquisitionData):
         return DataArray: the data, with its metadata (ie, identical to .content[n] but
             with the actual data)
         """
-        tiff_file = tiff_info['handle']
-        tiff_file.SetDirectory(tiff_info['dir_index'])
-        image = tiff_file.read_image()
-        md = _readTiffTag(tiff_file) # reads tag of the current image
-        return model.DataArray(image, metadata=md)
+        tiff_info = self.content[n].tiff_info
+        if type(tiff_info) is list:
+            def __mergeDA(das, tiff_info):
+                """
+                Merge multiple DataArrays into a higher dimension DataArray.
+                das (list of DataArrays): ordered list of DataArrays (can contain more
+                arrays than what is used in the high dimension arrays
+                hdim_index (ndarray of int >= 0): an array representing the higher
+                dimensions of the final merged arrays. Each value is the index of the
+                small array in das.
+                return (DataArray): the merge of all the DAs. The shape is hdim_index.shape
+                + shape of original DataArray. The metadata is the metadata of the first
+                DataArray inserted
+                """
+                imset = numpy.empty(das.shape, das.dtype)
+                for tiff_info_item in tiff_info:
+                    handle_index = tiff_info_item[1]
+                    tiff_file = handle_index['handle']
+                    tiff_file.SetDirectory(handle_index['dir_index'])
+                    image = tiff_file.read_image()
+                    imset[tiff_info_item[0]] = image
+
+                return model.DataArray(imset, metadata=das.metadata)
+            
+            return __mergeDA(self.content[n], tiff_info)
+        else:
+            tiff_file = tiff_info['handle']
+            tiff_file.SetDirectory(tiff_info['dir_index'])
+            image = tiff_file.read_image()
+            return model.DataArray(image, metadata=self.content[n].metadata)
 
     def getSubData(self, n, z, rect):
         """
