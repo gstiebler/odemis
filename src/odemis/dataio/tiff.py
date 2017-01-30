@@ -2224,13 +2224,12 @@ class AcquisitionDataTIFF(AcquisitionData):
                 omedas.append(shadow_shape)
 
         # Updating MD_DIMS to remove too many dims if the array is no 5 dims
-        # TODO do it in getData
-        '''for da in omedas:
+        for da in omedas:
             try:
                 dims = da.metadata[model.MD_DIMS]
                 da.metadata[model.MD_DIMS] = dims[-da.ndim:]
             except KeyError:
-                pass'''
+                pass
 
         return omedas
 
@@ -2314,6 +2313,9 @@ class AcquisitionDataTIFF(AcquisitionData):
             sub_ifds = tiff_file.GetField(T.TIFFTAG_SUBIFD)
             if not sub_ifds:
                 raise ValueError("Image does not have zoom levels")
+
+            if z < 0 or z > len(sub_ifds):
+                raise ValueError("Invalid Z value")
 
             # set the offset of the subimage
             # TODO check if z is valid
