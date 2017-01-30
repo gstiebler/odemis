@@ -1988,6 +1988,9 @@ class AcquisitionDataTIFF(AcquisitionData):
 
             width = tfile.GetField('ImageWidth')
             height = tfile.GetField('ImageLength')
+            samples_pp = tfile.GetField('SamplesPerPixel')
+            if samples_pp is None:  # default is 1
+                samples_pp = 1
             sub_ifds = tiff_file.GetField(T.TIFFTAG_SUBIFD)
             if sub_ifds:
                 # add the number of subdirectories, and the main image
@@ -1997,8 +2000,12 @@ class AcquisitionDataTIFF(AcquisitionData):
                 
             md = _readTiffTag(tfile)  # reads tag of the current image
 
-            # TODO add ImageDepth and SamplesPerPixel to the shape
-            das = DataArrayShadow((height, width), typ, md, maxzoom)
+            # TODO add SamplesPerPixel to the shape
+            
+            shape = (height, width)
+            if samples_pp > 1:
+                shape = shape + (samples_pp,)
+            das = DataArrayShadow(shape, typ, md, maxzoom)
 
             if _isThumbnail(tfile):
                 data.append(None)
