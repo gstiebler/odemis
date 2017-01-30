@@ -2251,6 +2251,11 @@ class AcquisitionDataTIFF(AcquisitionData):
         return DataArray: the data, with its metadata (ie, identical to .content[n] but
             with the actual data)
         """
+        def readImage(tiff_info_item):
+            tiff_file = tiff_info_item['handle']
+            tiff_file.SetDirectory(tiff_info_item['dir_index'])
+            image = tiff_file.read_image()
+
         tiff_info = self.content[n].tiff_info
         if type(tiff_info) is list:
             def __mergeDA(das, tiff_info):
@@ -2268,18 +2273,14 @@ class AcquisitionDataTIFF(AcquisitionData):
                 imset = numpy.empty(das.shape, das.dtype)
                 for tiff_info_item in tiff_info:
                     handle_index = tiff_info_item[1]
-                    tiff_file = handle_index['handle']
-                    tiff_file.SetDirectory(handle_index['dir_index'])
-                    image = tiff_file.read_image()
+                    image = readImage(handle_index)
                     imset[tiff_info_item[0]] = image
 
                 return model.DataArray(imset, metadata=das.metadata)
             
             return __mergeDA(self.content[n], tiff_info)
         else:
-            tiff_file = tiff_info['handle']
-            tiff_file.SetDirectory(tiff_info['dir_index'])
-            image = tiff_file.read_image()
+            image = readImage(tiff_info)
             return model.DataArray(image, metadata=self.content[n].metadata)
 
     def getSubData(self, n, z, rect):
