@@ -1988,11 +1988,17 @@ class AcquisitionDataTIFF(AcquisitionData):
 
             width = tfile.GetField('ImageWidth')
             height = tfile.GetField('ImageLength')
+            sub_ifds = tiff_file.GetField(T.TIFFTAG_SUBIFD)
+            if sub_ifds:
+                # add the number of subdirectories, and the main image
+                maxzoom = len(sub_ifds) + 1
+            else:
+                maxzoom = None
+                
             md = _readTiffTag(tfile)  # reads tag of the current image
 
             # TODO add ImageDepth and SamplesPerPixel to the shape
-            # TODO add maxzoom
-            das = DataArrayShadow((height, width), typ, md)
+            das = DataArrayShadow((height, width), typ, md, maxzoom)
 
             if _isThumbnail(tfile):
                 data.append(None)
@@ -2127,8 +2133,11 @@ class AcquisitionDataTIFF(AcquisitionData):
                 tiff_info.append((hi, das[i].tiff_info))
 
             # TODO add ImageDepth and SamplesPerPixel to the shape
-            # TODO add maxzoom
-            mergedDataArrayShadow = DataArrayShadow(tshape, fim.dtype, fim.metadata)
+            try:
+                maxzoom = fim.maxzoom
+            except:
+                maxzoom = None
+            mergedDataArrayShadow = DataArrayShadow(tshape, fim.dtype, fim.metadata, maxzoom)
             mergedDataArrayShadow.tiff_info = tiff_info
             return mergedDataArrayShadow
 
@@ -2316,11 +2325,11 @@ class AcquisitionDataTIFF(AcquisitionData):
             if not sub_ifds:
                 raise ValueError("Image does not have zoom levels")
 
-            if z < 0 or z >= len(sub_ifds):
+            if z < 0 or z > len(sub_ifds):
                 raise ValueError("Invalid Z value")
 
-            # set the offset of the subimage
-            tiff_file.SetSubDirectory(sub_ifds[z])
+            # set the offset of the subimage. Z=0 is the main image
+            tiff_file.SetSubDirectory(sub_ifds[z - 1])
         
         num_tcols = tiff_file.GetField("TileWidth")
         num_trows = tiff_file.GetField("TileLength")

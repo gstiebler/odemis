@@ -1481,22 +1481,37 @@ class TestTiffIO(unittest.TestCase):
         os.remove(FILENAME)
 
     def testAcquisitionDataTIFF(self):
-        size = (257, 295)
+        size = (3, 257, 295)
         dtype = numpy.uint16
-        arr = numpy.array(range(size[0] * size[1])).reshape(size[::-1]).astype(dtype)
-        data = model.DataArray(arr)
+        md = {
+            model.MD_SAMPLES_PER_PIXEL: 1,
+            model.MD_DIMS: 'YXC'
+        }
+        arr = numpy.array(range(size[0] * size[1] * size[2])).reshape(size[::-1]).astype(dtype)
+        data = model.DataArray(arr, metadata=md)
 
         # export
         tiff.export(FILENAME, data, pyramid=True)
 
         # check data
+        #rdata = tiff.open_data(FILENAME)
         rdata = tiff.open_data(FILENAME)
+        self.assertEqual(rdata.content[0].maxzoom, 2)
         self.assertEqual(rdata.content[0].shape, size[::-1])
 
         tiles = rdata.getSubData(0, 0, (0, 0, 256, 294))
         self.assertEqual(len(tiles), 2)
         self.assertEqual(len(tiles[0]), 2)
         self.assertEqual(tiles[1][1].shape, (39, 1))
+
+        with self.assertRaises(ValueError):
+            # invalid Z
+            tiles = rdata.getSubData(0, 50, (0, 0, 256, 294))
+
+        with self.assertRaises(ValueError):
+            # invalid N
+            tiles = rdata.getSubData(50, 0, (0, 0, 256, 294))
+
         os.remove(FILENAME)
         
 
