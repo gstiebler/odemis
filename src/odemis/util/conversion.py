@@ -420,7 +420,7 @@ def get_img_transformation_matrix(md):
     cos, sin = numpy.cos(rotation), numpy.sin(rotation)
     rot_mat = numpy.matrix([[cos, -sin], [sin, cos]])
     shear_mat = numpy.matrix([[1, shear], [0, 1]])
-    return ps_mat * rot_mat * shear_mat 
+    return ps_mat * rot_mat * shear_mat
 
 def get_tile_md_pos(i, tile_size, tileda, origmd):
     """
@@ -433,25 +433,34 @@ def get_tile_md_pos(i, tile_size, tileda, origmd):
         no MD_POS is provided, the image is considered located at (0,0).
     return (float, float): the center position
     """
-    md = tileda.metadata
-    shape = tileda.shape
+    md = origmd.metadata
 
-    # TODO get the correct width and height
-    img_width, img_height = shape
-    img_center = (img_width // 2, img_height // 2)
-    md_pos = md[model.MD_POS]
-    pixel_size = md[model.MD_PIXEL_SIZE]
-    # top-left
+    md_pos = list(md[model.MD_POS])
+    # TODO get the correct width and height when the image has more than 2 dimensions
+    img_width, img_height = origmd.shape
+    # center of the image in pixels
+    img_center = numpy.array([img_width // 2, img_height // 2], numpy.float)
+    md_pos = numpy.array(md_pos, numpy.float)
+    pixel_size = numpy.array(list(md[model.MD_PIXEL_SIZE]), numpy.float)
+
+    # top-left of image, world
     img_corner_world = md_pos - img_center * pixel_size
+
+    # center of the image in world coordinates
     img_center_world = img_corner_world + img_center * pixel_size
 
-    tile_center_pixels = (img_center + 0.5) * tile_size
-    tile_center_world = img_corner_world + tile_center_pixels * pixel_size
-    tile_pos_rel_to_center = tile_center_world - img_center_world
+    half_tile_shape = [a // 2 for a in tileda.shape]
+    # center of the tile in pixels
+    tile_center_pixels = [a * tile_size + hts for a, hts in zip(i, half_tile_shape)]
+    tile_center_pixels = numpy.array(tile_center_pixels, numpy.float)
+    # center of the tile relative to the center of the image
+    tile_rel_to_img_center_pixels = tile_center_pixels - img_center
 
     mat = get_img_transformation_matrix(md)
-    new_tile_pos_rel = tile_pos_rel_to_center * mat
-    tile_pos_world_final = tile_center_world + new_tile_pos_rel
+    # calculate the new position of the tile, relative to the center of the image,
+    # in world coordinates
+    new_tile_pos_rel = tile_rel_to_img_center_pixels * mat
+    # calculate the final position of the tile, in world coordinates
+    tile_pos_world_final = img_center_world + new_tile_pos_rel
 
-    return tile_pos_world_final
-    
+    return tuple(tile_pos_world_final.getA()[0])

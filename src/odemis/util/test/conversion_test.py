@@ -24,7 +24,11 @@ from __future__ import division
 
 from odemis import model
 from odemis.util import conversion
-from odemis.util.conversion import convert_to_object, reproduce_typed_value, get_img_transformation_matrix
+from odemis.util.conversion import \
+    convert_to_object, \
+    reproduce_typed_value, \
+    get_img_transformation_matrix,\
+    get_tile_md_pos
 import unittest
 import math
 import numpy
@@ -199,9 +203,15 @@ class TestConversion(unittest.TestCase):
 
 
     def test_get_tile_md_pos(self):
-        
-        pass
-
+        tile = model.DataArray(numpy.zeros((256, 256), numpy.uint8), {})
+        md = {
+            model.MD_PIXEL_SIZE: (1e-6, 1e-6),
+            model.MD_POS: (10e-6, 50e-6),
+            model.MD_ROTATION: math.pi / 4
+        }
+        origmd = model.DataArray(numpy.zeros((2000, 1000), numpy.uint8), md)
+        tile_md_pos = get_tile_md_pos((6, 5), 256, tile, origmd)
+        self.assertEqual(tile_md_pos, (0.0011215718600252529, 0.00022253405460951773))
 
 if __name__ == "__main__":
     unittest.main()

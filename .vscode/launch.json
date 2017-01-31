@@ -63,7 +63,9 @@
                 //"TestTiffIO.testExportSmallPyramid",
                 //"TestTiffIO.testExportThinPyramid",
                 //"TestTiffIO.testExportMultiArrayPyramid"
-                "TestTiffIO.testExportNoWL"
+                //"TestTiffIO.testExportNoWL",
+                "TestTiffIO.testAcquisitionDataTIFF"
+                //"TestTiffIO.testExportRead"
             ]
         },
         {
@@ -83,7 +85,8 @@
                 "PYTHONPATH": "${workspaceRoot}/src:${workspaceRoot}/../../pylibtiff"
             },
             "args": [
-                "TestConversion.test_get_img_transformation_matrix"
+                "TestConversion.test_get_img_transformation_matrix",
+                "TestConversion.test_get_tile_md_pos"
             ]
         },
         {
