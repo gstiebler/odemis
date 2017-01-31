@@ -39,6 +39,7 @@ from odemis.model import DataArrayShadow, AcquisitionData
 
 import libtiff.libtiff_ctypes as T  # for the constant names
 import xml.etree.ElementTree as ET
+from odemis.util.conversion import get_tile_md_pos
 
 
 #pylint: disable=E1101
@@ -2352,7 +2353,13 @@ class AcquisitionDataTIFF(AcquisitionData):
         for x in xrange(x1, x2 + 1, num_tcols):
             tiles_column = []
             for y in xrange(y1, y2 + 1, num_trows):
-                tiles_column.append(tiff_file.read_one_tile(x, y))
+                tile = tiff_file.read_one_tile(x, y)
+                tile_md_position = get_tile_md_pos((x, y), TILE_SIZE, tile, self.content[n])
+                md = {
+                    model.MD_POS: tile_md_position
+                }
+                tile = model.DataArray(tile, md)
+                tiles_column.append(tile)
 
             tiles.append(tuple(tiles_column))
 

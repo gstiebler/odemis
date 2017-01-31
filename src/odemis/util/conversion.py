@@ -437,7 +437,7 @@ def get_tile_md_pos(i, tile_size, tileda, origmd):
 
     md_pos = list(md[model.MD_POS])
     # TODO get the correct width and height when the image has more than 2 dimensions
-    img_width, img_height = origmd.shape
+    img_width, img_height = origmd.shape[:2]
     # center of the image in pixels
     img_center = numpy.array([img_width // 2, img_height // 2], numpy.float)
     md_pos = numpy.array(md_pos, numpy.float)

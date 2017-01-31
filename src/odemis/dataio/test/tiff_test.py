@@ -1485,7 +1485,9 @@ class TestTiffIO(unittest.TestCase):
         dtype = numpy.uint16
         md = {
             model.MD_SAMPLES_PER_PIXEL: 1,
-            model.MD_DIMS: 'YXC'
+            model.MD_DIMS: 'YXC',
+            model.MD_POS: (2e-6, 10e-6),
+            model.MD_PIXEL_SIZE: (1e-6, 1e-6)
         }
         arr = numpy.array(range(size[0] * size[1] * size[2])).reshape(size[::-1]).astype(dtype)
         data = model.DataArray(arr, metadata=md)
