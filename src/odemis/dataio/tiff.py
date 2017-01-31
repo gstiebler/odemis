@@ -1957,8 +1957,11 @@ def read_thumbnail(filename):
         IOError in case the file format is not as expected.
     """
     # TODO: support filename to be a File or Stream
-    filename = _ensure_fs_encoding(filename)
-    return _thumbsFromTIFF(filename)
+    #filename = _ensure_fs_encoding(filename)
+    #return _thumbsFromTIFF(filename)
+
+    acd = open_data(filename)
+    return [acd.getThumbnail(i) for i in range(len(acd.thumbnails))]
 
 def open_data(fn):
     """
@@ -1985,7 +1988,7 @@ class AcquisitionDataTIFF(AcquisitionData):
         thumbnails = []
 
         for counter in self._iter_images(tiff_file):
-            AcquisitionDataTIFF._processImage(tiff_file, counter, data)
+            AcquisitionDataTIFF._processImage(tiff_file, counter, data, thumbnails)
 
         # If looks like OME TIFF, reconstruct >2D data and add metadata
         # It's OME TIFF, if it has a valid ome-tiff XML in the first T.TIFFTAG_IMAGEDESCRIPTION
@@ -2032,7 +2035,7 @@ class AcquisitionDataTIFF(AcquisitionData):
                         continue
 
                     for counter in self._iter_images(f_link):
-                        AcquisitionDataTIFF._processImage(f_link, counter, data)
+                        AcquisitionDataTIFF._processImage(f_link, counter, data, thumbnails)
 
                     file_read.add(uuid_data)
 
@@ -2052,7 +2055,7 @@ class AcquisitionDataTIFF(AcquisitionData):
         AcquisitionData.__init__(self, tuple(content), tuple(thumbnails))
     
     @staticmethod
-    def _processImage(tfile, dir_index, data):
+    def _processImage(tfile, dir_index, data, thumbnails):
         bits = tfile.GetField(T.TIFFTAG_BITSPERSAMPLE)
         sample_format = tfile.GetField(T.TIFFTAG_SAMPLEFORMAT)
         typ = tfile.get_numpy_type(bits, sample_format)
@@ -2076,13 +2079,13 @@ class AcquisitionDataTIFF(AcquisitionData):
             shape = shape + (samples_pp,)
         das = DataArrayShadow(shape, typ, md, maxzoom)
 
+        tiff_info = {'handle': tfile, 'dir_index': dir_index}
+        das.tiff_info = tiff_info
         if _isThumbnail(tfile):
             data.append(None)
             thumbnails.append(das)
         else:
             data.append(das)
-            tiff_info = {'handle': tfile, 'dir_index': dir_index}
-            das.tiff_info = tiff_info
 
     @staticmethod
     def _reconstructFromOMETIFF(xml, data, basename):
@@ -2257,6 +2260,12 @@ class AcquisitionDataTIFF(AcquisitionData):
             yield counter
         tiff_file.SetDirectory(0)
 
+    @staticmethod
+    def _readImage(tiff_info_item):
+        tiff_file = tiff_info_item['handle']
+        tiff_file.SetDirectory(tiff_info_item['dir_index'])
+        return tiff_file.read_image()
+
     def getData(self, n):
         """
         Fetches the whole data (at full resolution) of image at index n.
@@ -2264,10 +2273,6 @@ class AcquisitionDataTIFF(AcquisitionData):
         return DataArray: the data, with its metadata (ie, identical to .content[n] but
             with the actual data)
         """
-        def readImage(tiff_info_item):
-            tiff_file = tiff_info_item['handle']
-            tiff_file.SetDirectory(tiff_info_item['dir_index'])
-            return tiff_file.read_image()
 
         tiff_info = self.content[n].tiff_info
         if type(tiff_info) is list:
@@ -2286,14 +2291,14 @@ class AcquisitionDataTIFF(AcquisitionData):
                 imset = numpy.empty(das.shape, das.dtype)
                 for tiff_info_item in tiff_info:
                     handle_index = tiff_info_item[1]
-                    image = readImage(handle_index)
+                    image = AcquisitionDataTIFF._readImage(handle_index)
                     imset[tiff_info_item[0]] = image
 
                 return model.DataArray(imset, metadata=das.metadata)
             
             return __mergeDA(self.content[n], tiff_info)
         else:
-            image = readImage(tiff_info)
+            image = AcquisitionDataTIFF._readImage(tiff_info)
             return model.DataArray(image, metadata=self.content[n].metadata)
 
     def getSubData(self, n, z, rect):
@@ -2349,3 +2354,8 @@ class AcquisitionDataTIFF(AcquisitionData):
             tiles.append(tuple(tiles_column))
 
         return tuple(tiles)
+
+    def getThumbnail(self, n):
+        tiff_info = self.thumbnails[n].tiff_info
+        image = AcquisitionDataTIFF._readImage(tiff_info)
+        return model.DataArray(image, metadata=self.thumbnails[n].metadata)
