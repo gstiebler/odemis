@@ -1504,7 +1504,11 @@ class TestTiffIO(unittest.TestCase):
         self.assertEqual(len(tiles[0]), 2)
         self.assertEqual(tiles[1][1].shape, (39, 1, 3))
         
-        # TODO test different zoom levels
+        # Test different zoom levels
+        tiles = rdata.getSubData(0, 1, (0, 0, 128, 147))
+        self.assertEqual(len(tiles), 1)
+        self.assertEqual(len(tiles[0]), 1)
+        self.assertEqual(tiles[0][0].shape, (147, 128, 3))
 
         with self.assertRaises(ValueError):
             # invalid Z
