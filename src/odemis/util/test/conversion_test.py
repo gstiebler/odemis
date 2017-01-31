@@ -26,6 +26,8 @@ from odemis import model
 from odemis.util import conversion
 from odemis.util.conversion import convert_to_object, reproduce_typed_value, get_img_transformation_matrix
 import unittest
+import math
+import numpy
 
 
 class TestConversion(unittest.TestCase):
@@ -158,14 +160,42 @@ class TestConversion(unittest.TestCase):
                 out = reproduce_typed_value(ex_val, str_val)
 
     def test_get_img_transformation_matrix(self):
+        # simplest matrix
         md = {
-            model.MD_PIXEL_SIZE: (1e-6, 2e-5),
-            model.MD_ROTATION: 0.1,
-            model.MD_SHEAR: 0.12,
+            model.MD_PIXEL_SIZE: (1.0, 1.0),
+            model.MD_ROTATION: 0.0,
+            model.MD_SHEAR: 0.0,
         }
         mat = get_img_transformation_matrix(md)
-        print mat
+        self.assertTrue((mat == [[ 1., 0.], [ 0., 1.]]).all())
 
+        # scale and rotation
+        md = {
+            model.MD_PIXEL_SIZE: (1e-6, 1e-6),
+            model.MD_ROTATION: math.pi / 4,
+            model.MD_SHEAR: 0.0,
+        }
+        mat = get_img_transformation_matrix(md)
+        sin = math.sin(math.pi / 4) * 1e-6
+        exp_mat = numpy.matrix([[sin, -sin], [sin, sin]])
+        for index, _ in numpy.ndenumerate(mat):
+            self.assertAlmostEqual(mat[index], exp_mat[index])
+
+        # everything
+        md = {
+            model.MD_PIXEL_SIZE: (1e-6, 1e-6),
+            model.MD_ROTATION: math.pi / 4,
+            model.MD_SHEAR: 0.1,
+        }
+        mat = get_img_transformation_matrix(md)
+        exp_mat = numpy.matrix([[sin, -6.36396103e-07], [sin, 7.77817459e-07]])
+        for index, _ in numpy.ndenumerate(mat):
+            self.assertAlmostEqual(mat[index], exp_mat[index])
+
+        # nothing
+        md = {}
+        mat = get_img_transformation_matrix(md)
+        self.assertTrue((mat == [[ 1., 0.], [ 0., 1.]]).all())
 
 if __name__ == "__main__":
     unittest.main()

@@ -2344,7 +2344,6 @@ class AcquisitionDataTIFF(AcquisitionData):
         num_tcols = tiff_file.GetField(T.TIFFTAG_TILEWIDTH)
         num_trows = tiff_file.GetField(T.TIFFTAG_TILELENGTH)
 
-        # TODO make an automated test to test it
         if not num_tcols or not num_trows:
             raise RuntimeError("the image is not tiled")
 

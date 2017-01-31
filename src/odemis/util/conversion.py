@@ -401,12 +401,38 @@ def get_img_transformation_matrix(md):
         containing the MD_PIXEL_SIZE, MD_ROTATION and MD_SHEAR metadata
     return (numpy.array of 2,2 floats): the 2D transformation matrix
     """
-    ps = md[model.MD_PIXEL_SIZE]
-    rotation = md[model.MD_ROTATION]
-    shear = md[model.MD_SHEAR]
+    if model.MD_PIXEL_SIZE in md:
+        ps = md[model.MD_PIXEL_SIZE]
+    else:
+        ps = (1, 1)
+
+    if model.MD_ROTATION in md:
+        rotation = md[model.MD_ROTATION]
+    else:
+        rotation = 0.0
+
+    if model.MD_SHEAR in md:
+        shear = md[model.MD_SHEAR]
+    else:
+        shear = 0.0
 
     ps_mat = numpy.matrix([[ps[0], 0], [0, ps[1]]])
     cos, sin = numpy.cos(rotation), numpy.sin(rotation)
     rot_mat = numpy.matrix([[cos, -sin], [sin, cos]])
     shear_mat = numpy.matrix([[1, shear], [0, 1]])
     return ps_mat * rot_mat * shear_mat 
+
+def get_tile_md_pos(i, tile_size, tileda, origmd):
+    """
+    Compute the position of the center of the tile, aka MD_POS.
+    i (int, int): the tile index (X, Y)
+    tile_size (int>0, int>0): the standard size of a tile in the (X, Y)
+    tileda (DataArray): the tile data, with MD_PIXEL_SIZE in its metadata.
+        It can be smaller than the tile_size in case
+    origda (DataArray or DataArrayShadow): the original/raw DataArray. If
+        no MD_POS is provided, the image is considered located at (0,0).
+    return (float, float): the center position
+    """
+    md = tileda.metadata
+    mat = get_img_transformation_matrix(md)
+    pass
