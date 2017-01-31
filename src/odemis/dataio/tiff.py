@@ -2346,7 +2346,7 @@ class AcquisitionDataTIFF(AcquisitionData):
 
         # TODO make an automated test to test it
         if not num_tcols or not num_trows:
-            raise ValueError("the image is not tiled")
+            raise RuntimeError("the image is not tiled")
 
         x1, y1, x2, y2 = rect
         tiles = []

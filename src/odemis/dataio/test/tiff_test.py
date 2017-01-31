@@ -1518,6 +1518,19 @@ class TestTiffIO(unittest.TestCase):
             # invalid N
             tiles = rdata.getSubData(50, 0, (0, 0, 256, 294))
 
+        # save the same file, but not pyramidal this time
+        arr = numpy.array(range(size[0] * size[1] * size[2])).reshape(size[::-1]).astype(dtype)
+        data = model.DataArray(arr, metadata=md)
+        tiff.export(FILENAME, data)
+
+        rdata = tiff.open_data(FILENAME)
+        with self.assertRaises(AttributeError):
+            rdata.content[0].maxzoom
+
+        with self.assertRaises(RuntimeError):
+            # the image is not tiled
+            rdata.getSubData(0, 0, (0, 0, 256, 294))
+
         os.remove(FILENAME)
         
 
