@@ -2000,8 +2000,6 @@ class AcquisitionDataTIFF(AcquisitionData):
                 
             md = _readTiffTag(tfile)  # reads tag of the current image
 
-            # TODO add SamplesPerPixel to the shape
-            
             shape = (height, width)
             if samples_pp > 1:
                 shape = shape + (samples_pp,)
@@ -2139,7 +2137,6 @@ class AcquisitionDataTIFF(AcquisitionData):
             for hi, i in numpy.ndenumerate(hdim_index):
                 tiff_info.append((hi, das[i].tiff_info))
 
-            # TODO add ImageDepth and SamplesPerPixel to the shape
             try:
                 maxzoom = fim.maxzoom
             except:
