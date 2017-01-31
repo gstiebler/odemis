@@ -1982,13 +1982,13 @@ class AcquisitionDataTIFF(AcquisitionData):
         tiff_file = TIFF.open(filename, mode='r')
 
         def processImage(tfile, dir_index, data):
-            bits = tfile.GetField('BitsPerSample')
-            sample_format = tfile.GetField('SampleFormat')
+            bits = tfile.GetField(T.TIFFTAG_BITSPERSAMPLE)
+            sample_format = tfile.GetField(T.TIFFTAG_SAMPLEFORMAT)
             typ = tfile.get_numpy_type(bits, sample_format)
 
-            width = tfile.GetField('ImageWidth')
-            height = tfile.GetField('ImageLength')
-            samples_pp = tfile.GetField('SamplesPerPixel')
+            width = tfile.GetField(T.TIFFTAG_IMAGEWIDTH)
+            height = tfile.GetField(T.TIFFTAG_IMAGELENGTH)
+            samples_pp = tfile.GetField(T.TIFFTAG_SAMPLESPERPIXEL)
             if samples_pp is None:  # default is 1
                 samples_pp = 1
             sub_ifds = tiff_file.GetField(T.TIFFTAG_SUBIFD)
@@ -2338,8 +2338,8 @@ class AcquisitionDataTIFF(AcquisitionData):
             # set the offset of the subimage. Z=0 is the main image
             tiff_file.SetSubDirectory(sub_ifds[z - 1])
         
-        num_tcols = tiff_file.GetField("TileWidth")
-        num_trows = tiff_file.GetField("TileLength")
+        num_tcols = tiff_file.GetField(T.TIFFTAG_TILEWIDTH)
+        num_trows = tiff_file.GetField(T.TIFFTAG_TILELENGTH)
 
         x1, y1, x2, y2 = rect
         tiles = []
