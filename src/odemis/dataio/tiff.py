@@ -1981,43 +1981,11 @@ class AcquisitionDataTIFF(AcquisitionData):
 
         tiff_file = TIFF.open(filename, mode='r')
 
-        def processImage(tfile, dir_index, data):
-            bits = tfile.GetField(T.TIFFTAG_BITSPERSAMPLE)
-            sample_format = tfile.GetField(T.TIFFTAG_SAMPLEFORMAT)
-            typ = tfile.get_numpy_type(bits, sample_format)
-
-            width = tfile.GetField(T.TIFFTAG_IMAGEWIDTH)
-            height = tfile.GetField(T.TIFFTAG_IMAGELENGTH)
-            samples_pp = tfile.GetField(T.TIFFTAG_SAMPLESPERPIXEL)
-            if samples_pp is None:  # default is 1
-                samples_pp = 1
-            sub_ifds = tiff_file.GetField(T.TIFFTAG_SUBIFD)
-            if sub_ifds:
-                # add the number of subdirectories, and the main image
-                maxzoom = len(sub_ifds) + 1
-            else:
-                maxzoom = None
-                
-            md = _readTiffTag(tfile)  # reads tag of the current image
-
-            shape = (height, width)
-            if samples_pp > 1:
-                shape = shape + (samples_pp,)
-            das = DataArrayShadow(shape, typ, md, maxzoom)
-
-            if _isThumbnail(tfile):
-                data.append(None)
-                thumbnails.append(das)
-            else:
-                data.append(das)
-                tiff_info = {'handle': tfile, 'dir_index': dir_index}
-                das.tiff_info = tiff_info
-
         data = []
         thumbnails = []
 
         for counter in self._iter_images(tiff_file):
-            processImage(tiff_file, counter, data)
+            AcquisitionDataTIFF._processImage(tiff_file, counter, data)
 
         # If looks like OME TIFF, reconstruct >2D data and add metadata
         # It's OME TIFF, if it has a valid ome-tiff XML in the first T.TIFFTAG_IMAGEDESCRIPTION
@@ -2064,7 +2032,7 @@ class AcquisitionDataTIFF(AcquisitionData):
                         continue
 
                     for counter in self._iter_images(f_link):
-                        processImage(f_link, counter, data)
+                        AcquisitionDataTIFF._processImage(f_link, counter, data)
 
                     file_read.add(uuid_data)
 
@@ -2082,6 +2050,39 @@ class AcquisitionDataTIFF(AcquisitionData):
         content = [i for i in data if i is not None]
 
         AcquisitionData.__init__(self, tuple(content), tuple(thumbnails))
+    
+    @staticmethod
+    def _processImage(tfile, dir_index, data):
+        bits = tfile.GetField(T.TIFFTAG_BITSPERSAMPLE)
+        sample_format = tfile.GetField(T.TIFFTAG_SAMPLEFORMAT)
+        typ = tfile.get_numpy_type(bits, sample_format)
+
+        width = tfile.GetField(T.TIFFTAG_IMAGEWIDTH)
+        height = tfile.GetField(T.TIFFTAG_IMAGELENGTH)
+        samples_pp = tfile.GetField(T.TIFFTAG_SAMPLESPERPIXEL)
+        if samples_pp is None:  # default is 1
+            samples_pp = 1
+        sub_ifds = tfile.GetField(T.TIFFTAG_SUBIFD)
+        if sub_ifds:
+            # add the number of subdirectories, and the main image
+            maxzoom = len(sub_ifds) + 1
+        else:
+            maxzoom = None
+            
+        md = _readTiffTag(tfile)  # reads tag of the current image
+
+        shape = (height, width)
+        if samples_pp > 1:
+            shape = shape + (samples_pp,)
+        das = DataArrayShadow(shape, typ, md, maxzoom)
+
+        if _isThumbnail(tfile):
+            data.append(None)
+            thumbnails.append(das)
+        else:
+            data.append(das)
+            tiff_info = {'handle': tfile, 'dir_index': dir_index}
+            das.tiff_info = tiff_info
 
     @staticmethod
     def _reconstructFromOMETIFF(xml, data, basename):
