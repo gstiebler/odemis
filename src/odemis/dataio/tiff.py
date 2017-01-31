@@ -2319,8 +2319,8 @@ class AcquisitionDataTIFF(AcquisitionData):
             MD_PIXEL_SIZE is not present, it will not be updated).
         raise ValueError: if the area or z is out of range, or if the raw data is not pyramidal.
         """
-        if n < 0 or n >= len(self.content):
-            raise ValueError("Invalid N value")
+        if not (0 <= n < len(self.content)):
+            raise ValueError("Invalid N value %d" % (n,))
 
         tiff_info = self.content[n].tiff_info
         tiff_file = tiff_info['handle']
@@ -2332,8 +2332,8 @@ class AcquisitionDataTIFF(AcquisitionData):
             if not sub_ifds:
                 raise ValueError("Image does not have zoom levels")
 
-            if z < 0 or z > len(sub_ifds):
-                raise ValueError("Invalid Z value")
+            if not (0 <= z <= len(sub_ifds)):
+                raise ValueError("Invalid Z value %d" % (z,))
 
             # set the offset of the subimage. Z=0 is the main image
             tiff_file.SetSubDirectory(sub_ifds[z - 1])
