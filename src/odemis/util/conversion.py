@@ -434,5 +434,24 @@ def get_tile_md_pos(i, tile_size, tileda, origmd):
     return (float, float): the center position
     """
     md = tileda.metadata
+    shape = tileda.shape
+
+    # TODO get the correct width and height
+    img_width, img_height = shape
+    img_center = (img_width // 2, img_height // 2)
+    md_pos = md[model.MD_POS]
+    pixel_size = md[model.MD_PIXEL_SIZE]
+    # top-left
+    img_corner_world = md_pos - img_center * pixel_size
+    img_center_world = img_corner_world + img_center * pixel_size
+
+    tile_center_pixels = (img_center + 0.5) * tile_size
+    tile_center_world = img_corner_world + tile_center_pixels * pixel_size
+    tile_pos_rel_to_center = tile_center_world - img_center_world
+
     mat = get_img_transformation_matrix(md)
-    pass
+    new_tile_pos_rel = tile_pos_rel_to_center * mat
+    tile_pos_world_final = tile_center_world + new_tile_pos_rel
+
+    return tile_pos_world_final
+    

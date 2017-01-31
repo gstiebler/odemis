@@ -197,6 +197,12 @@ class TestConversion(unittest.TestCase):
         mat = get_img_transformation_matrix(md)
         self.assertTrue((mat == [[ 1., 0.], [ 0., 1.]]).all())
 
+
+    def test_get_tile_md_pos(self):
+        
+        pass
+
+
 if __name__ == "__main__":
     unittest.main()
 
