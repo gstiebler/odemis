@@ -1946,15 +1946,16 @@ def read_data(filename):
     #return _dataFromTIFF(filename)
     acd = open_data(filename)
 
-    for i, content in enumerate(acd.content):
+    '''for i, content in enumerate(acd.content):
         counter = i + 1
         content.metadata[model.MD_PIXEL_SIZE] = (1e-6, 1e-6)
         content.metadata[model.MD_POS] = (counter * 10e-3, counter * 10e-3)
         content.metadata[model.MD_ROTATION] = counter * 0.2
         content.metadata[model.MD_SHEAR] = counter * 0.3
-
+'''
     data = [acd.getData(i) for i in range(len(acd.content))]
     
+    '''
     tiles = []
     for i, d in enumerate(data):
         counter = i + 1
@@ -1970,7 +1971,7 @@ def read_data(filename):
         acd_example = open_data(tile_filename)
         tiles.append( acd_example.getData(0) )
 
-    data = data + tiles
+    data = data + tiles'''
     return data
 
 def read_thumbnail(filename):
@@ -2014,7 +2015,7 @@ class AcquisitionDataTIFF(AcquisitionData):
         data = []
         thumbnails = []
 
-        for counter in self._iter_images(tiff_file):
+        for counter in AcquisitionDataTIFF._iterImages(tiff_file):
             AcquisitionDataTIFF._processImage(tiff_file, counter, data, thumbnails)
 
         # If looks like OME TIFF, reconstruct >2D data and add metadata
@@ -2061,7 +2062,7 @@ class AcquisitionDataTIFF(AcquisitionData):
                         logging.warning("File '%s' enlisted in the OME-XML header is missing.", uuid_path)
                         continue
 
-                    for counter in self._iter_images(f_link):
+                    for counter in AcquisitionDataTIFF._iterImages(f_link):
                         AcquisitionDataTIFF._processImage(f_link, counter, data, thumbnails)
 
                     file_read.add(uuid_data)
@@ -2148,34 +2149,6 @@ class AcquisitionDataTIFF(AcquisitionData):
         data (list of DataArrays): DataArrays at the same place as the TIFF IFDs
         return (list of DataArrays): new shorter list of DAs positions
         """
-
-        def _mergeDAShadowsShape(das, hdim_index):
-            """
-            Merge multiple DataArrays into a higher dimension DataArray.
-            das (list of DataArrays): ordered list of DataArrays (can contain more
-            arrays than what is used in the high dimension arrays
-            hdim_index (ndarray of int >= 0): an array representing the higher
-            dimensions of the final merged arrays. Each value is the index of the
-            small array in das.
-            return (DataArray): the merge of all the DAs. The shape is hdim_index.shape
-            + shape of original DataArray. The metadata is the metadata of the first
-            DataArray inserted
-            """
-            fim = das[hdim_index.flat[0]]
-            tshape = hdim_index.shape + fim.shape
-            imset = numpy.empty(tshape, fim.dtype)
-            tiff_info = []
-            for hi, i in numpy.ndenumerate(hdim_index):
-                tiff_info.append((hi, das[i].tiff_info))
-
-            try:
-                maxzoom = fim.maxzoom
-            except:
-                maxzoom = None
-            mergedDataArrayShadow = DataArrayShadow(tshape, fim.dtype, fim.metadata, maxzoom)
-            mergedDataArrayShadow.tiff_info = tiff_info
-            return mergedDataArrayShadow
-
         omedas = []
 
         n = 0 # just for logging
@@ -2223,12 +2196,6 @@ class AcquisitionDataTIFF(AcquisitionData):
                     if imsetn.ndim >= 3:
                         logging.error("_getIFDsFromOME reported %d high dims, but TiffData has shape %s",
                                     imsetn.ndim, fim.shape)
-    #                 if imsetn.shape[0] != fim.shape[ci]:
-    #                     # RGB data arrays are not officially supported in OME-TIFF anyway
-    #                     raise NotImplementedError("Loading of %d channel from images "
-    #                                               "with %d channels not supported" %
-    #                                               (imsetn.shape[ci], fim.shape[ci]))
-    #                 imsetn = imsetn[0]
 
             # Short-circuit for dataset with only one IFD
             if all(d == 1 for d in imsetn.shape):
@@ -2259,12 +2226,12 @@ class AcquisitionDataTIFF(AcquisitionData):
                     # Combine all the IFDs into a (1+)4D array
                     sub_imsetn.shape = (1,) + sub_imsetn.shape
                     #imset = _mergeDA(das, sub_imsetn)
-                    shadow_shape = _mergeDAShadowsShape(das, sub_imsetn)
+                    shadow_shape = AcquisitionDataTIFF._mergeDAShadowsShape(das, sub_imsetn)
                     omedas.append(shadow_shape)
             else:
                 # Combine all the IFDs into a 5D array
                 #imset = _mergeDA(das, imsetn)
-                shadow_shape = _mergeDAShadowsShape(das, imsetn)
+                shadow_shape = AcquisitionDataTIFF._mergeDAShadowsShape(das, imsetn)
                 omedas.append(shadow_shape)
 
         # Updating MD_DIMS to remove too many dims if the array is no 5 dims
@@ -2277,7 +2244,41 @@ class AcquisitionDataTIFF(AcquisitionData):
 
         return omedas
 
-    def _iter_images(self, tiff_file):
+    @staticmethod
+    def _mergeDAShadowsShape(das, hdim_index):
+        """
+        Merge multiple DataArrays into a higher dimension DataArray.
+        das (list of DataArrays): ordered list of DataArrays (can contain more
+        arrays than what is used in the high dimension arrays
+        hdim_index (ndarray of int >= 0): an array representing the higher
+        dimensions of the final merged arrays. Each value is the index of the
+        small array in das.
+        return (DataArray): the merge of all the DAs. The shape is hdim_index.shape
+        + shape of original DataArray. The metadata is the metadata of the first
+        DataArray inserted
+        """
+        fim = das[hdim_index.flat[0]]
+        tshape = hdim_index.shape + fim.shape
+        imset = numpy.empty(tshape, fim.dtype)
+        tiff_info = []
+        for hi, i in numpy.ndenumerate(hdim_index):
+            tiff_info.append((hi, das[i].tiff_info))
+
+        try:
+            maxzoom = fim.maxzoom
+        except:
+            maxzoom = None
+        mergedDataArrayShadow = DataArrayShadow(tshape, fim.dtype, fim.metadata, maxzoom)
+        mergedDataArrayShadow.tiff_info = tiff_info
+        return mergedDataArrayShadow
+
+    @staticmethod
+    def _iterImages(tiff_file):
+        """
+        Iterate on the directories of a tiff file
+        tiff_file (tiff handle): The tiff file handle to be iterated on
+        return (int): On each iteration, a counter is returned
+        """
         tiff_file.SetDirectory(0)
         counter = 0
         yield counter
@@ -2293,6 +2294,27 @@ class AcquisitionDataTIFF(AcquisitionData):
         tiff_file.SetDirectory(tiff_info_item['dir_index'])
         return tiff_file.read_image()
 
+    @staticmethod
+    def _mergeDA(das, tiff_info):
+        """
+        Merge multiple DataArrays into a higher dimension DataArray.
+        das (list of DataArrays): ordered list of DataArrays (can contain more
+        arrays than what is used in the high dimension arrays
+        hdim_index (ndarray of int >= 0): an array representing the higher
+        dimensions of the final merged arrays. Each value is the index of the
+        small array in das.
+        return (DataArray): the merge of all the DAs. The shape is hdim_index.shape
+        + shape of original DataArray. The metadata is the metadata of the first
+        DataArray inserted
+        """
+        imset = numpy.empty(das.shape, das.dtype)
+        for tiff_info_item in tiff_info:
+            handle_index = tiff_info_item[1]
+            image = AcquisitionDataTIFF._readImage(handle_index)
+            imset[tiff_info_item[0]] = image
+
+        return model.DataArray(imset, metadata=das.metadata)
+
     def getData(self, n):
         """
         Fetches the whole data (at full resolution) of image at index n.
@@ -2303,27 +2325,7 @@ class AcquisitionDataTIFF(AcquisitionData):
 
         tiff_info = self.content[n].tiff_info
         if type(tiff_info) is list:
-            def __mergeDA(das, tiff_info):
-                """
-                Merge multiple DataArrays into a higher dimension DataArray.
-                das (list of DataArrays): ordered list of DataArrays (can contain more
-                arrays than what is used in the high dimension arrays
-                hdim_index (ndarray of int >= 0): an array representing the higher
-                dimensions of the final merged arrays. Each value is the index of the
-                small array in das.
-                return (DataArray): the merge of all the DAs. The shape is hdim_index.shape
-                + shape of original DataArray. The metadata is the metadata of the first
-                DataArray inserted
-                """
-                imset = numpy.empty(das.shape, das.dtype)
-                for tiff_info_item in tiff_info:
-                    handle_index = tiff_info_item[1]
-                    image = AcquisitionDataTIFF._readImage(handle_index)
-                    imset[tiff_info_item[0]] = image
-
-                return model.DataArray(imset, metadata=das.metadata)
-            
-            return __mergeDA(self.content[n], tiff_info)
+            return AcquisitionDataTIFF._mergeDA(self.content[n], tiff_info)
         else:
             image = AcquisitionDataTIFF._readImage(tiff_info)
             return model.DataArray(image, metadata=self.content[n].metadata)
