@@ -171,7 +171,7 @@ class TestConversion(unittest.TestCase):
             model.MD_SHEAR: 0.0,
         }
         mat = get_img_transformation_matrix(md)
-        self.assertTrue((mat == [[ 1., 0.], [ 0., 1.]]).all())
+        numpy.testing.assert_almost_equal(mat, [[ 1., 0.], [ 0., 1.]])
 
         # scale and rotation
         md = {
@@ -181,9 +181,7 @@ class TestConversion(unittest.TestCase):
         }
         mat = get_img_transformation_matrix(md)
         sin = math.sin(math.pi / 4) * 1e-6
-        exp_mat = numpy.matrix([[sin, -sin], [sin, sin]])
-        for index, _ in numpy.ndenumerate(mat):
-            self.assertAlmostEqual(mat[index], exp_mat[index])
+        numpy.testing.assert_almost_equal(mat, [[sin, -sin], [sin, sin]])
 
         # everything
         md = {
@@ -192,15 +190,12 @@ class TestConversion(unittest.TestCase):
             model.MD_SHEAR: 0.1,
         }
         mat = get_img_transformation_matrix(md)
-        exp_mat = numpy.matrix([[sin, -6.36396103e-07], [sin, 7.77817459e-07]])
-        for index, _ in numpy.ndenumerate(mat):
-            self.assertAlmostEqual(mat[index], exp_mat[index])
+        numpy.testing.assert_almost_equal(mat, [[sin, -6.36396103e-07], [sin, 7.77817459e-07]])
 
         # nothing
         md = {}
         mat = get_img_transformation_matrix(md)
-        self.assertTrue((mat == [[ 1., 0.], [ 0., 1.]]).all())
-
+        numpy.testing.assert_almost_equal(mat, [[ 1., 0.], [ 0., 1.]])
 
     def test_get_tile_md_pos(self):
         tile = model.DataArray(numpy.zeros((256, 256), numpy.uint8), {})
