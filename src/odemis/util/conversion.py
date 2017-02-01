@@ -447,7 +447,7 @@ def get_tile_md_pos(i, tile_size, tileda, origmd):
     mat = get_img_transformation_matrix(md)
     # calculate the new position of the tile, relative to the center of the image,
     # in world coordinates
-    new_tile_pos_rel = tile_rel_to_img_center_pixels * mat
+    new_tile_pos_rel = mat * numpy.matrix(tile_rel_to_img_center_pixels).getT()
     # calculate the final position of the tile, in world coordinates
     tile_pos_world_final = img_center_world + new_tile_pos_rel
 

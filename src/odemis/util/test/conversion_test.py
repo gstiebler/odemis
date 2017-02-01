@@ -206,7 +206,7 @@ class TestConversion(unittest.TestCase):
         }
         origmd = model.DataArray(numpy.zeros((2000, 1000), numpy.uint8), md)
         tile_md_pos = get_tile_md_pos((6, 5), 256, tile, origmd)
-        self.assertEqual(tile_md_pos, (0.0011215718600252529, 0.00022253405460951773))
+        self.assertEqual(tile_md_pos, (-0.00016253405460951752, -0.00012253405460951753))
 
 if __name__ == "__main__":
     unittest.main()
