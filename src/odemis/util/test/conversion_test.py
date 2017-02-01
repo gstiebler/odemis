@@ -194,8 +194,8 @@ class TestConversion(unittest.TestCase):
 
         # nothing
         md = {}
-        mat = get_img_transformation_matrix(md)
-        numpy.testing.assert_almost_equal(mat, [[ 1., 0.], [ 0., 1.]])
+        with self.assertRaises(ValueError): # MD_PIXEL_SIZE must be present
+            mat = get_img_transformation_matrix(md)
 
     def test_get_tile_md_pos(self):
         tile = model.DataArray(numpy.zeros((256, 256), numpy.uint8), {})
