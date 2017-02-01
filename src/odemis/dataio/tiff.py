@@ -1959,9 +1959,11 @@ def read_data(filename):
     for i, d in enumerate(data):
         counter = i + 1
 
-        tile_tuples = acd.getSubData(i, 0, (0, 0, 300, 300))
-        tile = tile_tuples[0][0]
-        #tile.metadata[model.MD_POS] = (counter * 1e-3, counter * 1e-3)
+        tile_tuples = acd.getSubData(i, 0, (0, 0, 1320, 1039))
+        tile = tile_tuples[5][4]
+        logging.debug(tile_tuples[0][0].metadata)
+        logging.debug(tile_tuples[5][4].metadata)
+        logging.debug(d.metadata)
         tile_filename = "example%d.tiff" % (counter)
         export(tile_filename, tile)
 
@@ -1969,9 +1971,6 @@ def read_data(filename):
         tiles.append( acd_example.getData(0) )
 
     data = data + tiles
-    for d in data:
-        print(d.metadata)
-        logging.error(d.metadata)
     return data
 
 def read_thumbnail(filename):
@@ -2377,11 +2376,11 @@ class AcquisitionDataTIFF(AcquisitionData):
 
         x1, y1, x2, y2 = rect
         tiles = []
-        for x in xrange(x1, x2 + 1, num_tcols):
+        for xi, x in enumerate(xrange(x1, x2 + 1, num_tcols)):
             tiles_column = []
-            for y in xrange(y1, y2 + 1, num_trows):
+            for yi, y in enumerate(xrange(y1, y2 + 1, num_trows)):
                 tile = tiff_file.read_one_tile(x, y)
-                tile_md_position = get_tile_md_pos((x, y), TILE_SIZE, tile, self.content[n])
+                tile_md_position = get_tile_md_pos((xi, yi), TILE_SIZE, tile, self.content[n])
                 md = {
                     model.MD_POS: tile_md_position,
                     model.MD_ROTATION: self.content[n].metadata.get(model.MD_ROTATION, 0.0),

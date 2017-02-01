@@ -202,11 +202,12 @@ class TestConversion(unittest.TestCase):
         md = {
             model.MD_PIXEL_SIZE: (1e-6, 1e-6),
             model.MD_POS: (10e-6, 50e-6),
-            model.MD_ROTATION: math.pi / 4
+            model.MD_ROTATION: 0.2,
+            model.MD_SHEAR: 0.3
         }
         origmd = model.DataArray(numpy.zeros((2000, 1000), numpy.uint8), md)
         tile_md_pos = get_tile_md_pos((6, 5), 256, tile, origmd)
-        self.assertEqual(tile_md_pos, (-0.00016253405460951752, -0.00012253405460951753))
+        self.assertEqual(tile_md_pos, (0.0013012299138852256, -0.00046085531169593678))
 
 if __name__ == "__main__":
     unittest.main()
