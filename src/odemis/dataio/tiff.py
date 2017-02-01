@@ -1945,7 +1945,34 @@ def read_data(filename):
     #filename = _ensure_fs_encoding(filename)
     #return _dataFromTIFF(filename)
     acd = open_data(filename)
-    return [acd.getData(i) for i in range(len(acd.content))]
+
+    for i, content in enumerate(acd.content):
+        counter = i + 1
+        content.metadata[model.MD_PIXEL_SIZE] = (1e-6, 1e-6)
+        content.metadata[model.MD_POS] = (counter * 10e-3, counter * 10e-3)
+        content.metadata[model.MD_ROTATION] = counter * 0.2
+        content.metadata[model.MD_SHEAR] = counter * 0.2
+
+    data = [acd.getData(i) for i in range(len(acd.content))]
+    
+    tiles = []
+    for i, d in enumerate(data):
+        counter = i + 1
+
+        tile_tuples = acd.getSubData(i, 0, (0, 0, 300, 300))
+        tile = tile_tuples[0][0]
+        #tile.metadata[model.MD_POS] = (counter * 1e-3, counter * 1e-3)
+        tile_filename = "example%d.tiff" % (counter)
+        export(tile_filename, tile)
+
+        acd_example = open_data(tile_filename)
+        tiles.append( acd_example.getData(0) )
+
+    data = data + tiles
+    for d in data:
+        print(d.metadata)
+        logging.error(d.metadata)
+    return data
 
 def read_thumbnail(filename):
     """
@@ -2356,7 +2383,10 @@ class AcquisitionDataTIFF(AcquisitionData):
                 tile = tiff_file.read_one_tile(x, y)
                 tile_md_position = get_tile_md_pos((x, y), TILE_SIZE, tile, self.content[n])
                 md = {
-                    model.MD_POS: tile_md_position
+                    model.MD_POS: tile_md_position,
+                    model.MD_ROTATION: self.content[n].metadata.get(model.MD_ROTATION, 0.0),
+                    model.MD_SHEAR: self.content[n].metadata.get(model.MD_SHEAR, 0.0),
+                    model.MD_PIXEL_SIZE: self.content[n].metadata.get(model.MD_PIXEL_SIZE, (1, 1))
                 }
                 tile = model.DataArray(tile, md)
                 tiles_column.append(tile)

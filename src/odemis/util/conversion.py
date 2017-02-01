@@ -428,30 +428,32 @@ def get_tile_md_pos(i, tile_size, tileda, origmd):
     md = origmd.metadata
 
     # TODO get the correct width and height when the image has more than 2 dimensions
-    img_width, img_height = origmd.shape[:2]
+    img_height, img_width  = origmd.shape[:2]
     # center of the image in pixels
-    img_center = numpy.array([img_width // 2, img_height // 2], numpy.float)
+    img_center = numpy.array([img_width / 2, img_height / 2], numpy.float)
     md_pos = numpy.array(list(md[model.MD_POS]), numpy.float)
     pixel_size = numpy.array(list(md[model.MD_PIXEL_SIZE]), numpy.float)
 
-    # top-left of image, world
-    img_corner_world = md_pos - img_center * pixel_size
+    # top-left of image, world. Y pixel coordinates goes down, but Y coordinates
+    # in world goes up
+    # img_corner_world = (md_pos[0] - img_center[0] * pixel_size[0], md_pos[1] + img_center[1] * pixel_size[1])
 
-    # center of the image in world coordinates
-    img_center_world = img_corner_world + img_center * pixel_size
-
-    half_tile_shape = [a / 2 for a in tileda.shape]
+    # TODO get only the X and Y from the tile
+    half_tile_shape = [a / 2 for a in tileda.shape[:2][::-1]]
     # center of the tile in pixels
     tile_center_pixels = [a * tile_size + hts for a, hts in zip(i, half_tile_shape)]
     tile_center_pixels = numpy.array(tile_center_pixels, numpy.float)
     # center of the tile relative to the center of the image
     tile_rel_to_img_center_pixels = tile_center_pixels - img_center
 
+    # Y pixel coordinates goes down, but Y coordinates in world goes up
+    tile_rel_to_img_center_pixels[1] = -tile_rel_to_img_center_pixels[1]
+
     mat = get_img_transformation_matrix(md)
     # calculate the new position of the tile, relative to the center of the image,
     # in world coordinates
     new_tile_pos_rel = mat * numpy.matrix(tile_rel_to_img_center_pixels).getT()
+    new_tile_pos_rel = numpy.ravel(new_tile_pos_rel)
     # calculate the final position of the tile, in world coordinates
-    tile_pos_world_final = img_center_world + new_tile_pos_rel
-
-    return tuple(tile_pos_world_final.getA()[0])
+    tile_pos_world_final = numpy.add(md_pos, new_tile_pos_rel)
+    return tuple(tile_pos_world_final)
