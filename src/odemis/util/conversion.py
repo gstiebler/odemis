@@ -399,7 +399,7 @@ def get_img_transformation_matrix(md):
     Computes the 2D transformation matrix based on the given metadata.
     md (dict str value): the metadata of a DataArray, possibly 5
         containing the MD_PIXEL_SIZE, MD_ROTATION and MD_SHEAR metadata
-    return (numpy.array of 2,2 floats): the 2D transformation matrix
+    return (numpy.matrix of 2,2 floats): the 2D transformation matrix
     """
     ps = md.get(model.MD_PIXEL_SIZE, (1, 1))
     rotation = md.get(model.MD_ROTATION, 0.0)
@@ -424,12 +424,11 @@ def get_tile_md_pos(i, tile_size, tileda, origmd):
     """
     md = origmd.metadata
 
-    md_pos = list(md[model.MD_POS])
     # TODO get the correct width and height when the image has more than 2 dimensions
     img_width, img_height = origmd.shape[:2]
     # center of the image in pixels
     img_center = numpy.array([img_width // 2, img_height // 2], numpy.float)
-    md_pos = numpy.array(md_pos, numpy.float)
+    md_pos = numpy.array(list(md[model.MD_POS]), numpy.float)
     pixel_size = numpy.array(list(md[model.MD_PIXEL_SIZE]), numpy.float)
 
     # top-left of image, world
@@ -438,7 +437,7 @@ def get_tile_md_pos(i, tile_size, tileda, origmd):
     # center of the image in world coordinates
     img_center_world = img_corner_world + img_center * pixel_size
 
-    half_tile_shape = [a // 2 for a in tileda.shape]
+    half_tile_shape = [a / 2 for a in tileda.shape]
     # center of the tile in pixels
     tile_center_pixels = [a * tile_size + hts for a, hts in zip(i, half_tile_shape)]
     tile_center_pixels = numpy.array(tile_center_pixels, numpy.float)
