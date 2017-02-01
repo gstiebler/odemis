@@ -1970,7 +1970,6 @@ def read_data(filename):
 
         acd_example = open_data(tile_filename)
         tiles.append( acd_example.getData(0) )
-
     data = data + tiles'''
     return data
 

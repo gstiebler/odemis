@@ -60,12 +60,12 @@
                 "PYTHONPATH": "${workspaceRoot}/src:${workspaceRoot}/../../pylibtiff"
             },
             "args": [
-                //"TestTiffIO.testExportSmallPyramid",
-                //"TestTiffIO.testExportThinPyramid",
-                //"TestTiffIO.testExportMultiArrayPyramid"
-                //"TestTiffIO.testExportNoWL",
-                "TestTiffIO.testAcquisitionDataTIFF"
-                //"TestTiffIO.testExportRead"
+                "TestTiffIO.testExportSmallPyramid",
+                "TestTiffIO.testExportThinPyramid",
+                "TestTiffIO.testExportMultiArrayPyramid",
+                "TestTiffIO.testExportNoWL",
+                "TestTiffIO.testAcquisitionDataTIFF",
+                "TestTiffIO.testExportRead"
             ]
         },
         {
