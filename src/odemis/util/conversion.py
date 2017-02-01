@@ -401,20 +401,9 @@ def get_img_transformation_matrix(md):
         containing the MD_PIXEL_SIZE, MD_ROTATION and MD_SHEAR metadata
     return (numpy.array of 2,2 floats): the 2D transformation matrix
     """
-    if model.MD_PIXEL_SIZE in md:
-        ps = md[model.MD_PIXEL_SIZE]
-    else:
-        ps = (1, 1)
-
-    if model.MD_ROTATION in md:
-        rotation = md[model.MD_ROTATION]
-    else:
-        rotation = 0.0
-
-    if model.MD_SHEAR in md:
-        shear = md[model.MD_SHEAR]
-    else:
-        shear = 0.0
+    ps = md.get(model.MD_PIXEL_SIZE, (1, 1))
+    rotation = md.get(model.MD_ROTATION, 0.0)
+    shear = md.get(model.MD_SHEAR, 0.0)
 
     ps_mat = numpy.matrix([[ps[0], 0], [0, ps[1]]])
     cos, sin = numpy.cos(rotation), numpy.sin(rotation)
