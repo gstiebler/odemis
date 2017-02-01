@@ -1705,33 +1705,7 @@ def read_data(filename):
     #filename = _ensure_fs_encoding(filename)
     #return _dataFromTIFF(filename)
     acd = open_data(filename)
-
-    '''for i, content in enumerate(acd.content):
-        counter = i + 1
-        content.metadata[model.MD_PIXEL_SIZE] = (1e-6, 1e-6)
-        content.metadata[model.MD_POS] = (counter * 10e-3, counter * 10e-3)
-        content.metadata[model.MD_ROTATION] = counter * 0.2
-        content.metadata[model.MD_SHEAR] = counter * 0.3
-'''
-    data = [acd.getData(i) for i in range(len(acd.content))]
-    
-    '''
-    tiles = []
-    for i, d in enumerate(data):
-        counter = i + 1
-
-        tile_tuples = acd.getSubData(i, 0, (0, 0, 1320, 1039))
-        tile = tile_tuples[5][4]
-        logging.debug(tile_tuples[0][0].metadata)
-        logging.debug(tile_tuples[5][4].metadata)
-        logging.debug(d.metadata)
-        tile_filename = "example%d.tiff" % (counter)
-        export(tile_filename, tile)
-
-        acd_example = open_data(tile_filename)
-        tiles.append( acd_example.getData(0) )
-    data = data + tiles'''
-    return data
+    return [acd.getData(i) for i in range(len(acd.content))]
 
 def read_thumbnail(filename):
     """
