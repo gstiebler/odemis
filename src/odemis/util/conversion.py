@@ -411,7 +411,7 @@ def get_img_transformation_matrix(md):
     ps_mat = numpy.matrix([[ps[0], 0], [0, ps[1]]])
     cos, sin = numpy.cos(rotation), numpy.sin(rotation)
     rot_mat = numpy.matrix([[cos, -sin], [sin, cos]])
-    shear_mat = numpy.matrix([[1, shear], [0, 1]])
+    shear_mat = numpy.matrix([[1, 0], [-shear, 1]])
     return ps_mat * rot_mat * shear_mat
 
 def get_tile_md_pos(i, tile_size, tileda, origmd):
@@ -433,10 +433,6 @@ def get_tile_md_pos(i, tile_size, tileda, origmd):
     img_center = numpy.array([img_width / 2, img_height / 2], numpy.float)
     md_pos = numpy.array(list(md[model.MD_POS]), numpy.float)
     pixel_size = numpy.array(list(md[model.MD_PIXEL_SIZE]), numpy.float)
-
-    # top-left of image, world. Y pixel coordinates goes down, but Y coordinates
-    # in world goes up
-    # img_corner_world = (md_pos[0] - img_center[0] * pixel_size[0], md_pos[1] + img_center[1] * pixel_size[1])
 
     # TODO get only the X and Y from the tile
     half_tile_shape = [a / 2 for a in tileda.shape[:2][::-1]]

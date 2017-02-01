@@ -1951,7 +1951,7 @@ def read_data(filename):
         content.metadata[model.MD_PIXEL_SIZE] = (1e-6, 1e-6)
         content.metadata[model.MD_POS] = (counter * 10e-3, counter * 10e-3)
         content.metadata[model.MD_ROTATION] = counter * 0.2
-        content.metadata[model.MD_SHEAR] = counter * 0.2
+        content.metadata[model.MD_SHEAR] = counter * 0.3
 
     data = [acd.getData(i) for i in range(len(acd.content))]
     
