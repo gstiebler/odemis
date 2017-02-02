@@ -1702,8 +1702,6 @@ def read_data(filename):
     # TODO: support filename to be a File or Stream (but it seems very difficult
     # to do it without looking at the .filename attribute)
     # see http://pytables.github.io/cookbook/inmemory_hdf5_files.html
-    #filename = _ensure_fs_encoding(filename)
-    #return _dataFromTIFF(filename)
     acd = open_data(filename)
     return [acd.getData(i) for i in range(len(acd.content))]
 
@@ -1718,9 +1716,6 @@ def read_thumbnail(filename):
         IOError in case the file format is not as expected.
     """
     # TODO: support filename to be a File or Stream
-    #filename = _ensure_fs_encoding(filename)
-    #return _thumbsFromTIFF(filename)
-
     acd = open_data(filename)
     return [acd.getThumbnail(i) for i in range(len(acd.thumbnails))]
 
@@ -1866,8 +1861,9 @@ class AcquisitionDataTIFF(AcquisitionData):
         Update DataArrayShadows to reflect shape and metadata contained in OME XML
         xml (string): String containing the OME XML declaration
         data_array_shadows (list of DataArrayShadows): each
+        basename (string): File name of the TIFF file
         return (list of model.DataArray): new list with the DAs following the OME
-        XML description. Note that DASs are either updated or completely recreated.
+            XML description. Note that DASs are either updated or completely recreated.
         """
         # Remove "xmlns" which is the default namespace and is appended everywhere
         # It's not beautiful, but the simplest with ET to handle expected namespaces.
@@ -1890,7 +1886,8 @@ class AcquisitionDataTIFF(AcquisitionData):
         Note: Officially OME supports only base arrays of 2D. But we also support
         base arrays of 3D if the data is RGB (3rd dimension has length 3).
         root (ET.Element): the root (i.e., OME) element of the XML description
-        data (list of DataArrayShadows): DataArrayShadowss at the same place as the TIFF IFDs
+        das (list of DataArrayShadows): DataArrayShadowss at the same place as the TIFF IFDs
+        basename (string): File name of the TIFF file
         return (list of DataArrayShadows): new shorter list of DASs positions
         """
         omedas = []
@@ -1991,13 +1988,13 @@ class AcquisitionDataTIFF(AcquisitionData):
         """
         Merge multiple DataArrayShadows into a higher dimension DataArrayShadow.
         das (list of DataArrays): ordered list of DataArrayShadows (can contain more
-        arrays than what is used in the high dimension arrays
+            arrays than what is used in the high dimension arrays
         hdim_index (ndarray of int >= 0): an array representing the higher
-        dimensions of the final merged arrays. Each value is the index of the
-        small array in das.
+            dimensions of the final merged arrays. Each value is the index of the
+            small array in das.
         return (DataArrayShadow): the merge of all the DAs. The shape is hdim_index.shape
-        + shape of original DataArrayShadow. The metadata is the metadata of the first
-        DataArrayShadow inserted
+            + shape of original DataArrayShadow. The metadata is the metadata of the first
+            DataArrayShadow inserted
         """
         fim = das[hdim_index.flat[0]]
         tshape = hdim_index.shape + fim.shape
@@ -2052,6 +2049,9 @@ class AcquisitionDataTIFF(AcquisitionData):
         Read the images from file, and merge them into a higher dimension DataArray.
         data_array_shadow (DataArrayShadows): DataArrayShadow, with an ordered list of tiff_info 
             (can contain more arrays than what is used in the high dimension arrays
+        tiff_info (list): Information about each image on the TIFF file. It has the 
+            handle of the tiff file, the directory index, and hdim_index, which is an
+            index where the image should be fit in the returned merged DataArray
         return (DataArray): the merge of all the DAs. The shape is hdim_index.shape
             + shape of original DataArrayShadow. The metadata is the metadata of the first
             DataArrayShadow of the list
