@@ -173,19 +173,43 @@ class TestConversion(unittest.TestCase):
         mat = get_img_transformation_matrix(md)
         numpy.testing.assert_almost_equal(mat, [[ 1., 0.], [ 0., 1.]])
 
-        # scale and rotation
+        micro = 1.0e-06
+        # 90 degrees of rotation
         md = {
-            model.MD_PIXEL_SIZE: (1e-6, 1e-6),
-            model.MD_ROTATION: math.pi / 4,
-            model.MD_SHEAR: 0.0,
+            model.MD_PIXEL_SIZE: (micro, micro),
+            model.MD_ROTATION: math.pi / 2,
         }
         mat = get_img_transformation_matrix(md)
-        sin = math.sin(math.pi / 4) * 1e-6
+        numpy.testing.assert_almost_equal(mat, [[0.0, -micro], [micro, 0.0]])
+
+        # 180 degrees of rotation
+        md = {
+            model.MD_PIXEL_SIZE: (micro, micro),
+            model.MD_ROTATION: math.pi,
+        }
+        mat = get_img_transformation_matrix(md)
+        numpy.testing.assert_almost_equal(mat, [[-micro, 0.0], [0.0, -micro]])
+
+        # scale and rotation 45 degrees
+        md = {
+            model.MD_PIXEL_SIZE: (micro, micro),
+            model.MD_ROTATION: math.pi / 4,
+        }
+        mat = get_img_transformation_matrix(md)
+        sin = math.sin(math.pi / 4) * micro
         numpy.testing.assert_almost_equal(mat, [[sin, -sin], [sin, sin]])
+
+        # scale and rotation 45 degrees
+        md = {
+            model.MD_PIXEL_SIZE: (micro, micro),
+            model.MD_SHEAR: 0.5,
+        }
+        mat = get_img_transformation_matrix(md)
+        numpy.testing.assert_almost_equal(mat, [[micro, 0.0], [-micro * 0.5, micro]])
 
         # everything
         md = {
-            model.MD_PIXEL_SIZE: (1e-6, 1e-6),
+            model.MD_PIXEL_SIZE: (micro, micro),
             model.MD_ROTATION: math.pi / 4,
             model.MD_SHEAR: 0.1,
         }
@@ -198,16 +222,49 @@ class TestConversion(unittest.TestCase):
             mat = get_img_transformation_matrix(md)
 
     def test_get_tile_md_pos(self):
-        tile = model.DataArray(numpy.zeros((256, 256), numpy.uint8), {})
+        TILE_SIZE = 256
+        BASE_MD_POS = (10e-6, 50e-6)
+
+        tile = model.DataArray(numpy.zeros((TILE_SIZE, TILE_SIZE), numpy.uint8), {})
         md = {
             model.MD_PIXEL_SIZE: (1e-6, 1e-6),
-            model.MD_POS: (10e-6, 50e-6),
+            model.MD_POS: BASE_MD_POS,
             model.MD_ROTATION: 0.2,
             model.MD_SHEAR: 0.3
         }
+        # image with the same size of the tile
+        origmd = model.DataArray(numpy.zeros((TILE_SIZE, TILE_SIZE), numpy.uint8), md)
+        # tile_md_pos should be the same as the full image, as there is only one tile
+        tile_md_pos = get_tile_md_pos((0, 0), TILE_SIZE, tile, origmd)
+        self.assertEqual(tile_md_pos, BASE_MD_POS)
+
+        # image with some tiles
+        origmd = model.DataArray(numpy.zeros((7 * TILE_SIZE, 11 * TILE_SIZE), numpy.uint8), md)
+        # tile_md_pos should be the same as the full image, as it is the center tile
+        tile_md_pos = get_tile_md_pos((5, 3), TILE_SIZE, tile, origmd)
+        self.assertEqual(tile_md_pos, BASE_MD_POS)
+
+        # image with some tiles
+        origmd = model.DataArray(numpy.zeros((6 * TILE_SIZE, 10 * TILE_SIZE), numpy.uint8), md)
+        tile_md_pos = get_tile_md_pos((5, 3), TILE_SIZE, tile, origmd)
+        self.assertEqual(tile_md_pos, (0.00016850709860797709, -8.7653404211014767e-05))
+
+        # corner tile
         origmd = model.DataArray(numpy.zeros((2000, 1000), numpy.uint8), md)
         tile_md_pos = get_tile_md_pos((6, 5), 256, tile, origmd)
         self.assertEqual(tile_md_pos, (0.0013012299138852256, -0.00046085531169593678))
+
+        # 1 x 1 tile_size
+        tile = model.DataArray(numpy.zeros((1, 1), numpy.uint8), {})
+        origmd = model.DataArray(numpy.zeros((6 * TILE_SIZE, 10 * TILE_SIZE), numpy.uint8), md)
+        # it should be really close to BASE_MD_POS
+        tile_md_pos = get_tile_md_pos((5, 3), TILE_SIZE, tile, origmd)
+        self.assertEqual(tile_md_pos, (1.0619168353937412e-05, 4.9462291389800725e-05))
+
+        # 1 x 1 tile_size and tile.shape
+        origmd = model.DataArray(numpy.zeros((101, 201), numpy.uint8), md)
+        tile_md_pos = get_tile_md_pos((100, 50), 1, tile, origmd)
+        self.assertEqual(tile_md_pos, BASE_MD_POS)
 
 if __name__ == "__main__":
     unittest.main()
