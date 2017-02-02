@@ -1484,7 +1484,7 @@ class TestTiffIO(unittest.TestCase):
         size = (3, 257, 295)
         dtype = numpy.uint16
         md = {
-            model.MD_SAMPLES_PER_PIXEL: 1,
+            model.MD_SAMPLES_PER_PIXEL: 3,
             model.MD_DIMS: 'YXC',
             model.MD_POS: (2e-6, 10e-6),
             model.MD_PIXEL_SIZE: (1e-6, 1e-6)
@@ -1496,7 +1496,6 @@ class TestTiffIO(unittest.TestCase):
         tiff.export(FILENAME, data, pyramid=True)
 
         # check data
-        #rdata = tiff.open_data(FILENAME)
         rdata = tiff.open_data(FILENAME)
         self.assertEqual(rdata.content[0].maxzoom, 2)
         self.assertEqual(rdata.content[0].shape, size[::-1])
@@ -1534,7 +1533,74 @@ class TestTiffIO(unittest.TestCase):
             rdata.getSubData(0, 0, (0, 0, 256, 294))
 
         os.remove(FILENAME)
-        
+
+    def testAcquisitionDataTIFFLargerFile(self):
+        PIXEL_SIZE = (1e-6, 1e-6)
+        ROTATION = 0.3
+        SHEAR = 0.2
+        size = (6000, 5000)
+        dtype = numpy.uint8
+        md = {
+            model.MD_DIMS: 'YX',
+            model.MD_POS: (2e-6, 10e-6),
+            model.MD_PIXEL_SIZE: PIXEL_SIZE,
+            model.MD_ROTATION: ROTATION,
+            model.MD_SHEAR: SHEAR
+        }
+        arr = numpy.array(range(size[0] * size[1])).reshape(size[::-1]).astype(dtype)
+        data = model.DataArray(arr, metadata=md)
+
+        # export
+        tiff.export(FILENAME, data, pyramid=True)
+
+        # check data
+        rdata = tiff.open_data(FILENAME)
+        self.assertEqual(rdata.content[0].maxzoom, 6)
+        self.assertEqual(rdata.content[0].shape, size[::-1])
+
+        exp_mdpos_first_tiles = [
+            (-0.0037032180642683605, 0.0020258689779396473),
+            (-0.0036578325989720362, 0.002000969187983983),
+            (-0.003635139866323875, 0.0019885192930061508),
+            (-0.0036427067932261197, 0.0020434358808212737),
+            (-0.0037114883306782111, 0.0020644480226855986),
+            (-0.0036622213423095763, 0.0020202325971297496)
+        ]        
+        exp_mdpos_last_tiles = [
+            (-0.0037032180642683605, 0.0020258689779396473),
+            (-0.0036578325989720362, 0.002000969187983983),
+            (-0.003635139866323875, 0.0019885192930061508),
+            (-0.0036427067932261197, 0.0020434358808212737),
+            (-0.0037114883306782111, 0.0020644480226855986),
+            (-0.0036622213423095763, 0.0020202325971297496)
+        ]
+        shapes = tiff._genResizedShapes(rdata.content[0])
+        shapes = [(rdata.content[0].shape)] + shapes
+        for z, shape in enumerate(shapes):
+            # get the first tile
+            tile_shape = (shape[1] - 2, shape[0] - 2, shape[1] - 1, shape[0] - 1)
+            tiles = rdata.getSubData(0, z, tile_shape)
+            self.assertEqual(len(tiles), 1)
+            self.assertEqual(len(tiles[0]), 1)
+            tile_md = tiles[0][0].metadata
+            self.assertEqual(tile_md[model.MD_PIXEL_SIZE], PIXEL_SIZE)
+            self.assertAlmostEqual(tile_md[model.MD_ROTATION], ROTATION)
+            self.assertAlmostEqual(tile_md[model.MD_SHEAR], SHEAR)
+            self.assertEqual(tile_md[model.MD_POS], exp_mdpos_first_tiles[z])
+
+            # get the corner tile
+            tile_shape = (shape[1] - 2, shape[0] - 2, shape[1] - 1, shape[0] - 1)
+            tiles = rdata.getSubData(0, z, tile_shape)
+            self.assertEqual(len(tiles), 1)
+            self.assertEqual(len(tiles[0]), 1)
+            tile_md = tiles[0][0].metadata
+            self.assertEqual(tile_md[model.MD_PIXEL_SIZE], PIXEL_SIZE)
+            self.assertAlmostEqual(tile_md[model.MD_ROTATION], ROTATION)
+            self.assertAlmostEqual(tile_md[model.MD_SHEAR], SHEAR)
+            self.assertEqual(tile_md[model.MD_POS], exp_mdpos_last_tiles[z])
+
+        os.remove(FILENAME)
+
 
 def rational2float(rational):
     """
