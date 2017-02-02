@@ -1740,16 +1740,15 @@ class AcquisitionDataTIFF(AcquisitionData):
     def __init__(self, filename):
         """
         Constructor
-        tiff_file (handle): A handle to a TIFF file returned from libtiff
+        filename (string): The name of the TIFF file
         """
-
         tiff_file = TIFF.open(filename, mode='r')
 
         data = []
         thumbnails = []
 
-        for counter in AcquisitionDataTIFF._iterImages(tiff_file):
-            AcquisitionDataTIFF._processImage(tiff_file, counter, data, thumbnails)
+        for dir_index in AcquisitionDataTIFF._iterDirectories(tiff_file):
+            AcquisitionDataTIFF._createDataArrayShadows(tiff_file, dir_index, data, thumbnails)
 
         # If looks like OME TIFF, reconstruct >2D data and add metadata
         # It's OME TIFF, if it has a valid ome-tiff XML in the first T.TIFFTAG_IMAGEDESCRIPTION
@@ -1795,8 +1794,8 @@ class AcquisitionDataTIFF(AcquisitionData):
                         logging.warning("File '%s' enlisted in the OME-XML header is missing.", uuid_path)
                         continue
 
-                    for counter in AcquisitionDataTIFF._iterImages(f_link):
-                        AcquisitionDataTIFF._processImage(f_link, counter, data, thumbnails)
+                    for dir_index in AcquisitionDataTIFF._iterDirectories(f_link):
+                        AcquisitionDataTIFF._createDataArrayShadows(f_link, dir_index, data, thumbnails)
 
                     file_read.add(uuid_data)
 
@@ -1816,7 +1815,17 @@ class AcquisitionDataTIFF(AcquisitionData):
         AcquisitionData.__init__(self, tuple(content), tuple(thumbnails))
     
     @staticmethod
-    def _processImage(tfile, dir_index, data, thumbnails):
+    def _createDataArrayShadows(tfile, dir_index, data_array_shadows, thumbnails):
+        """
+        Create the DataArrayShadows from the TIFF metadata for the current directory,
+        and add them to the data_array_shadows and thumbnails lists
+        tfile (tiff handle): Handle for the TIFF file
+        dir_index (int): Index of the directory in the TIFF file
+        data_array_shadows: (list of DataArrayShadows): List of DataArrayShadows representing
+            the images of the current TIFF file that are not thumbnails
+        thumbnails: (list of DataArrayShadows): List of DataArrayShadows of the current TIFF file
+            that are thumbnails
+        """
         bits = tfile.GetField(T.TIFFTAG_BITSPERSAMPLE)
         sample_format = tfile.GetField(T.TIFFTAG_SAMPLEFORMAT)
         typ = tfile.get_numpy_type(bits, sample_format)
@@ -1840,22 +1849,23 @@ class AcquisitionDataTIFF(AcquisitionData):
             shape = shape + (samples_pp,)
         das = DataArrayShadow(shape, typ, md, maxzoom)
 
-        tiff_info = {'handle': tfile, 'dir_index': dir_index}
-        das.tiff_info = tiff_info
+        # add handle and directory information to be used when the actual
+        # pixels of the image are read
+        das.tiff_info = {'handle': tfile, 'dir_index': dir_index}
         if _isThumbnail(tfile):
-            data.append(None)
+            data_array_shadows.append(None)
             thumbnails.append(das)
         else:
-            data.append(das)
+            data_array_shadows.append(das)
 
     @staticmethod
-    def _reconstructFromOMETIFF(xml, data, basename):
+    def _reconstructFromOMETIFF(xml, data_array_shadows, basename):
         """
-        Update DAs to reflect shape and metadata contained in OME XML
+        Update DataArrayShadows to reflect shape and metadata contained in OME XML
         xml (string): String containing the OME XML declaration
-        data (list of model.DataArray): each
+        data_array_shadows (list of DataArrayShadows): each
         return (list of model.DataArray): new list with the DAs following the OME
-        XML description. Note that DAs are either updated or completely recreated.
+        XML description. Note that DASs are either updated or completely recreated.
         """
         # Remove "xmlns" which is the default namespace and is appended everywhere
         # It's not beautiful, but the simplest with ET to handle expected namespaces.
@@ -1865,22 +1875,22 @@ class AcquisitionDataTIFF(AcquisitionData):
         xml = re.sub('xmlns="http://www.openmicroscopy.org/Schemas/ROI/....-.."',
                     "", xml)
         root = ET.fromstring(xml)
-        _updateMDFromOME(root, data, basename)
-        omedata = AcquisitionDataTIFF._foldArraysFromOME(root, data, basename)
+        _updateMDFromOME(root, data_array_shadows, basename)
+        omedata = AcquisitionDataTIFF._foldArrayShadowsFromOME(root, data_array_shadows, basename)
 
         return omedata
 
     @staticmethod
-    def _foldArraysFromOME(root, das, basename):
+    def _foldArrayShadowsFromOME(root, das, basename):
         """
-        Reorganize DataArrays with more than 2 dimensions according to OME XML
+        Reorganize DataArrayShadows with more than 2 dimensions according to OME XML
         Note: it expects _updateMDFromOME has been run before and so each array
         has its metadata filled up.
         Note: Officially OME supports only base arrays of 2D. But we also support
         base arrays of 3D if the data is RGB (3rd dimension has length 3).
         root (ET.Element): the root (i.e., OME) element of the XML description
-        data (list of DataArrays): DataArrays at the same place as the TIFF IFDs
-        return (list of DataArrays): new shorter list of DAs positions
+        data (list of DataArrayShadows): DataArrayShadowss at the same place as the TIFF IFDs
+        return (list of DataArrayShadows): new shorter list of DASs positions
         """
         omedas = []
 
@@ -1958,12 +1968,10 @@ class AcquisitionDataTIFF(AcquisitionData):
                 for sub_imsetn in imsetn:
                     # Combine all the IFDs into a (1+)4D array
                     sub_imsetn.shape = (1,) + sub_imsetn.shape
-                    #imset = _mergeDA(das, sub_imsetn)
                     shadow_shape = AcquisitionDataTIFF._mergeDAShadowsShape(das, sub_imsetn)
                     omedas.append(shadow_shape)
             else:
                 # Combine all the IFDs into a 5D array
-                #imset = _mergeDA(das, imsetn)
                 shadow_shape = AcquisitionDataTIFF._mergeDAShadowsShape(das, imsetn)
                 omedas.append(shadow_shape)
 
@@ -1980,15 +1988,15 @@ class AcquisitionDataTIFF(AcquisitionData):
     @staticmethod
     def _mergeDAShadowsShape(das, hdim_index):
         """
-        Merge multiple DataArrays into a higher dimension DataArray.
-        das (list of DataArrays): ordered list of DataArrays (can contain more
+        Merge multiple DataArrayShadows into a higher dimension DataArrayShadow.
+        das (list of DataArrays): ordered list of DataArrayShadows (can contain more
         arrays than what is used in the high dimension arrays
         hdim_index (ndarray of int >= 0): an array representing the higher
         dimensions of the final merged arrays. Each value is the index of the
         small array in das.
-        return (DataArray): the merge of all the DAs. The shape is hdim_index.shape
-        + shape of original DataArray. The metadata is the metadata of the first
-        DataArray inserted
+        return (DataArrayShadow): the merge of all the DAs. The shape is hdim_index.shape
+        + shape of original DataArrayShadow. The metadata is the metadata of the first
+        DataArrayShadow inserted
         """
         fim = das[hdim_index.flat[0]]
         tshape = hdim_index.shape + fim.shape
@@ -2006,23 +2014,23 @@ class AcquisitionDataTIFF(AcquisitionData):
         return mergedDataArrayShadow
 
     @staticmethod
-    def _iterImages(tiff_file):
+    def _iterDirectories(tiff_file):
         """
         Iterate on the directories of a tiff file
         tiff_file (tiff handle): The tiff file handle to be iterated on
-        return (int): On each iteration, a counter is returned
+        return (int): The index of the directory
         """
         tiff_file.SetDirectory(0)
-        counter = 0
-        yield counter
+        dir_index = 0
+        yield dir_index
         while not tiff_file.LastDirectory():
             tiff_file.ReadDirectory()
-            counter += 1
-            yield counter
+            dir_index += 1
+            yield dir_index
         tiff_file.SetDirectory(0)
 
     @staticmethod
-    def _readImage(tiff_info_item):
+    def _readImage(tiff_info):
         tiff_file = tiff_info_item['handle']
         tiff_file.SetDirectory(tiff_info_item['dir_index'])
         return tiff_file.read_image()
