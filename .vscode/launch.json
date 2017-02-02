@@ -65,7 +65,28 @@
                 "TestTiffIO.testExportMultiArrayPyramid",
                 "TestTiffIO.testExportNoWL",
                 "TestTiffIO.testAcquisitionDataTIFF",
-                "TestTiffIO.testExportRead"
+                "TestTiffIO.testExportRead",
+                "TestTiffIO.testAcquisitionDataTIFFLargerFile"
+            ]
+        },
+        {
+            "name": "Python stiff_test",
+            "type": "python",
+            "request": "launch",
+            "stopOnEntry": false,
+            "pythonPath": "${config.python.pythonPath}",
+            "program": "${workspaceRoot}/src/odemis/dataio/test/stiff_test.py",
+            "cwd": "${workspaceRoot}",
+            "debugOptions": [
+                "WaitOnAbnormalExit",
+                "WaitOnNormalExit",
+                "RedirectOutput"
+            ],
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}/src:${workspaceRoot}/../../pylibtiff"
+            },
+            "args": [
+                "TestTiffIO"
             ]
         },
         {
@@ -87,48 +108,6 @@
             "args": [
                 "TestConversion.test_get_img_transformation_matrix",
                 "TestConversion.test_get_tile_md_pos"
-            ]
-        },
-        {
-            "name": "Python Module",
-            "type": "python",
-            "request": "launch",
-            "stopOnEntry": true,
-            "pythonPath": "${config.python.pythonPath}",
-            "module": "module.name",
-            "cwd": "${workspaceRoot}",
-            "debugOptions": [
-                "WaitOnAbnormalExit",
-                "WaitOnNormalExit",
-                "RedirectOutput"
-            ]
-        },
-        {
-            "name": "Integrated Terminal/Console",
-            "type": "python",
-            "request": "launch",
-            "stopOnEntry": true,
-            "pythonPath": "${config.python.pythonPath}",
-            "program": "${file}",
-            "cwd": "null",
-            "console": "integratedTerminal",
-            "debugOptions": [
-                "WaitOnAbnormalExit",
-                "WaitOnNormalExit"
-            ]
-        },
-        {
-            "name": "External Terminal/Console",
-            "type": "python",
-            "request": "launch",
-            "stopOnEntry": true,
-            "pythonPath": "${config.python.pythonPath}",
-            "program": "${file}",
-            "cwd": "null",
-            "console": "externalTerminal",
-            "debugOptions": [
-                "WaitOnAbnormalExit",
-                "WaitOnNormalExit"
             ]
         }
     ]
