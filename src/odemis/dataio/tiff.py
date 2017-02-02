@@ -1726,11 +1726,10 @@ def read_thumbnail(filename):
 
 def open_data(fn):
     """
-    TODO description
+    Opens a TIFF file, and return an AcquisitionData instance
     fn (string): path to the file
-    return: AcquisitionData: an opened file
+    return (AcquisitionData): an opened file
     """
-
     return AcquisitionDataTIFF(fn)
 
 class AcquisitionDataTIFF(AcquisitionData):
@@ -2029,9 +2028,14 @@ class AcquisitionDataTIFF(AcquisitionData):
         tiff_file.SetDirectory(0)
 
     @staticmethod
-    def _readImage(tiff_info):
-        tiff_file = tiff_info['handle']
-        tiff_file.SetDirectory(tiff_info['dir_index'])
+    def _readImage(tiff_file, dir_index):
+        """
+        Reads the image of a given directory
+        tiff_file (handle): Handle of the tiff file
+        dir_index (int): Index of the directory
+        return (numpy.array): The image
+        """
+        tiff_file.SetDirectory(dir_index)
         return tiff_file.read_image()
 
     @staticmethod
@@ -2047,7 +2051,7 @@ class AcquisitionDataTIFF(AcquisitionData):
         imset = numpy.empty(data_array_shadow.shape, data_array_shadow.dtype)
         for tiff_info_item in tiff_info:
             handle_index = tiff_info_item[1]
-            image = AcquisitionDataTIFF._readImage(handle_index)
+            image = AcquisitionDataTIFF._readImage(handle_index['handle'], handle_index['dir_index'])
             imset[tiff_info_item[0]] = image
 
         return model.DataArray(imset, metadata=data_array_shadow.metadata)
@@ -2063,7 +2067,7 @@ class AcquisitionDataTIFF(AcquisitionData):
         if type(tiff_info) is list:
             return AcquisitionDataTIFF._readAndMergeImages(self.content[n], tiff_info)
         else:
-            image = AcquisitionDataTIFF._readImage(tiff_info)
+            image = AcquisitionDataTIFF._readImage(tiff_info['handle'], tiff_info['dir_index'])
             return model.DataArray(image, metadata=self.content[n].metadata)
 
     def getSubData(self, n, z, rect):
@@ -2118,6 +2122,7 @@ class AcquisitionDataTIFF(AcquisitionData):
             tiles_column = []
             for yi, y in enumerate(xrange(y1, y2 + 1, num_trows)):
                 tile = tiff_file.read_one_tile(x, y)
+                # calculate the center of the tile
                 tile_md_position = get_tile_md_pos((xi, yi), TILE_SIZE, tile, self.content[n])
                 # set the metadata for the tile
                 md = {
@@ -2139,5 +2144,5 @@ class AcquisitionDataTIFF(AcquisitionData):
         n (int): Index of the thumbnail
         """
         tiff_info = self.thumbnails[n].tiff_info
-        image = AcquisitionDataTIFF._readImage(tiff_info)
+        image = AcquisitionDataTIFF._readImage(tiff_info['handle'], tiff_info['dir_index'])
         return model.DataArray(image, metadata=self.thumbnails[n].metadata)
