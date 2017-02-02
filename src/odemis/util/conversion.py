@@ -25,6 +25,8 @@ import logging
 import re
 import wx
 import yaml
+from odemis import model
+import numpy
 
 
 # Inspired by code from:
@@ -392,3 +394,65 @@ def ensure_tuple(v):
     else:
         return v
 
+def get_img_transformation_matrix(md):
+    """
+    Computes the 2D transformation matrix based on the given metadata.
+    md (dict str value): the metadata of a DataArray, possibly 5
+        containing the MD_PIXEL_SIZE, MD_ROTATION and MD_SHEAR metadata
+    return (numpy.matrix of 2,2 floats): the 2D transformation matrix
+    """
+
+    if model.MD_PIXEL_SIZE not in md:
+        raise ValueError("MD_PIXEL_SIZE must be set")
+    ps = md[model.MD_PIXEL_SIZE]
+    rotation = md.get(model.MD_ROTATION, 0.0)
+    shear = md.get(model.MD_SHEAR, 0.0)
+
+    ps_mat = numpy.matrix([[ps[0], 0], [0, ps[1]]])
+    cos, sin = numpy.cos(rotation), numpy.sin(rotation)
+    rot_mat = numpy.matrix([[cos, -sin], [sin, cos]])
+    shear_mat = numpy.matrix([[1, 0], [-shear, 1]])
+    return ps_mat * rot_mat * shear_mat
+
+def get_tile_md_pos(i, tile_size, tileda, origmd):
+    """
+    Compute the position of the center of the tile, aka MD_POS.
+    i (int, int): the tile index (X, Y)
+    tile_size (int>0, int>0): the standard size of a tile in the (X, Y)
+    tileda (DataArray): the tile data, with MD_PIXEL_SIZE in its metadata.
+        It can be smaller than the tile_size in case
+    origda (DataArray or DataArrayShadow): the original/raw DataArray. If
+        no MD_POS is provided, the image is considered located at (0,0).
+    return (float, float): the center position
+    """
+    md = origmd.metadata
+
+    dims = md.get(model.MD_DIMS, "CTZYX"[-origmd.ndim::])
+    img_height = origmd.shape[dims.index('Y')]
+    img_width = origmd.shape[dims.index('X')]
+
+    # center of the image in pixels
+    img_center = numpy.array([img_width / 2, img_height / 2], numpy.float)
+    md_pos = numpy.array(list(md[model.MD_POS]), numpy.float)
+    pixel_size = numpy.array(list(md[model.MD_PIXEL_SIZE]), numpy.float)
+
+    tile_height = tileda.shape[dims.index('Y')]
+    tile_width = tileda.shape[dims.index('X')]
+    half_tile_shape = (tile_width / 2, tile_height / 2)
+    # center of the tile in pixels
+    tile_center_pixels = [a * tile_size + hts for a, hts in zip(i, half_tile_shape)]
+    tile_center_pixels = numpy.array(tile_center_pixels, numpy.float)
+    # center of the tile relative to the center of the image
+    tile_rel_to_img_center_pixels = tile_center_pixels - img_center
+
+    # Y pixel coordinates goes down, but Y coordinates in world goes up
+    tile_rel_to_img_center_pixels[1] = -tile_rel_to_img_center_pixels[1]
+
+    mat = get_img_transformation_matrix(md)
+    # calculate the new position of the tile, relative to the center of the image,
+    # in world coordinates
+    new_tile_pos_rel = mat * numpy.matrix(tile_rel_to_img_center_pixels).getT()
+    new_tile_pos_rel = numpy.ravel(new_tile_pos_rel)
+    # calculate the final position of the tile, in world coordinates
+    tile_pos_world_final = numpy.add(md_pos, new_tile_pos_rel)
+    return tuple(tile_pos_world_final)
