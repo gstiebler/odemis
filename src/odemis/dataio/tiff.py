@@ -1872,8 +1872,7 @@ class AcquisitionDataTIFF(AcquisitionData):
         xml = re.sub('xmlns="http://www.openmicroscopy.org/Schemas/OME/....-.."',
                     "", xml, count=1)
         # Remove ROI namespace too
-        xml = re.sub('xmlns="http://www.openmicroscopy.org/Schemas/ROI/....-.."',
-                    "", xml)
+        xml = re.sub('xmlns="http://www.openmicroscopy.org/Schemas/ROI/....-.."', "", xml)
         root = ET.fromstring(xml)
         _updateMDFromOME(root, data_array_shadows, basename)
         omedata = AcquisitionDataTIFF._foldArrayShadowsFromOME(root, data_array_shadows, basename)
@@ -2031,30 +2030,27 @@ class AcquisitionDataTIFF(AcquisitionData):
 
     @staticmethod
     def _readImage(tiff_info):
-        tiff_file = tiff_info_item['handle']
-        tiff_file.SetDirectory(tiff_info_item['dir_index'])
+        tiff_file = tiff_info['handle']
+        tiff_file.SetDirectory(tiff_info['dir_index'])
         return tiff_file.read_image()
 
     @staticmethod
-    def _mergeDA(das, tiff_info):
+    def _readAndMergeImages(data_array_shadow, tiff_info):
         """
-        Merge multiple DataArrays into a higher dimension DataArray.
-        das (list of DataArrays): ordered list of DataArrays (can contain more
-        arrays than what is used in the high dimension arrays
-        hdim_index (ndarray of int >= 0): an array representing the higher
-        dimensions of the final merged arrays. Each value is the index of the
-        small array in das.
+        Read the images from file, and merge them into a higher dimension DataArray.
+        data_array_shadow (DataArrayShadows): DataArrayShadow, with an ordered list of tiff_info 
+            (can contain more arrays than what is used in the high dimension arrays
         return (DataArray): the merge of all the DAs. The shape is hdim_index.shape
-        + shape of original DataArray. The metadata is the metadata of the first
-        DataArray inserted
+            + shape of original DataArrayShadow. The metadata is the metadata of the first
+            DataArrayShadow of the list
         """
-        imset = numpy.empty(das.shape, das.dtype)
+        imset = numpy.empty(data_array_shadow.shape, data_array_shadow.dtype)
         for tiff_info_item in tiff_info:
             handle_index = tiff_info_item[1]
             image = AcquisitionDataTIFF._readImage(handle_index)
             imset[tiff_info_item[0]] = image
 
-        return model.DataArray(imset, metadata=das.metadata)
+        return model.DataArray(imset, metadata=data_array_shadow.metadata)
 
     def getData(self, n):
         """
@@ -2063,10 +2059,9 @@ class AcquisitionDataTIFF(AcquisitionData):
         return DataArray: the data, with its metadata (ie, identical to .content[n] but
             with the actual data)
         """
-
         tiff_info = self.content[n].tiff_info
         if type(tiff_info) is list:
-            return AcquisitionDataTIFF._mergeDA(self.content[n], tiff_info)
+            return AcquisitionDataTIFF._readAndMergeImages(self.content[n], tiff_info)
         else:
             image = AcquisitionDataTIFF._readImage(tiff_info)
             return model.DataArray(image, metadata=self.content[n].metadata)
@@ -2124,6 +2119,7 @@ class AcquisitionDataTIFF(AcquisitionData):
             for yi, y in enumerate(xrange(y1, y2 + 1, num_trows)):
                 tile = tiff_file.read_one_tile(x, y)
                 tile_md_position = get_tile_md_pos((xi, yi), TILE_SIZE, tile, self.content[n])
+                # set the metadata for the tile
                 md = {
                     model.MD_POS: tile_md_position,
                     model.MD_ROTATION: self.content[n].metadata.get(model.MD_ROTATION, 0.0),
@@ -2138,6 +2134,10 @@ class AcquisitionDataTIFF(AcquisitionData):
         return tuple(tiles)
 
     def getThumbnail(self, n):
+        """
+        Get the thumbnail image
+        n (int): Index of the thumbnail
+        """
         tiff_info = self.thumbnails[n].tiff_info
         image = AcquisitionDataTIFF._readImage(tiff_info)
         return model.DataArray(image, metadata=self.thumbnails[n].metadata)
