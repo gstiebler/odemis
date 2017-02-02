@@ -427,15 +427,18 @@ def get_tile_md_pos(i, tile_size, tileda, origmd):
     """
     md = origmd.metadata
 
-    # TODO get the correct width and height when the image has more than 2 dimensions
-    img_height, img_width  = origmd.shape[:2]
+    dims = md.get(model.MD_DIMS, "CTZYX"[-origmd.ndim::])
+    img_height = origmd.shape[dims.index('Y')]
+    img_width = origmd.shape[dims.index('X')]
+
     # center of the image in pixels
     img_center = numpy.array([img_width / 2, img_height / 2], numpy.float)
     md_pos = numpy.array(list(md[model.MD_POS]), numpy.float)
     pixel_size = numpy.array(list(md[model.MD_PIXEL_SIZE]), numpy.float)
 
-    # TODO get only the X and Y from the tile
-    half_tile_shape = [a / 2 for a in tileda.shape[:2][::-1]]
+    tile_height = tileda.shape[dims.index('Y')]
+    tile_width = tileda.shape[dims.index('X')]
+    half_tile_shape = (tile_width / 2, tile_height / 2)
     # center of the tile in pixels
     tile_center_pixels = [a * tile_size + hts for a, hts in zip(i, half_tile_shape)]
     tile_center_pixels = numpy.array(tile_center_pixels, numpy.float)
