@@ -1850,7 +1850,10 @@ class AcquisitionDataTIFF(AcquisitionData):
 
         # add handle and directory information to be used when the actual
         # pixels of the image are read
+        # This information is temporary. It is not needed outside the AcquisitionDataTIFF class,
+        # and it is not a part of DataArrayShadow class
         das.tiff_info = {'handle': tfile, 'dir_index': dir_index}
+
         if _isThumbnail(tfile):
             data_array_shadows.append(None)
             thumbnails.append(das)
@@ -1998,17 +2001,22 @@ class AcquisitionDataTIFF(AcquisitionData):
         """
         fim = das[hdim_index.flat[0]]
         tshape = hdim_index.shape + fim.shape
-        imset = numpy.empty(tshape, fim.dtype)
-        tiff_info = []
+        # it will hold the list of the information about each of the merged
+        # DataArrayShadow instance
+        tiff_info_list = []
         for hi, i in numpy.ndenumerate(hdim_index):
-            tiff_info.append((hi, das[i].tiff_info))
+            local_tiff_info = das[i].tiff_info
+            # add the index of the DataArrayShadow in the merged DataArrayShadow
+            local_tiff_info['hdim_index'] = hi
+            tiff_info_list.append(local_tiff_info)
 
         try:
             maxzoom = fim.maxzoom
         except:
             maxzoom = None
         mergedDataArrayShadow = DataArrayShadow(tshape, fim.dtype, fim.metadata, maxzoom)
-        mergedDataArrayShadow.tiff_info = tiff_info
+        # add the information about each of the merged DataArrayShadows
+        mergedDataArrayShadow.tiff_info = tiff_info_list
         return mergedDataArrayShadow
 
     @staticmethod
@@ -2050,9 +2058,8 @@ class AcquisitionDataTIFF(AcquisitionData):
         """
         imset = numpy.empty(data_array_shadow.shape, data_array_shadow.dtype)
         for tiff_info_item in tiff_info:
-            handle_index = tiff_info_item[1]
-            image = AcquisitionDataTIFF._readImage(handle_index['handle'], handle_index['dir_index'])
-            imset[tiff_info_item[0]] = image
+            image = AcquisitionDataTIFF._readImage(tiff_info_item['handle'], tiff_info_item['dir_index'])
+            imset[tiff_info_item['hdim_index']] = image
 
         return model.DataArray(imset, metadata=data_array_shadow.metadata)
 
@@ -2064,6 +2071,8 @@ class AcquisitionDataTIFF(AcquisitionData):
             with the actual data)
         """
         tiff_info = self.content[n].tiff_info
+        # if tiff_info is a list, it means that self.content[n]
+        # is a DataArrayShadow with multiple images
         if type(tiff_info) is list:
             return AcquisitionDataTIFF._readAndMergeImages(self.content[n], tiff_info)
         else:
@@ -2094,6 +2103,7 @@ class AcquisitionDataTIFF(AcquisitionData):
         if not (0 <= n < len(self.content)):
             raise ValueError("Invalid N value %d" % (n,))
 
+        # get information about how to retrieve the actual pixels from the TIFF file
         tiff_info = self.content[n].tiff_info
         tiff_file = tiff_info['handle']
         tiff_file.SetDirectory(tiff_info['dir_index'])
