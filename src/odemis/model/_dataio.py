@@ -36,6 +36,9 @@ class DataArrayShadow(object):
         metadata (dict str->val): The metadata
         maxzoom (0<=int): the maximum zoom level possible. If the data isn't
             encoded in pyramidal format, the attribute is not present.
+            The shape of the images in each zoom level is as following:
+            (shape of full image) // (2**z)
+            where z is the index of the zoom level
         """
         self.shape = shape
         self.ndim = len(shape)
