@@ -408,14 +408,13 @@ def get_img_transformation_matrix(md):
     rotation = md.get(model.MD_ROTATION, 0.0)
     shear = md.get(model.MD_SHEAR, 0.0)
 
-    ps_mat = numpy.matrix([[ps[0], 0], [0, ps[1]]])
+    # Y pixel coordinates goes down, but Y coordinates in world goes up
+    # The '-' before ps[1] is there to make this conversion
+    ps_mat = numpy.matrix([[ps[0], 0], [0, -ps[1]]])
     cos, sin = numpy.cos(rotation), numpy.sin(rotation)
     rot_mat = numpy.matrix([[cos, -sin], [sin, cos]])
     shear_mat = numpy.matrix([[1, 0], [-shear, 1]])
-    # Y pixel coordinates goes down, but Y coordinates in world goes up
-    # This matrix does the flip in the Y axis
-    flipy_mat = numpy.matrix([[1, 0], [0, -1]])
-    return ps_mat * rot_mat * shear_mat * flipy_mat
+    return rot_mat * shear_mat * ps_mat
 
 def get_tile_md_pos(i, tile_size, tileda, origda):
     """
