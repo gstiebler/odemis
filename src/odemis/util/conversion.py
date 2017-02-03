@@ -410,11 +410,11 @@ def get_img_transformation_matrix(md):
 
     # Y pixel coordinates goes down, but Y coordinates in world goes up
     # That's the reason of the '-' before ps[1]
-    ps_mat = numpy.matrix([[ps[0], 0], [0, -ps[1]]])
+    ps_mat = numpy.matrix([[ps[0], 0], [0, ps[1]]])
     cos, sin = numpy.cos(rotation), numpy.sin(rotation)
     rot_mat = numpy.matrix([[cos, -sin], [sin, cos]])
     shear_mat = numpy.matrix([[1, 0], [-shear, 1]])
-    return rot_mat * shear_mat * ps_mat
+    return ps_mat * rot_mat * shear_mat
 
 def get_tile_md_pos(i, tile_size, tileda, origda):
     """
@@ -428,6 +428,7 @@ def get_tile_md_pos(i, tile_size, tileda, origda):
     return (float, float): the center position
     """
     md = origda.metadata
+    tile_md = tileda.metadata
 
     dims = md.get(model.MD_DIMS, "CTZYX"[-origda.ndim::])
     img_height = origda.shape[dims.index('Y')]
@@ -448,7 +449,14 @@ def get_tile_md_pos(i, tile_size, tileda, origda):
     # center of the tile relative to the center of the image
     tile_rel_to_img_center_pixels = tile_center_pixels - img_center
 
-    tmat = get_img_transformation_matrix(tileda.metadata)
+    tmat = get_img_transformation_matrix(tile_md)
+
+    # TODO review these conversions
+    tile_rel_to_img_center_pixels[1] *= -1
+    orig_ps = md[model.MD_PIXEL_SIZE]
+    tile_ps = tile_md[model.MD_PIXEL_SIZE]
+    tile_rel_to_img_center_pixels[0] *= tile_ps[0] / orig_ps[0]
+    tile_rel_to_img_center_pixels[1] *= tile_ps[1] / orig_ps[1]
 
     # Converts the tile_rel_to_img_center_pixels array of coordinates to a 2 x 1 matrix
     # The numpy.matrix(array) function returns a 1 x 2 matrix, so .getT() is called

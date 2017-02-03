@@ -1702,8 +1702,32 @@ def read_data(filename):
     # TODO: support filename to be a File or Stream (but it seems very difficult
     # to do it without looking at the .filename attribute)
     # see http://pytables.github.io/cookbook/inmemory_hdf5_files.html
+    #filename = _ensure_fs_encoding(filename)
+    #return _dataFromTIFF(filename)
     acd = open_data(filename)
-    return [acd.getData(i) for i in range(len(acd.content))]
+
+    counter = 1
+    content = acd.content[0]
+    content.metadata[model.MD_PIXEL_SIZE] = (1e-6, 1e-6)
+    content.metadata[model.MD_POS] = (counter * 10e-3, counter * 10e-3)
+    content.metadata[model.MD_ROTATION] = counter * 0.2
+    content.metadata[model.MD_SHEAR] = counter * 0.3
+    image = acd.getData(0)
+
+    tile_tuples = acd.getSubData(0, 0, (0, 0, 1320, 1039))
+    tile = tile_tuples[5][4]
+    #logging.debug(tile_tuples[0][0].metadata)
+    #logging.debug(tile_tuples[5][4].metadata)
+    #logging.debug(d.metadata)
+    tile_filename = "example%d.tiff" % (counter)
+    export(tile_filename, tile)
+
+    acd_example = open_data(tile_filename)
+    
+    return [image, acd_example.getData(0)]
+
+    # data = [acd.getData(i) for i in range(len(acd.content))]
+    # return data
 
 def read_thumbnail(filename):
     """
@@ -2126,22 +2150,27 @@ class AcquisitionDataTIFF(AcquisitionData):
         if not num_tcols or not num_trows:
             raise RuntimeError("the image is not tiled")
 
+        orig_pixel_size = self.content[n].metadata.get(model.MD_PIXEL_SIZE, (1, 1))
+        # calculate the pixel size of the tile for the zoom level
+        tile_pixel_size = tuple([ps / 2 ** z for ps in orig_pixel_size])
+        # set the metadata for the tile
+        base_tile_md = {
+            model.MD_ROTATION: self.content[n].metadata.get(model.MD_ROTATION, 0.0),
+            model.MD_SHEAR: self.content[n].metadata.get(model.MD_SHEAR, 0.0),
+            model.MD_PIXEL_SIZE: tile_pixel_size
+        }
+
         x1, y1, x2, y2 = rect
         tiles = []
         for xi, x in enumerate(xrange(x1, x2 + 1, num_tcols)):
             tiles_column = []
             for yi, y in enumerate(xrange(y1, y2 + 1, num_trows)):
                 tile = tiff_file.read_one_tile(x, y)
+                tile_md = base_tile_md.copy()
+                tile = model.DataArray(tile, tile_md)
                 # calculate the center of the tile
-                tile_md_position = get_tile_md_pos((xi, yi), TILE_SIZE, tile, self.content[n])
-                # set the metadata for the tile
-                md = {
-                    model.MD_POS: tile_md_position,
-                    model.MD_ROTATION: self.content[n].metadata.get(model.MD_ROTATION, 0.0),
-                    model.MD_SHEAR: self.content[n].metadata.get(model.MD_SHEAR, 0.0),
-                    model.MD_PIXEL_SIZE: self.content[n].metadata.get(model.MD_PIXEL_SIZE, (1, 1))
-                }
-                tile = model.DataArray(tile, md)
+                tile.metadata[model.MD_POS] = \
+                    get_tile_md_pos((xi, yi), (TILE_SIZE, TILE_SIZE), tile, self.content[n])
                 tiles_column.append(tile)
 
             tiles.append(tuple(tiles_column))
