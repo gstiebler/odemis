@@ -1708,14 +1708,20 @@ def read_data(filename):
 
     counter = 1
     content = acd.content[0]
-    content.metadata[model.MD_PIXEL_SIZE] = (1e-6, 1e-6)
+    content.metadata[model.MD_PIXEL_SIZE] = (2e-6, 2e-6)
     content.metadata[model.MD_POS] = (counter * 10e-3, counter * 10e-3)
     content.metadata[model.MD_ROTATION] = counter * 0.2
     content.metadata[model.MD_SHEAR] = counter * 0.3
     image = acd.getData(0)
 
+    image2 = acd.getData(0)
+    image2.metadata[model.MD_PIXEL_SIZE] = (1e-6, 1e-6)
+    image2[0:20, 0:20] = numpy.zeros((20, 20))
+
     tile_tuples = acd.getSubData(0, 0, (0, 0, 1320, 1039))
     tile = tile_tuples[5][4]
+    #tile_tuples = acd.getSubData(0, 1, (0, 1, 659, 518))
+    #tile = tile_tuples[2][2]
     #logging.debug(tile_tuples[0][0].metadata)
     #logging.debug(tile_tuples[5][4].metadata)
     #logging.debug(d.metadata)
@@ -2101,7 +2107,7 @@ class AcquisitionDataTIFF(AcquisitionData):
             return AcquisitionDataTIFF._readAndMergeImages(self.content[n], tiff_info)
         else:
             image = AcquisitionDataTIFF._readImage(tiff_info['handle'], tiff_info['dir_index'])
-            return model.DataArray(image, metadata=self.content[n].metadata)
+            return model.DataArray(image, metadata=self.content[n].metadata.copy())
 
     def getSubData(self, n, z, rect):
         """

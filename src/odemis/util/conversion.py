@@ -408,13 +408,14 @@ def get_img_transformation_matrix(md):
     rotation = md.get(model.MD_ROTATION, 0.0)
     shear = md.get(model.MD_SHEAR, 0.0)
 
-    # Y pixel coordinates goes down, but Y coordinates in world goes up
-    # That's the reason of the '-' before ps[1]
     ps_mat = numpy.matrix([[ps[0], 0], [0, ps[1]]])
     cos, sin = numpy.cos(rotation), numpy.sin(rotation)
     rot_mat = numpy.matrix([[cos, -sin], [sin, cos]])
     shear_mat = numpy.matrix([[1, 0], [-shear, 1]])
-    return ps_mat * rot_mat * shear_mat
+    # Y pixel coordinates goes down, but Y coordinates in world goes up
+    # This matrix does the flip in the Y axis
+    flipy_mat = numpy.matrix([[1, 0], [0, -1]])
+    return ps_mat * rot_mat * shear_mat * flipy_mat
 
 def get_tile_md_pos(i, tile_size, tileda, origda):
     """
@@ -452,11 +453,10 @@ def get_tile_md_pos(i, tile_size, tileda, origda):
     tmat = get_img_transformation_matrix(tile_md)
 
     # TODO review these conversions
-    tile_rel_to_img_center_pixels[1] *= -1
-    orig_ps = md[model.MD_PIXEL_SIZE]
-    tile_ps = tile_md[model.MD_PIXEL_SIZE]
-    tile_rel_to_img_center_pixels[0] *= tile_ps[0] / orig_ps[0]
-    tile_rel_to_img_center_pixels[1] *= tile_ps[1] / orig_ps[1]
+    #tile_rel_to_img_center_pixels[1] *= -1
+    orig_ps = numpy.asarray(md[model.MD_PIXEL_SIZE])
+    tile_ps = numpy.asarray(tile_md[model.MD_PIXEL_SIZE])
+    tile_rel_to_img_center_pixels *= tile_ps / orig_ps
 
     # Converts the tile_rel_to_img_center_pixels array of coordinates to a 2 x 1 matrix
     # The numpy.matrix(array) function returns a 1 x 2 matrix, so .getT() is called
