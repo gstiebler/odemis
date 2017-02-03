@@ -1718,10 +1718,10 @@ def read_data(filename):
     image2.metadata[model.MD_PIXEL_SIZE] = (1e-6, 1e-6)
     image2[0:20, 0:20] = numpy.zeros((20, 20))
 
-    tile_tuples = acd.getSubData(0, 0, (0, 0, 1320, 1039))
-    tile = tile_tuples[5][4]
-    #tile_tuples = acd.getSubData(0, 1, (0, 1, 659, 518))
-    #tile = tile_tuples[2][2]
+    #tile_tuples = acd.getSubData(0, 0, (0, 0, 1320, 1039))
+    #tile = tile_tuples[5][4]
+    tile_tuples = acd.getSubData(0, 2, (0, 1, 320, 250))
+    tile = tile_tuples[0][0]
     #logging.debug(tile_tuples[0][0].metadata)
     #logging.debug(tile_tuples[5][4].metadata)
     #logging.debug(d.metadata)
@@ -2158,7 +2158,7 @@ class AcquisitionDataTIFF(AcquisitionData):
 
         orig_pixel_size = self.content[n].metadata.get(model.MD_PIXEL_SIZE, (1, 1))
         # calculate the pixel size of the tile for the zoom level
-        tile_pixel_size = tuple([ps / 2 ** z for ps in orig_pixel_size])
+        tile_pixel_size = tuple([ps * 2 ** z for ps in orig_pixel_size])
         # set the metadata for the tile
         base_tile_md = {
             model.MD_ROTATION: self.content[n].metadata.get(model.MD_ROTATION, 0.0),

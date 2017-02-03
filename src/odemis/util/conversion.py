@@ -429,14 +429,20 @@ def get_tile_md_pos(i, tile_size, tileda, origda):
     """
     md = origda.metadata
     tile_md = tileda.metadata
+    md_pos = numpy.asarray(md.get(model.MD_POS, (0.0, 0.0)))
+    if model.MD_PIXEL_SIZE not in md or model.MD_PIXEL_SIZE not in tile_md:
+        raise ValueError("MD_PIXEL_SIZE must be set")
+    orig_ps = numpy.asarray(md[model.MD_PIXEL_SIZE])
+    tile_ps = numpy.asarray(tile_md[model.MD_PIXEL_SIZE])
 
     dims = md.get(model.MD_DIMS, "CTZYX"[-origda.ndim::])
-    img_height = origda.shape[dims.index('Y')]
-    img_width = origda.shape[dims.index('X')]
-
+    img_shape = [origda.shape[dims.index('X')], origda.shape[dims.index('Y')]]
+    img_shape = numpy.array(img_shape, numpy.float)
+    # TODO check if the line below should be this way
+    # generate the shape of the zoomed image
+    img_shape *= orig_ps / tile_ps
     # center of the image in pixels
-    img_center = numpy.array([img_width / 2, img_height / 2])
-    md_pos = numpy.asarray(md.get(model.MD_POS, (0.0, 0.0)))
+    img_center = img_shape / 2
 
     tile_height = tileda.shape[dims.index('Y')]
     tile_width = tileda.shape[dims.index('X')]
@@ -445,17 +451,10 @@ def get_tile_md_pos(i, tile_size, tileda, origda):
         i[0] * tile_size[0] + tile_width/2,
         i[1] * tile_size[1] + tile_height/2]
     )
-    tile_center_pixels = numpy.array(tile_center_pixels)
     # center of the tile relative to the center of the image
     tile_rel_to_img_center_pixels = tile_center_pixels - img_center
 
     tmat = get_img_transformation_matrix(tile_md)
-
-    # TODO review these conversions
-    #tile_rel_to_img_center_pixels[1] *= -1
-    orig_ps = numpy.asarray(md[model.MD_PIXEL_SIZE])
-    tile_ps = numpy.asarray(tile_md[model.MD_PIXEL_SIZE])
-    tile_rel_to_img_center_pixels *= tile_ps / orig_ps
 
     # Converts the tile_rel_to_img_center_pixels array of coordinates to a 2 x 1 matrix
     # The numpy.matrix(array) function returns a 1 x 2 matrix, so .getT() is called
