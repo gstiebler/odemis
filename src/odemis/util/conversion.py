@@ -414,7 +414,7 @@ def get_img_transformation_matrix(md):
     cos, sin = numpy.cos(rotation), numpy.sin(rotation)
     rot_mat = numpy.matrix([[cos, -sin], [sin, cos]])
     shear_mat = numpy.matrix([[1, 0], [-shear, 1]])
-    return ps_mat * rot_mat * shear_mat
+    return rot_mat * shear_mat * ps_mat
 
 def get_tile_md_pos(i, tile_size, tileda, origda):
     """
@@ -435,10 +435,7 @@ def get_tile_md_pos(i, tile_size, tileda, origda):
 
     # center of the image in pixels
     img_center = numpy.array([img_width / 2, img_height / 2])
-    md_pos = numpy.asarray(md[model.MD_POS])
-
-    # TODO check if it's necessary
-    #pixel_size = numpy.array(list(md[model.MD_PIXEL_SIZE]), numpy.float)
+    md_pos = numpy.asarray(md.get(model.MD_POS, (0.0, 0.0)))
 
     tile_height = tileda.shape[dims.index('Y')]
     tile_width = tileda.shape[dims.index('X')]
@@ -451,9 +448,11 @@ def get_tile_md_pos(i, tile_size, tileda, origda):
     # center of the tile relative to the center of the image
     tile_rel_to_img_center_pixels = tile_center_pixels - img_center
 
-    tmat = get_img_transformation_matrix(md)
+    tmat = get_img_transformation_matrix(tileda.metadata)
+
     # Converts the tile_rel_to_img_center_pixels array of coordinates to a 2 x 1 matrix
     # The numpy.matrix(array) function returns a 1 x 2 matrix, so .getT() is called
+    # to transpose the matrix
     tile_rel_to_img_center_pixels = numpy.matrix(tile_rel_to_img_center_pixels).getT()
     # calculate the new position of the tile, relative to the center of the image,
     # in world coordinates
