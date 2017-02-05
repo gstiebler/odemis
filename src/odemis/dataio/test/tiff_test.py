@@ -1289,7 +1289,7 @@ class TestTiffIO(unittest.TestCase):
         self.assertEqual(subimage[-1][0], 10022)
         self.assertEqual(subimage[-1][-1], 10278)
 
-        del im
+        im.close()
         os.remove(FILENAME)
 
     def testExportThinPyramid(self):    
@@ -1322,7 +1322,7 @@ class TestTiffIO(unittest.TestCase):
         self.assertEqual(full_image[-1][0], 4096)
         self.assertEqual(full_image[-1][-1], 4097)
 
-        del im
+        im.close()
         os.remove(FILENAME)
 
     def testExportMultiArrayPyramid(self):
@@ -1477,7 +1477,7 @@ class TestTiffIO(unittest.TestCase):
         tile = f.read_one_tile(256, 256)
         # this tile is only 2 x 1 in size
         self.assertEqual(tile.shape, (1, 2, 3))
-        del f
+        f.close()
         os.remove(FILENAME)
 
     def testAcquisitionDataTIFF(self):
