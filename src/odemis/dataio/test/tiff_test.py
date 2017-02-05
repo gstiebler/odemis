@@ -1563,7 +1563,7 @@ class TestTiffIO(unittest.TestCase):
         # add the full image to the shape list
         shapes = [(rdata.content[0].shape)] + shapes
 
-        # first zoom level (full image)
+        # First zoom level (full image)
         zoom_level = 0
         # get the top-left tile
         tile_shape = (0, 0, 0, 0)
@@ -1591,6 +1591,15 @@ class TestTiffIO(unittest.TestCase):
         self.assertAlmostEqual(tile_md[model.MD_SHEAR], SHEAR)
         numpy.testing.assert_almost_equal(tile_md[model.MD_POS], [4.9962948, 7.0020159])
         self.assertEqual(tiles[0][0].shape, (136, 112))
+
+        # get all tiles
+        tile_shape = (0, 0, 5999, 4999)
+        tiles = rdata.getSubData(0, zoom_level, tile_shape)
+        # check the number of tiles in both dimensions
+        self.assertEqual(len(tiles), 24)
+        self.assertEqual(len(tiles[0]), 20)
+        # check the size of the bottom-right tile
+        self.assertEqual(tiles[23][19].shape, (136, 112))
 
         # Zoom level 3
         zoom_level = 3
@@ -1621,6 +1630,15 @@ class TestTiffIO(unittest.TestCase):
         numpy.testing.assert_almost_equal(tile_md[model.MD_POS], [4.9973172, 7.0017426])
         self.assertEqual(tiles[0][0].shape, (113, 238))
 
+        # get all tiles
+        tile_shape = (0, 0, 749, 624)
+        tiles = rdata.getSubData(0, zoom_level, tile_shape)
+        # check the number of tiles in both dimensions
+        self.assertEqual(len(tiles), 3)
+        self.assertEqual(len(tiles[0]), 3)
+        # check the size of the bottom-right tile
+        self.assertEqual(tiles[2][2].shape, (113, 238))
+
         # Zoom level 5 (max zoom level). The image at this zoom level is smaller than the tile,
         # so there is only one tile in this image
         zoom_level = 5
@@ -1638,6 +1656,8 @@ class TestTiffIO(unittest.TestCase):
         numpy.testing.assert_almost_equal(tile_md[model.MD_POS], [4.9999907, 7.000003])
         # the size of this tile is also the size of the image
         self.assertEqual(tiles[0][0].shape, (156, 187))
+
+
 
         os.remove(FILENAME)
 
