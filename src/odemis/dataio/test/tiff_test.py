@@ -1408,7 +1408,7 @@ class TestTiffIO(unittest.TestCase):
                 count += 1
                 continue
 
-            for n in xrange(len(sub_ifds)):
+            for n in range(len(sub_ifds)):
                 # set the offset of the current subimage
                 f.SetSubDirectory(sub_ifds[n])
                 # read the subimage

@@ -1704,7 +1704,6 @@ def read_data(filename):
     # see http://pytables.github.io/cookbook/inmemory_hdf5_files.html
     #filename = _ensure_fs_encoding(filename)
     #return _dataFromTIFF(filename)
-    acd = open_data(filename)
     '''
     counter = 1
     content = acd.content[0]
@@ -1730,9 +1729,9 @@ def read_data(filename):
 
     acd_example = open_data(tile_filename)
     return [image, acd_example.getData(0)]'''
-
-    data = [acd.getData(i) for i in range(len(acd.content))]
-    return data
+    filename = _ensure_fs_encoding(filename)
+    acd = open_data(filename)
+    return [acd.getData(i) for i in range(len(acd.content))]
 
 def read_thumbnail(filename):
     """
@@ -1745,6 +1744,7 @@ def read_thumbnail(filename):
         IOError in case the file format is not as expected.
     """
     # TODO: support filename to be a File or Stream
+    filename = _ensure_fs_encoding(filename)
     acd = open_data(filename)
     return [acd.getThumbnail(i) for i in range(len(acd.thumbnails))]
 
@@ -1787,9 +1787,9 @@ class AcquisitionDataTIFF(AcquisitionData):
                     or desc[:4].lower() == '<ome')):
             try:
                 # take care of multiple file distribution
-                file_data = data
+
+                file_data, data = data, [] # keep the original data in case it doesn't go smoothly
                 path, basename = os.path.split(filename)
-                data = []
                 desc = re.sub('xmlns="http://www.openmicroscopy.org/Schemas/OME/....-.."',
                             "", desc, count=1)
                 desc = re.sub('xmlns="http://www.openmicroscopy.org/Schemas/ROI/....-.."',
@@ -1888,6 +1888,8 @@ class AcquisitionDataTIFF(AcquisitionData):
         # pixels of the image are read
         # This information is temporary. It is not needed outside the AcquisitionDataTIFF class,
         # and it is not a part of DataArrayShadow class
+        # It can also be a a list of tiff_info, 
+        # in case the DataArray has multiple pixelData (eg, when data has more than 2D).
         das.tiff_info = {'handle': tfile, 'dir_index': dir_index}
 
         if _isThumbnail(tfile):
@@ -2050,7 +2052,7 @@ class AcquisitionDataTIFF(AcquisitionData):
 
         try:
             maxzoom = fim.maxzoom
-        except:
+        except AttributeError:
             maxzoom = None
         mergedDataArrayShadow = DataArrayShadow(tshape, fim.dtype, fim.metadata, maxzoom)
         # add the information about each of the merged DataArrayShadows
@@ -2145,6 +2147,8 @@ class AcquisitionDataTIFF(AcquisitionData):
             raise ValueError("Invalid N value %d" % (n,))
 
         # get information about how to retrieve the actual pixels from the TIFF file
+        # TODO Implement the reading of the subdata when tiff_info is a list. 
+        # It is the case when the DataArray has multiple pixelData (eg, when data has more than 2D).
         tiff_info = self.content[n].tiff_info
         tiff_file = tiff_info['handle']
         tiff_file.SetDirectory(tiff_info['dir_index'])
@@ -2179,9 +2183,9 @@ class AcquisitionDataTIFF(AcquisitionData):
 
         x1, y1, x2, y2 = rect
         tiles = []
-        for xi, x in enumerate(xrange(x1, x2 + 1, num_tcols)):
+        for xi, x in enumerate(range(x1, x2 + 1, num_tcols)):
             tiles_column = []
-            for yi, y in enumerate(xrange(y1, y2 + 1, num_trows)):
+            for yi, y in enumerate(range(y1, y2 + 1, num_trows)):
                 tile = tiff_file.read_one_tile(x, y)
                 tile_md = base_tile_md.copy()
                 tile = model.DataArray(tile, tile_md)
