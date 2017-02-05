@@ -454,6 +454,7 @@ def get_tile_md_pos(i, tile_size, tileda, origda):
     # center of the tile relative to the center of the image
     tile_rel_to_img_center_pixels = tile_center_pixels - img_center
 
+    # calculate the transformation matrix
     tmat = get_img_transformation_matrix(tile_md)
 
     # Converts the tile_rel_to_img_center_pixels array of coordinates to a 2 x 1 matrix
