@@ -1705,7 +1705,7 @@ def read_data(filename):
     #filename = _ensure_fs_encoding(filename)
     #return _dataFromTIFF(filename)
     acd = open_data(filename)
-
+    '''
     counter = 1
     content = acd.content[0]
     content.metadata[model.MD_PIXEL_SIZE] = (2e-6, 2e-6)
@@ -1729,11 +1729,10 @@ def read_data(filename):
     export(tile_filename, tile)
 
     acd_example = open_data(tile_filename)
-    
-    return [image, acd_example.getData(0)]
+    return [image, acd_example.getData(0)]'''
 
-    # data = [acd.getData(i) for i in range(len(acd.content))]
-    # return data
+    data = [acd.getData(i) for i in range(len(acd.content))]
+    return data
 
 def read_thumbnail(filename):
     """

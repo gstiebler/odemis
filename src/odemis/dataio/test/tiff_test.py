@@ -1542,7 +1542,7 @@ class TestTiffIO(unittest.TestCase):
         dtype = numpy.uint8
         md = {
             model.MD_DIMS: 'YX',
-            model.MD_POS: (2e-6, 10e-6),
+            model.MD_POS: (5.0, 7.0),
             model.MD_PIXEL_SIZE: PIXEL_SIZE,
             model.MD_ROTATION: ROTATION,
             model.MD_SHEAR: SHEAR
@@ -1557,47 +1557,87 @@ class TestTiffIO(unittest.TestCase):
         rdata = tiff.open_data(FILENAME)
         self.assertEqual(rdata.content[0].maxzoom, 6)
         self.assertEqual(rdata.content[0].shape, size[::-1])
-
-        exp_mdpos_first_tiles = [
-            (-0.0037032180642683605, 0.0020258689779396473),
-            (-0.0036578325989720362, 0.002000969187983983),
-            (-0.003635139866323875, 0.0019885192930061508),
-            (-0.0036427067932261197, 0.0020434358808212737),
-            (-0.0037114883306782111, 0.0020644480226855986),
-            (-0.0036622213423095763, 0.0020202325971297496)
-        ]        
-        exp_mdpos_last_tiles = [
-            (-0.0037032180642683605, 0.0020258689779396473),
-            (-0.0036578325989720362, 0.002000969187983983),
-            (-0.003635139866323875, 0.0019885192930061508),
-            (-0.0036427067932261197, 0.0020434358808212737),
-            (-0.0037114883306782111, 0.0020644480226855986),
-            (-0.0036622213423095763, 0.0020202325971297496)
-        ]
+        
+        # calculate the shapes of each zoomed image
         shapes = tiff._genResizedShapes(rdata.content[0])
+        # add the full image to the shape list
         shapes = [(rdata.content[0].shape)] + shapes
-        for z, shape in enumerate(shapes):
-            # get the first tile
-            tile_shape = (shape[1] - 2, shape[0] - 2, shape[1] - 1, shape[0] - 1)
-            tiles = rdata.getSubData(0, z, tile_shape)
-            self.assertEqual(len(tiles), 1)
-            self.assertEqual(len(tiles[0]), 1)
-            tile_md = tiles[0][0].metadata
-            self.assertEqual(tile_md[model.MD_PIXEL_SIZE], PIXEL_SIZE)
-            self.assertAlmostEqual(tile_md[model.MD_ROTATION], ROTATION)
-            self.assertAlmostEqual(tile_md[model.MD_SHEAR], SHEAR)
-            self.assertEqual(tile_md[model.MD_POS], exp_mdpos_first_tiles[z])
 
-            # get the corner tile
-            tile_shape = (shape[1] - 2, shape[0] - 2, shape[1] - 1, shape[0] - 1)
-            tiles = rdata.getSubData(0, z, tile_shape)
-            self.assertEqual(len(tiles), 1)
-            self.assertEqual(len(tiles[0]), 1)
-            tile_md = tiles[0][0].metadata
-            self.assertEqual(tile_md[model.MD_PIXEL_SIZE], PIXEL_SIZE)
-            self.assertAlmostEqual(tile_md[model.MD_ROTATION], ROTATION)
-            self.assertAlmostEqual(tile_md[model.MD_SHEAR], SHEAR)
-            self.assertEqual(tile_md[model.MD_POS], exp_mdpos_last_tiles[z])
+        # first zoom level (full image)
+        zoom_level = 0
+        # get the top-left tile
+        tile_shape = (0, 0, 0, 0)
+        tiles = rdata.getSubData(0, zoom_level, tile_shape)
+        # returns only one tile
+        self.assertEqual(len(tiles), 1)
+        self.assertEqual(len(tiles[0]), 1)
+        tile_md = tiles[0][0].metadata
+        exp_pixel_size = (PIXEL_SIZE[0] * 2 ** zoom_level, PIXEL_SIZE[1] * 2 ** zoom_level)
+        self.assertEqual(tile_md[model.MD_PIXEL_SIZE], exp_pixel_size)
+        self.assertAlmostEqual(tile_md[model.MD_ROTATION], ROTATION)
+        self.assertAlmostEqual(tile_md[model.MD_SHEAR], SHEAR)
+        numpy.testing.assert_almost_equal(tile_md[model.MD_POS], [4.9963856, 7.001966])
+        self.assertEqual(tiles[0][0].shape, (256, 256))
+
+        # get the bottom-right tile
+        tile_shape = (5998, 4998, 5999, 4999)
+        tiles = rdata.getSubData(0, zoom_level, tile_shape)
+        # returns only one tile
+        self.assertEqual(len(tiles), 1)
+        self.assertEqual(len(tiles[0]), 1)
+        tile_md = tiles[0][0].metadata
+        self.assertEqual(tile_md[model.MD_PIXEL_SIZE], exp_pixel_size)
+        self.assertAlmostEqual(tile_md[model.MD_ROTATION], ROTATION)
+        self.assertAlmostEqual(tile_md[model.MD_SHEAR], SHEAR)
+        numpy.testing.assert_almost_equal(tile_md[model.MD_POS], [4.9962948, 7.0020159])
+        self.assertEqual(tiles[0][0].shape, (136, 112))
+
+        # Zoom level 3
+        zoom_level = 3
+        # get the top-left tile
+        tile_shape = (0, 0, 0, 0)
+        tiles = rdata.getSubData(0, zoom_level, tile_shape)
+        # returns only one tile
+        self.assertEqual(len(tiles), 1)
+        self.assertEqual(len(tiles[0]), 1)
+        tile_md = tiles[0][0].metadata
+        exp_pixel_size = (PIXEL_SIZE[0] * 2 ** zoom_level, PIXEL_SIZE[1] * 2 ** zoom_level)
+        self.assertEqual(tile_md[model.MD_PIXEL_SIZE], exp_pixel_size)
+        self.assertAlmostEqual(tile_md[model.MD_ROTATION], ROTATION)
+        self.assertAlmostEqual(tile_md[model.MD_SHEAR], SHEAR)
+        numpy.testing.assert_almost_equal(tile_md[model.MD_POS], [4.9975593, 7.0012037])
+        self.assertEqual(tiles[0][0].shape, (256, 256))
+
+        # get the bottom-right tile
+        tile_shape = (748, 623, 749, 624)
+        tiles = rdata.getSubData(0, zoom_level, tile_shape)
+        # returns only one tile
+        self.assertEqual(len(tiles), 1)
+        self.assertEqual(len(tiles[0]), 1)
+        tile_md = tiles[0][0].metadata
+        self.assertEqual(tile_md[model.MD_PIXEL_SIZE], exp_pixel_size)
+        self.assertAlmostEqual(tile_md[model.MD_ROTATION], ROTATION)
+        self.assertAlmostEqual(tile_md[model.MD_SHEAR], SHEAR)
+        numpy.testing.assert_almost_equal(tile_md[model.MD_POS], [4.9973172, 7.0017426])
+        self.assertEqual(tiles[0][0].shape, (113, 238))
+
+        # Zoom level 5 (max zoom level). The image at this zoom level is smaller than the tile,
+        # so there is only one tile in this image
+        zoom_level = 5
+        # get the top-left tile
+        tile_shape = (0, 0, 0, 0)
+        tiles = rdata.getSubData(0, zoom_level, tile_shape)
+        # returns only one tile
+        self.assertEqual(len(tiles), 1)
+        self.assertEqual(len(tiles[0]), 1)
+        tile_md = tiles[0][0].metadata
+        exp_pixel_size = (PIXEL_SIZE[0] * 2 ** zoom_level, PIXEL_SIZE[1] * 2 ** zoom_level)
+        self.assertEqual(tile_md[model.MD_PIXEL_SIZE], exp_pixel_size)
+        self.assertAlmostEqual(tile_md[model.MD_ROTATION], ROTATION)
+        self.assertAlmostEqual(tile_md[model.MD_SHEAR], SHEAR)
+        numpy.testing.assert_almost_equal(tile_md[model.MD_POS], [4.9999907, 7.000003])
+        # the size of this tile is also the size of the image
+        self.assertEqual(tiles[0][0].shape, (156, 187))
 
         os.remove(FILENAME)
 
