@@ -1524,6 +1524,7 @@ class TestTiffIO(unittest.TestCase):
         data = model.DataArray(arr, metadata=md)
         tiff.export(FILENAME, data)
 
+        rdata.close()
         rdata = tiff.open_data(FILENAME)
         with self.assertRaises(AttributeError):
             rdata.content[0].maxzoom
@@ -1532,6 +1533,7 @@ class TestTiffIO(unittest.TestCase):
             # the image is not tiled
             rdata.getSubData(0, 0, (0, 0, 256, 294))
 
+        rdata.close()
         os.remove(FILENAME)
 
     def testAcquisitionDataTIFFLargerFile(self):
@@ -1657,8 +1659,7 @@ class TestTiffIO(unittest.TestCase):
         # the size of this tile is also the size of the image
         self.assertEqual(tiles[0][0].shape, (156, 187))
 
-
-
+        rdata.close()
         os.remove(FILENAME)
 
 

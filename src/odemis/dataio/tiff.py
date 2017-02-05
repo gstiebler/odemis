@@ -1765,7 +1765,11 @@ class AcquisitionDataTIFF(AcquisitionData):
         Constructor
         filename (string): The name of the TIFF file
         """
+        # stores the opened tiff files to release the handles properly
+        self.opened_tiff_files = []
+
         tiff_file = TIFF.open(filename, mode='r')
+        self.opened_tiff_files.append(tiff_file)
 
         data = []
         thumbnails = []
@@ -1813,6 +1817,7 @@ class AcquisitionDataTIFF(AcquisitionData):
                     # try to find and open the enlisted file
                     try:
                         f_link = TIFF.open(uuid_path, mode='r')
+                        self.opened_tiff_files.append(f_link)
                     except TypeError:
                         logging.warning("File '%s' enlisted in the OME-XML header is missing.", uuid_path)
                         continue
@@ -1836,6 +1841,13 @@ class AcquisitionDataTIFF(AcquisitionData):
         content = [i for i in data if i is not None]
 
         AcquisitionData.__init__(self, tuple(content), tuple(thumbnails))
+
+    def close(self):
+        """
+        Releases the handles of the opened tiff files
+        """
+        for tiff_file in self.opened_tiff_files:
+            tiff_file.close()
     
     @staticmethod
     def _createDataArrayShadows(tfile, dir_index, data_array_shadows, thumbnails):
