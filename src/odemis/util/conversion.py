@@ -409,12 +409,12 @@ def get_img_transformation_matrix(md):
     shear = md.get(model.MD_SHEAR, 0.0)
 
     # Y pixel coordinates goes down, but Y coordinates in world goes up
-    # That's the reason of the '-' before ps[1]
+    # The '-' before ps[1] is there to make this conversion
     ps_mat = numpy.matrix([[ps[0], 0], [0, -ps[1]]])
     cos, sin = numpy.cos(rotation), numpy.sin(rotation)
     rot_mat = numpy.matrix([[cos, -sin], [sin, cos]])
     shear_mat = numpy.matrix([[1, 0], [-shear, 1]])
-    return ps_mat * rot_mat * shear_mat
+    return rot_mat * shear_mat * ps_mat
 
 def get_tile_md_pos(i, tile_size, tileda, origda):
     """
@@ -428,17 +428,21 @@ def get_tile_md_pos(i, tile_size, tileda, origda):
     return (float, float): the center position
     """
     md = origda.metadata
+    tile_md = tileda.metadata
+    md_pos = numpy.asarray(md.get(model.MD_POS, (0.0, 0.0)))
+    if model.MD_PIXEL_SIZE not in md or model.MD_PIXEL_SIZE not in tile_md:
+        raise ValueError("MD_PIXEL_SIZE must be set")
+    orig_ps = numpy.asarray(md[model.MD_PIXEL_SIZE])
+    tile_ps = numpy.asarray(tile_md[model.MD_PIXEL_SIZE])
 
     dims = md.get(model.MD_DIMS, "CTZYX"[-origda.ndim::])
-    img_height = origda.shape[dims.index('Y')]
-    img_width = origda.shape[dims.index('X')]
-
+    img_shape = [origda.shape[dims.index('X')], origda.shape[dims.index('Y')]]
+    img_shape = numpy.array(img_shape, numpy.float)
+    # TODO check if the line below should be this way
+    # generate the shape of the zoomed image
+    img_shape *= orig_ps / tile_ps
     # center of the image in pixels
-    img_center = numpy.array([img_width / 2, img_height / 2])
-    md_pos = numpy.asarray(md[model.MD_POS])
-
-    # TODO check if it's necessary
-    #pixel_size = numpy.array(list(md[model.MD_PIXEL_SIZE]), numpy.float)
+    img_center = img_shape / 2
 
     tile_height = tileda.shape[dims.index('Y')]
     tile_width = tileda.shape[dims.index('X')]
@@ -447,13 +451,15 @@ def get_tile_md_pos(i, tile_size, tileda, origda):
         i[0] * tile_size[0] + tile_width/2,
         i[1] * tile_size[1] + tile_height/2]
     )
-    tile_center_pixels = numpy.array(tile_center_pixels)
     # center of the tile relative to the center of the image
     tile_rel_to_img_center_pixels = tile_center_pixels - img_center
 
-    tmat = get_img_transformation_matrix(md)
+    # calculate the transformation matrix
+    tmat = get_img_transformation_matrix(tile_md)
+
     # Converts the tile_rel_to_img_center_pixels array of coordinates to a 2 x 1 matrix
     # The numpy.matrix(array) function returns a 1 x 2 matrix, so .getT() is called
+    # to transpose the matrix
     tile_rel_to_img_center_pixels = numpy.matrix(tile_rel_to_img_center_pixels).getT()
     # calculate the new position of the tile, relative to the center of the image,
     # in world coordinates
