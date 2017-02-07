@@ -181,9 +181,13 @@ class Stream(object):
         # if there is already some data, update image with it
         # TODO: have this done by the child class, if needed.
         # TODO support AcquisitionData
-        if self.raw and isinstance(self.raw, list):
+        if self.raw:
             self._updateHistogram()
-            self._onNewData(None, self.raw[0])
+            if isinstance(self.raw, list):
+                raw = self.raw[0]
+            else:
+                raw = self.raw
+            self._onNewData(None, raw)
 
     # No __del__: subscription should be automatically stopped when the object
     # disappears, and the user should stop the update first anyway.
@@ -562,8 +566,13 @@ class Stream(object):
 
         # TODO support AcquisitionData
         if data is None:
-            if self.raw and isinstance(self.raw, list):
-                data = self.raw[0]
+            if self.raw:
+                if isinstance(self.raw, list):
+                    data = self.raw[0]
+                else:
+                    rect = (0, 0, 1, 1)
+                    data = self.raw.getSubData(self.n, self.raw.content[self.n].maxzoom, rect)
+                    data = data[0][0]
 
         # 2 types of drange management:
         # * dtype is int -> follow MD_BPP/shape/dtype.max, and if too wide use data.max
@@ -797,7 +806,12 @@ class Stream(object):
             return
 
         try:
-            self.image.value = self._projectXY2RGB(self.raw[0], self.tint.value)
+            # TODO it's just a patch. Do the real thing
+            if isinstance(self.raw, list):
+                raw = self.raw[0]
+            else:
+                raw = self.raw.getData(self.n)
+            self.image.value = self._projectXY2RGB(raw, self.tint.value)
         except Exception:
             logging.exception("Updating %s %s image", self.__class__.__name__, self.name.value)
 
@@ -831,7 +845,11 @@ class Stream(object):
         """
         # Compute histogram and compact version
         # TODO support AcquisitionData
-        if (not self.raw or not isinstance(self.raw, list)) and data is None:
+        if isinstance(self.raw, model.AcquisitionData):
+            # TODO just a patch... do the real thing
+            data = self.raw.getSubData(self.n, self.raw.content[self.n].maxzoom, (0, 0, 1, 1))
+            data = data[0][0]
+        elif (not self.raw or not isinstance(self.raw, list)) and data is None:
             return
 
         data = self.raw[0] if data is None else data
@@ -864,6 +882,10 @@ class Stream(object):
         if not self.raw:
             self.raw.append(data)
         else:
-            self.raw[0] = data
+            if isinstance(self.raw, list):
+                self.raw[0] = data
+            else:
+                # TODO support AcquisitionData
+                pass
 
         self._shouldUpdateImage()

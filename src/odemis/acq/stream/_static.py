@@ -87,6 +87,8 @@ class StaticStream(Stream):
         if not 0 <= exp <= self.raw.content[self.n].maxzoom:
             raise ValueError("mpp out of bounds")
 
+        self._shouldUpdateImage()
+
         exp = round(exp, 0)
         return ps[0] * 2 ** exp
 
@@ -97,6 +99,8 @@ class StaticStream(Stream):
                 full_rect[1] <= rect[1] <= full_rect[3] or
                 full_rect[1] <= rect[3] <= full_rect[3]):
             raise ValueError("rect out of bounds")
+
+        self._shouldUpdateImage()
 
         return rect
 

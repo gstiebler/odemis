@@ -2169,6 +2169,8 @@ class StaticStreamsTestCase(unittest.TestCase):
             ss.rect.value = (0, 0, 10e10, 10e10)
         ss.rect.value = (4.9999, 6.9999, 5.0001, 7.0001)
 
+        time.sleep(100) # wait a bit
+
         del ss
         
         os.remove(FILENAME)
