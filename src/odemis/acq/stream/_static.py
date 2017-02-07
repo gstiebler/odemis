@@ -88,7 +88,7 @@ class StaticStream(Stream):
             raise ValueError("mpp out of bounds")
 
         exp = round(exp, 0)
-        self.mpp.value = ps[0] * 2 ** exp
+        return ps[0] * 2 ** exp
 
     def _rect_setter(self, rect):
         full_rect = StaticStream._fullRect(self.raw.content[self.n])
@@ -98,7 +98,7 @@ class StaticStream(Stream):
                 full_rect[1] <= rect[3] <= full_rect[3]):
             raise ValueError("rect out of bounds")
 
-        self.rect.value = rect
+        return rect
 
     @staticmethod
     def _fullRect(content):
