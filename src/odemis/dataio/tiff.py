@@ -1849,7 +1849,7 @@ class AcquisitionDataTIFF(AcquisitionData):
         sub_ifds = tfile.GetField(T.TIFFTAG_SUBIFD)
         if sub_ifds:
             # add the number of subdirectories, and the main image
-            maxzoom = len(sub_ifds) + 1
+            maxzoom = len(sub_ifds)
         else:
             maxzoom = None
             
