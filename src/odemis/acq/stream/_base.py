@@ -180,7 +180,8 @@ class Stream(object):
 
         # if there is already some data, update image with it
         # TODO: have this done by the child class, if needed.
-        if self.raw:
+        # TODO support AcquisitionData
+        if self.raw and isinstance(self.raw, list):
             self._updateHistogram()
             self._onNewData(None, self.raw[0])
 
@@ -559,8 +560,9 @@ class Stream(object):
         # different 4th or 5th dimension). => just a generic version that tries
         # to handle all the cases.
 
+        # TODO support AcquisitionData
         if data is None:
-            if self.raw:
+            if self.raw and isinstance(self.raw, list):
                 data = self.raw[0]
 
         # 2 types of drange management:
@@ -828,7 +830,8 @@ class Stream(object):
         data (DataArray): the raw data to use, default to .raw[0]
         """
         # Compute histogram and compact version
-        if not self.raw and data is None:
+        # TODO support AcquisitionData
+        if (not self.raw or not isinstance(self.raw, list)) and data is None:
             return
 
         data = self.raw[0] if data is None else data

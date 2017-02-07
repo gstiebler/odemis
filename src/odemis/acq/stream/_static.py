@@ -56,19 +56,19 @@ class StaticStream(Stream):
 
             if n is not None:
                 raise ValueError("'n' parameter must be None if 'raw' is a DataArray")
-        elif issubclass(raw, model.AcquisitionData):
-            if not 0 <= n < len(raw.contents):
-                raise ValueError("'n' parameter must be between 0 and len(raw.contents)")
+        elif issubclass(type(raw), model.AcquisitionData):
+            if not 0 <= n < len(raw.content):
+                raise ValueError("'n' parameter must be between 0 and len(raw.content)")
 
             self.n = n
-            if hasattr(raw, 'maxzoom'):
-                md = raw.contents[n].metadata
+            if hasattr(raw.content[n], 'maxzoom'):
+                md = raw.content[n].metadata
                 # get the pixel size of the full image
                 ps = md[model.MD_PIXEL_SIZE]
                 # sets the mpp as the X axis of the pixel size of the full image
                 self.mpp = model.FloatVA(ps[0], setter=self._mpp_setter)
 
-                full_rect = StaticStream._fullRect(raw.contents[n])
+                full_rect = StaticStream._fullRect(raw.content[n])
                 # TODO check if it is the full rect or the smallest rect
                 self.rect = model.VigilantAttribute(full_rect, setter=self._rect_setter)
             else:
@@ -81,17 +81,17 @@ class StaticStream(Stream):
         super(StaticStream, self).__init__(name, None, None, None, raw=raw)
 
     def _mpp_setter(self, mpp):
-        md = self.raw.contents[self.n].metadata
+        md = self.raw.content[self.n].metadata
         ps = md[model.MD_PIXEL_SIZE]
         exp = math.log(mpp / ps[0], 2.0)
-        if not 0 <= exp <= self.raw.contents[self.n].maxzoom:
+        if not 0 <= exp <= self.raw.content[self.n].maxzoom:
             raise ValueError("mpp out of bounds")
 
         exp = round(exp, 0)
         self.mpp.value = ps[0] * 2 ** exp
 
     def _rect_setter(self, rect):
-        full_rect = StaticStream._fullRect(self.raw.contents[self.n])
+        full_rect = StaticStream._fullRect(self.raw.content[self.n])
         if not (full_rect[0] <= rect[0] <= full_rect[2] or
                 full_rect[0] <= rect[2] <= full_rect[2] or
                 full_rect[1] <= rect[1] <= full_rect[3] or
@@ -101,13 +101,13 @@ class StaticStream(Stream):
         self.rect.value = rect
 
     @staticmethod
-    def _fullRect(contents):
-        md = contents.metadata
+    def _fullRect(content):
+        md = content.metadata
         # get the pixel size of the full image
         ps = md[model.MD_PIXEL_SIZE]
 
-        dims = md.get(model.MD_DIMS, "CTZYX"[-contents.ndim::])
-        img_shape = (contents.shape[dims.index('X')], contents.shape[dims.index('Y')])
+        dims = md.get(model.MD_DIMS, "CTZYX"[-content.ndim::])
+        img_shape = (content.shape[dims.index('X')], content.shape[dims.index('Y')])
         # half shape on world coordinates
         half_shape_wc = (
             img_shape[0] * ps[0] / 2,
@@ -164,7 +164,7 @@ class Static2DStream(StaticStream):
     Stream containing one static image.
     For testing and static images.
     """
-    def __init__(self, name, image):
+    def __init__(self, name, image, n=None):
         """
         Note: parameters are different from the base class.
         image (DataArray of shape (111)YX): static raw data.

@@ -36,6 +36,7 @@ import time
 import unittest
 from unittest.case import skip
 import weakref
+from odemis.dataio import tiff
 
 
 logging.basicConfig(format="%(asctime)s  %(levelname)-7s %(module)-15s: %(message)s")
@@ -2139,6 +2140,28 @@ class StaticStreamsTestCase(unittest.TestCase):
         # Check it's a RGB DataArray
         self.assertEqual(im2d.shape, spec.shape[-2:] + (3,))
         self.assertTrue(numpy.any(im2d != prev_im2d))
+
+    def test_tiled_stream(self):
+        FILENAME = u"test" + tiff.EXTENSIONS[0]
+        size = (2000, 1000)
+        dtype = numpy.uint8
+        md = {
+            model.MD_DIMS: 'YX',
+            model.MD_POS: (5.0, 7.0),
+            model.MD_PIXEL_SIZE: (1e-6, 1e-6),
+        }
+        arr = numpy.array(range(size[0] * size[1])).reshape(size[::-1]).astype(dtype)
+        data = model.DataArray(arr, metadata=md)
+
+        # export
+        tiff.export(FILENAME, data, pyramid=True)
+
+        acd = tiff.open_data(FILENAME)
+        ss = stream.StaticStream("test", acd, 0)
+
+        del ss
+        
+        os.remove(FILENAME)
 
 
 if __name__ == "__main__":
