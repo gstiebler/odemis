@@ -127,17 +127,23 @@ class RGBStream(StaticStream):
     """
     A static stream which gets as input the actual RGB image
     """
-    def __init__(self, name, image):
+    def __init__(self, name, raw, n=None):
         """
         Note: parameters are different from the base class.
-        image (DataArray of shape YX3): image to display.
-          The metadata should contain at least MD_POS and MD_PIXEL_SIZE.
+        raw (DataArray or AcquisitionData): The data to display.
+            If it's an AcquisitionData, n must be None
+        n (None or 0 <= int): The index of the data in the AcquisitionData
         """
         # Check it's 2D
+        # TODO check if the checks below should still be done
+        '''
         if not (len(image.shape) == 3 and image.shape[2] in [3, 4]):
             raise ValueError("Data must be RGB(A)")
+        '''
+        if isinstance(raw, model.DataArray):
+            raw = [raw]
 
-        super(RGBStream, self).__init__(name, [image])
+        super(RGBStream, self).__init__(name, raw, n)
 
     # Copy from RGBCameraStream
     def _updateImage(self):
@@ -164,20 +170,27 @@ class Static2DStream(StaticStream):
     Stream containing one static image.
     For testing and static images.
     """
-    def __init__(self, name, image, n=None):
+    def __init__(self, name, raw, n=None):
         """
         Note: parameters are different from the base class.
-        image (DataArray of shape (111)YX): static raw data.
-          The metadata should contain at least MD_POS and MD_PIXEL_SIZE.
+        raw (DataArray or AcquisitionData): The data to display.
+            If it's an AcquisitionData, n must be None
+        n (None or 0 <= int): The index of the data in the AcquisitionData
         """
+
+        # TODO check if the checks below should still be done
+        '''
         # Check it's a 2D data
         if len(image.shape) < 2:
             raise ValueError("Data must be 2D")
         # make it 2D by removing first dimensions (which must 1)
         if len(image.shape) > 2:
             image = img.ensure2DImage(image)
-
-        super(Static2DStream, self).__init__(name, [image])
+        '''
+        if isinstance(raw, model.DataArray):
+            raw = [raw]
+        
+        super(Static2DStream, self).__init__(name, raw, n)
 
 
 class StaticSEMStream(Static2DStream):
