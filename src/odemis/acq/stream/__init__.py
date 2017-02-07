@@ -228,7 +228,13 @@ class StreamTree(object):
                 images.extend(s.getImages())
             elif isinstance(s, Stream):
                 if hasattr(s, "image"):
-                    im = s.image.value
+                    # if .raw is a list of DataArray, .image is a complete image
+                    if isinstance(s.raw, list):
+                        im = s.image.value
+                    else: 
+                        # .raw is an instance of DataArrayShadow, so .image is
+                        # a tuple of tuple of tiles
+                        im = s.getMergedImage()
                     if im is not None:
                         images.append(im)
 
