@@ -61,8 +61,28 @@ class StaticStream(Stream):
                 raise ValueError("'n' parameter must be between 0 and len(raw.contents)")
 
             if hasattr(raw, 'maxzoom'):
-                self.mpp = model.FloatVA(0.0, setter=self._mpp_setter)
-                self.rect = model.VigilantAttribute(None, setter=self._rect_setter)
+                # metadata of the full image
+                md_fi = raw.contents[0].metadata
+                # get the pixel size of the full image
+                ps_full_image = md_fi[model.MD_PIXEL_SIZE]
+                # sets the mpp as the X axis of the pixel size of the full image
+                self.mpp = model.FloatVA(ps_full_image[0], setter=self._mpp_setter)
+
+                dims = md_fi.get(model.MD_DIMS, "CTZYX"[-raw.ndim::])
+                img_shape = (raw.shape[dims.index('X')], raw.shape[dims.index('Y')])
+                # half shape on world coordinates
+                half_shape_wc = (
+                    img_shape[0] * ps_full_image[0] / 2,
+                    img_shape[1] * ps_full_image[1] / 2,
+                )
+                md_pos = md_fi[model.MD_POS]
+                rect = (
+                    md_pos[0] - half_shape_wc[0],
+                    md_pos[1] - half_shape_wc[1],
+                    md_pos[0] + half_shape_wc[0],
+                    md_pos[1] + half_shape_wc[1],
+                )
+                self.rect = model.VigilantAttribute(rect, setter=self._rect_setter)
             else:
                 # If raw does not have maxzoom,
                 # StaticStream should behave as when raw is a DataArray
