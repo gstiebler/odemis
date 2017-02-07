@@ -43,14 +43,40 @@ class StaticStream(Stream):
     Stream containing one static image.
     For testing and static images.
     """
-    def __init__(self, name, raw):
+    def __init__(self, name, raw, n=None):
         """
         Note: parameters are different from the base class.
-        image (DataArray): static raw data.
-        raw (None or list of DataArrays): raw data to be used at initialisation
-          by default, it will contain no data.(None or list of DataArrays)
+        raw (list of DataArray or AcquisitionData): The data to display.
+            If it's an AcquisitionData, n must be None
+        n (None or 0 <= int): The index of the data in the AcquisitionData
         """
+        if isinstance(raw, list):
+            if len(raw) > 0 and not isinstance(raw[0], model.DataArray):
+                raise ValueError("'raw' must be a list of DataArray")
+
+            if n is not None:
+                raise ValueError("'n' parameter must be None if 'raw' is a DataArray")
+        elif issubclass(raw, model.AcquisitionData):
+            if not 0 <= n < len(raw.contents):
+                raise ValueError("'n' parameter must be between 0 and len(raw.contents)")
+
+            if hasattr(raw, 'maxzoom'):
+                self.mpp = model.FloatVA(0.0, setter=self._mpp_setter)
+                self.rect = model.VigilantAttribute(None, setter=self._rect_setter)
+            else:
+                # If raw does not have maxzoom,
+                # StaticStream should behave as when raw is a DataArray
+                raw = raw.getData(n)
+        else:
+            raise ValueError("'raw' must be an instance of DataArray or AcquisitionData")
+
         super(StaticStream, self).__init__(name, None, None, None, raw=raw)
+
+    def _mpp_setter(self, mpp):
+        pass
+
+    def _rect_setter(self, rect):
+        pass
 
 
 class RGBStream(StaticStream):
