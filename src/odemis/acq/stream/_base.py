@@ -806,12 +806,33 @@ class Stream(object):
             return
 
         try:
-            # TODO it's just a patch. Do the real thing
             if isinstance(self.raw, list):
                 raw = self.raw[0]
+                self.image.value = self._projectXY2RGB(raw, self.tint.value)
             else:
-                raw = self.raw.getData(self.n)
-            self.image.value = self._projectXY2RGB(raw, self.tint.value)
+                content = self.raw.content[self.n]
+                md = content.metadata
+                ps = md[model.MD_PIXEL_SIZE]
+                z = int(math.log(self.mpp.value / ps[0], 2))
+                # TODO calculate rect correctly
+                pos = md[model.MD_POS]
+                rect = (
+                    self.rect.value[0] - pos[0],
+                    self.rect.value[1] - pos[1],
+                    self.rect.value[2] - pos[0],
+                    self.rect.value[3] - pos[1]
+                )
+                dims = md.get(model.MD_DIMS, "CTZYX"[-content.ndim::])
+                img_shape = (content.shape[dims.index('X')], content.shape[dims.index('Y')])
+
+                rect = (
+                    int(rect[0] / ps[0] + img_shape[0] / 2),
+                    int(rect[1] / ps[1] + img_shape[1] / 2),
+                    int(rect[2] / ps[0] + img_shape[0] / 2),
+                    int(rect[3] / ps[1] + img_shape[1] / 2),
+                )
+
+                self.image.value = self.raw.getSubData(self.n, z, rect)
         except Exception:
             logging.exception("Updating %s %s image", self.__class__.__name__, self.name.value)
 
