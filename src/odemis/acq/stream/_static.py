@@ -60,43 +60,67 @@ class StaticStream(Stream):
             if not 0 <= n < len(raw.contents):
                 raise ValueError("'n' parameter must be between 0 and len(raw.contents)")
 
+            self.n = n
             if hasattr(raw, 'maxzoom'):
-                # metadata of the full image
-                md_fi = raw.contents[0].metadata
+                md = raw.contents[n].metadata
                 # get the pixel size of the full image
-                ps_full_image = md_fi[model.MD_PIXEL_SIZE]
+                ps = md[model.MD_PIXEL_SIZE]
                 # sets the mpp as the X axis of the pixel size of the full image
-                self.mpp = model.FloatVA(ps_full_image[0], setter=self._mpp_setter)
+                self.mpp = model.FloatVA(ps[0], setter=self._mpp_setter)
 
-                dims = md_fi.get(model.MD_DIMS, "CTZYX"[-raw.ndim::])
-                img_shape = (raw.shape[dims.index('X')], raw.shape[dims.index('Y')])
-                # half shape on world coordinates
-                half_shape_wc = (
-                    img_shape[0] * ps_full_image[0] / 2,
-                    img_shape[1] * ps_full_image[1] / 2,
-                )
-                md_pos = md_fi[model.MD_POS]
-                rect = (
-                    md_pos[0] - half_shape_wc[0],
-                    md_pos[1] - half_shape_wc[1],
-                    md_pos[0] + half_shape_wc[0],
-                    md_pos[1] + half_shape_wc[1],
-                )
-                self.rect = model.VigilantAttribute(rect, setter=self._rect_setter)
+                full_rect = StaticStream._fullRect(raw.contents[n])
+                # TODO check if it is the full rect or the smallest rect
+                self.rect = model.VigilantAttribute(full_rect, setter=self._rect_setter)
             else:
                 # If raw does not have maxzoom,
                 # StaticStream should behave as when raw is a DataArray
-                raw = raw.getData(n)
+                raw = [raw.getData(n)]
         else:
             raise ValueError("'raw' must be an instance of DataArray or AcquisitionData")
 
         super(StaticStream, self).__init__(name, None, None, None, raw=raw)
 
     def _mpp_setter(self, mpp):
-        pass
+        md = self.raw.contents[self.n].metadata
+        ps = md[model.MD_PIXEL_SIZE]
+        exp = math.log(mpp / ps[0], 2.0)
+        if not 0 <= exp <= self.raw.contents[self.n].maxzoom:
+            raise ValueError("mpp out of bounds")
+
+        exp = round(exp, 0)
+        self.mpp.value = ps[0] * 2 ** exp
 
     def _rect_setter(self, rect):
-        pass
+        full_rect = StaticStream._fullRect(self.raw.contents[self.n])
+        if not (full_rect[0] <= rect[0] <= full_rect[2] or
+                full_rect[0] <= rect[2] <= full_rect[2] or
+                full_rect[1] <= rect[1] <= full_rect[3] or
+                full_rect[1] <= rect[3] <= full_rect[3]):
+            raise ValueError("rect out of bounds")
+
+        self.rect.value = rect
+
+    @staticmethod
+    def _fullRect(contents):
+        md = contents.metadata
+        # get the pixel size of the full image
+        ps = md[model.MD_PIXEL_SIZE]
+
+        dims = md.get(model.MD_DIMS, "CTZYX"[-contents.ndim::])
+        img_shape = (contents.shape[dims.index('X')], contents.shape[dims.index('Y')])
+        # half shape on world coordinates
+        half_shape_wc = (
+            img_shape[0] * ps[0] / 2,
+            img_shape[1] * ps[1] / 2,
+        )
+        md_pos = md[model.MD_POS]
+        rect = (
+            md_pos[0] - half_shape_wc[0],
+            md_pos[1] - half_shape_wc[1],
+            md_pos[0] + half_shape_wc[0],
+            md_pos[1] + half_shape_wc[1],
+        )
+        return rect
 
 
 class RGBStream(StaticStream):
