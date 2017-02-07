@@ -229,7 +229,10 @@ class StreamTree(object):
                 images.extend(s.getImages())
             elif isinstance(s, Stream):
                 if hasattr(s, "image"):
-                    im = s.image.value
+                    if isinstance(s.raw, list):
+                        im = s.image.value
+                    else:
+                        im = s.getMergedImage()
                     if im is not None:
                         images.append(im)
 

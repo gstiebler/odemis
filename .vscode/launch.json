@@ -1,0 +1,158 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Odemis GUI",
+            "type": "python",
+            "request": "launch",
+            "stopOnEntry": false,
+            "pythonPath": "${config.python.pythonPath}",
+            "program": "${workspaceRoot}/src/odemis/gui/main.py",
+            "cwd": "${workspaceRoot}",
+            "debugOptions": [
+                "WaitOnAbnormalExit",
+                "WaitOnNormalExit",
+                "RedirectOutput"
+            ],
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}/src:${workspaceRoot}/../../pylibtiff"
+            },
+            "args": [
+                "--log-level",
+                "2",
+                "--standalone"
+            ]
+        },
+        {
+            "name": "Python util.img_test",
+            "type": "python",
+            "request": "launch",
+            "stopOnEntry": false,
+            "pythonPath": "${config.python.pythonPath}",
+            "program": "${workspaceRoot}/src/odemis/util/test/img_test.py",
+            "cwd": "${workspaceRoot}",
+            "debugOptions": [
+                "WaitOnAbnormalExit",
+                "WaitOnNormalExit",
+                "RedirectOutput"
+            ],
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}/src:${workspaceRoot}/../../pylibtiff"
+            },
+            "args": [
+                "TestMergeTiles"
+            ]
+        },
+        {
+            "name": "Python gui.img_test",
+            "type": "python",
+            "request": "launch",
+            "stopOnEntry": false,
+            "pythonPath": "${config.python.pythonPath}",
+            "program": "${workspaceRoot}/src/odemis/gui/util/test/img_test.py",
+            "cwd": "${workspaceRoot}",
+            "debugOptions": [
+                "WaitOnAbnormalExit",
+                "WaitOnNormalExit",
+                "RedirectOutput"
+            ],
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}/src:${workspaceRoot}/../../pylibtiff"
+            },
+            "args": [
+                //"TestSpatialExport"
+                "TestSpatialExportAcquisitionData"
+            ]
+        },
+        {
+            "name": "Python tiff_test",
+            "type": "python",
+            "request": "launch",
+            "stopOnEntry": false,
+            "pythonPath": "${config.python.pythonPath}",
+            "program": "${workspaceRoot}/src/odemis/dataio/test/tiff_test.py",
+            "cwd": "${workspaceRoot}",
+            "debugOptions": [
+                "WaitOnAbnormalExit",
+                "WaitOnNormalExit",
+                "RedirectOutput"
+            ],
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}/src:${workspaceRoot}/../../pylibtiff"
+            },
+            "args": [                
+                "TestTiffIO.testExportSmallPyramid",
+                "TestTiffIO.testExportThinPyramid",
+                "TestTiffIO.testExportMultiArrayPyramid",
+                "TestTiffIO.testExportNoWL",
+                "TestTiffIO.testAcquisitionDataTIFF",
+                "TestTiffIO.testExportRead",
+                "TestTiffIO.testAcquisitionDataTIFFLargerFile"
+            ]
+        },
+        {
+            "name": "Python stiff_test",
+            "type": "python",
+            "request": "launch",
+            "stopOnEntry": false,
+            "pythonPath": "${config.python.pythonPath}",
+            "program": "${workspaceRoot}/src/odemis/dataio/test/stiff_test.py",
+            "cwd": "${workspaceRoot}",
+            "debugOptions": [
+                "WaitOnAbnormalExit",
+                "WaitOnNormalExit",
+                "RedirectOutput"
+            ],
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}/src:${workspaceRoot}/../../pylibtiff"
+            },
+            "args": [
+                "TestTiffIO"
+            ]
+        },
+        {
+            "name": "Python stream_test",
+            "type": "python",
+            "request": "launch",
+            "stopOnEntry": false,
+            "pythonPath": "${config.python.pythonPath}",
+            "program": "${workspaceRoot}/src/odemis/acq/test/stream_test.py",
+            "cwd": "${workspaceRoot}",
+            "debugOptions": [
+                "WaitOnAbnormalExit",
+                "WaitOnNormalExit",
+                "RedirectOutput"
+            ],
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}/src:${workspaceRoot}/../../pylibtiff"
+            },
+            "args": [
+                //"StaticStreamsTestCase",
+                //"StreamTestCase"
+                "StaticStreamsTestCase.test_rgb_tiled_stream"
+                //"StreamTestCase.test_histogram"
+            ]
+        },
+        {
+            "name": "Python conversion",
+            "type": "python",
+            "request": "launch",
+            "stopOnEntry": false,
+            "pythonPath": "${config.python.pythonPath}",
+            "program": "${workspaceRoot}/src/odemis/util/test/conversion_test.py",
+            "cwd": "${workspaceRoot}",
+            "debugOptions": [
+                "WaitOnAbnormalExit",
+                "WaitOnNormalExit",
+                "RedirectOutput"
+            ],
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}/src:${workspaceRoot}/../../pylibtiff"
+            },
+            "args": [
+                "TestConversion.test_get_img_transformation_matrix",
+                "TestConversion.test_get_tile_md_pos"
+            ]
+        }
+    ]
+}

@@ -197,7 +197,10 @@ class SnapshotController(object):
             # for each stream seen in the viewport
             raw_images = []
             for s in streams:
-                data = s.raw # list of raw images for this stream (with metadata)
+                if isinstance(s.raw, list):
+                    data = s.raw # list of raw images for this stream (with metadata)
+                else:
+                    data = s.getMergedImage()
                 for d in data:
                     # add the stream name to the image
                     if not hasattr(d, "metadata"):
