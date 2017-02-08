@@ -905,11 +905,12 @@ class Stream(object):
         data (DataArray): the raw data to use, default to .raw[0]
         """
         # Compute histogram and compact version
-        # TODO support AcquisitionData
         if isinstance(self.raw, model.AcquisitionData):
-            # TODO just a patch... do the real thing
-            data = self.raw.getSubData(self.n, self.raw.content[self.n].maxzoom, (0, 0, 1, 1))
-            data = data[0][0]
+            content = self.raw.content[self.n]
+            full_rect = Stream._fullRect(content)
+            rect = self.rectWorldToPixel(full_rect)
+            tiles = self.raw.getSubData(self.n, content.maxzoom, rect)
+            data = img.mergeTiles(tiles)
         elif (not self.raw or not isinstance(self.raw, list)) and data is None:
             return
 
