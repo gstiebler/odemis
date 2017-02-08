@@ -2143,11 +2143,12 @@ class StaticStreamsTestCase(unittest.TestCase):
 
     def test_tiled_stream(self):
         FILENAME = u"test" + tiff.EXTENSIONS[0]
+        POS = (5.0, 7.0)
         size = (2000, 1000)
         dtype = numpy.uint8
         md = {
             model.MD_DIMS: 'YX',
-            model.MD_POS: (5.0, 7.0),
+            model.MD_POS: POS,
             model.MD_PIXEL_SIZE: (1e-6, 1e-6),
         }
         arr = numpy.array(range(size[0] * size[1])).reshape(size[::-1]).astype(dtype)
@@ -2162,20 +2163,30 @@ class StaticStreamsTestCase(unittest.TestCase):
         # out of bounds
         with self.assertRaises(ValueError):
             ss.mpp.value = 1.0
-        ss.mpp.value = 2e-6
+        ss.mpp.value = 2e-6 # second zoom level
 
         # out of bounds
         with self.assertRaises(ValueError):
             ss.rect.value = (0, 0, 10e10, 10e10)
-        ss.rect.value = (4.9999, 6.9999, 5.0001, 7.0001)
+        # full image
+        ss.rect.value = (POS[0] - 0.001, POS[1] - 0.0005, POS[0] + 0.001, POS[1] + 0.0005)
 
         # Wait a little bit to make sure the image has been generated
         time.sleep(0.5)
-        self.assertEqual(len(ss.image.value), 1)
+        self.assertEqual(len(ss.image.value), 4)
+        self.assertEqual(len(ss.image.value[0]), 2)
+        # the corner tile should be smaller
+        self.assertEqual(ss.image.value[3][1].shape, (244, 232, 3))
+
+        # half image
+        ss.rect.value = (POS[0] - 0.001, POS[1] - 0.0005, POS[0], POS[1])
+
+        # Wait a little bit to make sure the image has been generated
+        time.sleep(0.5)
+        self.assertEqual(len(ss.image.value), 2)
         self.assertEqual(len(ss.image.value[0]), 1)
 
         del ss
-        
         os.remove(FILENAME)
 
 
