@@ -620,8 +620,13 @@ def mergeTiles(tiles):
     for tiles_column in tiles:
         width += tiles_column[0].shape[1]
 
+    result_shape = (height, width)
+    # TODO must work when the channel dimension is not the last
+    if len(tiles[0][0].shape) == 3:
+        result_shape = result_shape + (tiles[0][0].shape[2],)
+
     # TODO support multiple channels
-    result = numpy.zeros((height, width), dtype=tiles[0][0].dtype)
+    result = numpy.zeros(result_shape, dtype=tiles[0][0].dtype)
     result = model.DataArray(result, tiles[0][0].metadata.copy())
 
     width_sum = 0
