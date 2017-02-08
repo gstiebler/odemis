@@ -135,13 +135,32 @@ class RGBStream(StaticStream):
 
         # TODO: use original image as raw, to allow changing the B/C/tint
         try:
-            data = self.raw[0]
-            rgbim = img.ensureYXC(data)
-            rgbim.flags.writeable = False
-            # merge and ensures all the needed metadata is there
-            rgbim.metadata = self._find_metadata(rgbim.metadata)
-            rgbim.metadata[model.MD_DIMS] = "YXC" # RGB format
-            self.image.value = rgbim
+            if isinstance(self.raw, list):
+                data = self.raw[0]
+                rgbim = img.ensureYXC(data)
+                rgbim.flags.writeable = False
+                # merge and ensures all the needed metadata is there
+                rgbim.metadata = self._find_metadata(rgbim.metadata)
+                rgbim.metadata[model.MD_DIMS] = "YXC" # RGB format
+                self.image.value = rgbim
+            else:
+                rect = self._rectWorldToPixel(self.rect.value)
+                tiles = self.raw.getSubData(self.n, self._zFromMpp(), rect)
+
+                updatedTiles = []
+                for tiles_row in tiles:
+                    tiles_row_array = []
+                    for tile in tiles_row:
+                        tile = img.ensureYXC(tile)
+                        tile.flags.writeable = False
+                        # merge and ensures all the needed metadata is there
+                        tile.metadata = self._find_metadata(tile.metadata)
+                        tile.metadata[model.MD_DIMS] = "YXC" # RGB format
+                        tiles_row_array.append(tile)
+                    updatedTiles.append(tuple(tiles_row_array))
+
+                self.image.value = tuple(updatedTiles)
+
         except Exception:
             logging.exception("Updating %s image", self.__class__.__name__)
 
