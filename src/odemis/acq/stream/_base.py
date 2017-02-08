@@ -592,11 +592,7 @@ class Stream(object):
                 if isinstance(self.raw, list):
                     data = self.raw[0]
                 else:
-                    content = self.raw.content[self.n]
-                    full_rect = Stream._fullRect(content)
-                    rect = self.rectWorldToPixel(full_rect)
-                    tiles = self.raw.getSubData(self.n, content.maxzoom, rect)
-                    data = img.mergeTiles(tiles)
+                    data = self._getMergedImage(self.raw.content[self.n].maxzoom)
 
         # 2 types of drange management:
         # * dtype is int -> follow MD_BPP/shape/dtype.max, and if too wide use data.max
@@ -822,17 +818,16 @@ class Stream(object):
 
         gc.collect()
 
-    def zFromMpp(self):
+    def _zFromMpp(self):
         content = self.raw.content[self.n]
         md = content.metadata
         ps = md[model.MD_PIXEL_SIZE]
         return int(math.log(self.mpp.value / ps[0], 2))
-        
-    def rectWorldToPixel(self, rect):
+
+    def _rectWorldToPixel(self, rect):
         content = self.raw.content[self.n]
         md = content.metadata
         ps = md[model.MD_PIXEL_SIZE]
-        # TODO calculate rect correctly
         pos = md[model.MD_POS]
         rect = (
             rect[0] - pos[0],
@@ -849,7 +844,14 @@ class Stream(object):
             int(rect[2] / ps[0] + img_shape[0] / 2),
             int(rect[3] / ps[1] + img_shape[1] / 2),
         )
-    
+
+    def _getMergedImage(self, z):
+        content = self.raw.content[self.n]
+        full_rect = Stream._fullRect(content)
+        rect = self._rectWorldToPixel(full_rect)
+        tiles = self.raw.getSubData(self.n, content.maxzoom, rect)
+        return img.mergeTiles(tiles)
+
     def _updateImage(self):
         """ Recomputes the image with all the raw data available
         """
@@ -862,8 +864,8 @@ class Stream(object):
                 raw = self.raw[0]
                 self.image.value = self._projectXY2RGB(raw, self.tint.value)
             else:
-                rect = self.rectWorldToPixel(self.rect.value)
-                tiles = self.raw.getSubData(self.n, self.zFromMpp(), rect)
+                rect = self._rectWorldToPixel(self.rect.value)
+                tiles = self.raw.getSubData(self.n, self._zFromMpp(), rect)
                 projectedTiles = []
                 for tiles_row in tiles:
                     tiles_row_array = []
@@ -906,11 +908,7 @@ class Stream(object):
         """
         # Compute histogram and compact version
         if isinstance(self.raw, model.AcquisitionData):
-            content = self.raw.content[self.n]
-            full_rect = Stream._fullRect(content)
-            rect = self.rectWorldToPixel(full_rect)
-            tiles = self.raw.getSubData(self.n, content.maxzoom, rect)
-            data = img.mergeTiles(tiles)
+            data = self._getMergedImage(self.raw.content[self.n].maxzoom)
         elif (not self.raw or not isinstance(self.raw, list)) and data is None:
             return
 
