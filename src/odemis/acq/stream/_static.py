@@ -56,7 +56,7 @@ class StaticStream(Stream):
 
             if n is not None:
                 raise ValueError("'n' parameter must be None if 'raw' is a DataArray")
-        elif issubclass(type(raw), model.AcquisitionData):
+        elif isinstance(raw, model.AcquisitionData):
             if not 0 <= n < len(raw.content):
                 raise ValueError("'n' parameter must be between 0 and len(raw.content)")
 
@@ -65,11 +65,11 @@ class StaticStream(Stream):
                 md = raw.content[n].metadata
                 # get the pixel size of the full image
                 ps = md[model.MD_PIXEL_SIZE]
+                default_mpp = ps[0] * raw.content[n].maxzoom ** 2
                 # sets the mpp as the X axis of the pixel size of the full image
-                self.mpp = model.FloatVA(ps[0], setter=self._mpp_setter)
+                self.mpp = model.FloatVA(default_mpp, setter=self._mpp_setter)
 
                 full_rect = StaticStream._fullRect(raw.content[n])
-                # TODO check if it is the full rect or the smallest rect
                 self.rect = model.VigilantAttribute(full_rect, setter=self._rect_setter)
             else:
                 # If raw does not have maxzoom,
