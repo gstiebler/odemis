@@ -591,3 +591,34 @@ def mergeMetadata(current, correction=None):
         if k in current:
             del current[k]
 
+def mergeTiles(tiles):
+    """"
+    Merge tiles into one DataArray
+    tiles (tuple of tuple of DataArray): Tiles to be merged
+    return (DataArray): Merge of all the tiles
+    """
+    height = 0
+    for tile in tiles[0]:
+        height += tile.shape[0]
+
+    width = 0
+    for tiles_column in tiles:
+        width += tiles_column[0].shape[1]
+
+    # TODO support multiple channels
+    result = numpy.zeros((height, width), dtype=tiles[0][0].dtype)
+
+    width_sum = 0
+    for tiles_column in tiles:
+        tile_width = tiles_column[0].shape[1]
+        height_sum = 0
+        for tile in tiles_column:
+            tile_height = tile.shape[0]
+            result[height_sum:(height_sum + tile_height), width_sum:(width_sum + tile_width)] = \
+                tile
+            height_sum += tile_height
+
+        width_sum += tile_width
+
+
+    return result

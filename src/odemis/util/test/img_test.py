@@ -28,6 +28,8 @@ from odemis.util import img
 import time
 import unittest
 from unittest.case import skip
+from odemis.dataio import tiff
+import os
 
 
 logging.getLogger().setLevel(logging.DEBUG)
@@ -729,6 +731,61 @@ class TestRescaleHQ(unittest.TestCase):
         img_in = model.DataArray(img_in)
         out = img.rescale_hq(img_in, (3, 2, 2, 512, 256))
         self.assertEqual(out.shape, (3, 2, 2, 512, 256))
+
+
+class TestMergeTiles(unittest.TestCase):
+
+    def test_one_tile(self):
+        FILENAME = u"test" + tiff.EXTENSIONS[0]
+        POS = (5.0, 7.0)
+        size = (250, 200)
+        dtype = numpy.uint8
+        md = {
+            model.MD_DIMS: 'YX',
+            model.MD_POS: POS,
+            model.MD_PIXEL_SIZE: (1e-6, 1e-6),
+        }
+        arr = numpy.array(range(size[0] * size[1])).reshape(size[::-1]).astype(dtype)
+        data = model.DataArray(arr, metadata=md)
+
+        # export
+        tiff.export(FILENAME, data, pyramid=True)
+
+        rdata = tiff.open_data(FILENAME)
+
+        tiles = rdata.getSubData(0, 0, (0, 0, 1, 1))
+        merged_img = img.mergeTiles(tiles)
+        self.assertEqual(merged_img.shape, (200, 250))
+
+        del rdata
+
+        os.remove(FILENAME)
+
+    def test_multiple_tiles(self):
+        FILENAME = u"test" + tiff.EXTENSIONS[0]
+        POS = (5.0, 7.0)
+        size = (2000, 1000)
+        dtype = numpy.uint8
+        md = {
+            model.MD_DIMS: 'YX',
+            model.MD_POS: POS,
+            model.MD_PIXEL_SIZE: (1e-6, 1e-6),
+        }
+        arr = numpy.array(range(size[0] * size[1])).reshape(size[::-1]).astype(dtype)
+        data = model.DataArray(arr, metadata=md)
+
+        # export
+        tiff.export(FILENAME, data, pyramid=True)
+
+        rdata = tiff.open_data(FILENAME)
+
+        tiles = rdata.getSubData(0, 0, (0, 0, 1999, 999))
+        merged_img = img.mergeTiles(tiles)
+        self.assertEqual(merged_img.shape, (1000, 2000))
+
+        del rdata
+
+        os.remove(FILENAME)
 
 
 # TODO: test guessDRange()
