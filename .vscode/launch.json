@@ -40,7 +40,7 @@
                 "PYTHONPATH": "${workspaceRoot}/src:${workspaceRoot}/../../pylibtiff"
             },
             "args": [
-                "TestRescaleHQ"
+                "TestMergeTiles"
             ]
         },
         {
@@ -106,8 +106,10 @@
                 "PYTHONPATH": "${workspaceRoot}/src:${workspaceRoot}/../../pylibtiff"
             },
             "args": [
-                "StaticStreamsTestCase",
-                "StreamTestCase"
+                //"StaticStreamsTestCase",
+                //"StreamTestCase"
+                "StaticStreamsTestCase.test_tiled_stream"
+                //"StreamTestCase.test_histogram"
             ]
         },
         {
