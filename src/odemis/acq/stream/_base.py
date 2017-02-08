@@ -832,7 +832,16 @@ class Stream(object):
                     int(rect[3] / ps[1] + img_shape[1] / 2),
                 )
 
-                self.image.value = self.raw.getSubData(self.n, z, rect)
+                tiles = self.raw.getSubData(self.n, z, rect)
+                projectedTiles = []
+                for tiles_row in tiles:
+                    tiles_row_array = []
+                    for tile in tiles_row:
+                        tile = self._projectXY2RGB(tile, self.tint.value)
+                        tiles_row_array.append(tile)
+                    projectedTiles.append(tuple(tiles_row_array))
+
+                self.image.value = tuple(projectedTiles)
         except Exception:
             logging.exception("Updating %s %s image", self.__class__.__name__, self.name.value)
 
