@@ -69,7 +69,7 @@ class StaticStream(Stream):
                 # sets the mpp as the X axis of the pixel size of the full image
                 self.mpp = model.FloatVA(default_mpp, setter=self._mpp_setter)
 
-                full_rect = StaticStream._fullRect(raw.content[n])
+                full_rect = Stream._fullRect(raw.content[n])
                 self.rect = model.VigilantAttribute(full_rect, setter=self._rect_setter)
             else:
                 # If raw does not have maxzoom,
@@ -103,29 +103,6 @@ class StaticStream(Stream):
         self._shouldUpdateImage()
 
         return rect
-
-    @staticmethod
-    def _fullRect(content):
-        md = content.metadata
-        # get the pixel size of the full image
-        ps = md[model.MD_PIXEL_SIZE]
-
-        dims = md.get(model.MD_DIMS, "CTZYX"[-content.ndim::])
-        img_shape = (content.shape[dims.index('X')], content.shape[dims.index('Y')])
-        # half shape on world coordinates
-        half_shape_wc = (
-            img_shape[0] * ps[0] / 2,
-            img_shape[1] * ps[1] / 2,
-        )
-        md_pos = md[model.MD_POS]
-        rect = (
-            md_pos[0] - half_shape_wc[0],
-            md_pos[1] - half_shape_wc[1],
-            md_pos[0] + half_shape_wc[0],
-            md_pos[1] + half_shape_wc[1],
-        )
-        return rect
-
 
 class RGBStream(StaticStream):
     """

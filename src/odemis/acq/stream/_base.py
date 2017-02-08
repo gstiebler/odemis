@@ -551,6 +551,28 @@ class Stream(object):
                 self._unlinkHwVAs()
         return active
 
+    @staticmethod
+    def _fullRect(content):
+        md = content.metadata
+        # get the pixel size of the full image
+        ps = md[model.MD_PIXEL_SIZE]
+
+        dims = md.get(model.MD_DIMS, "CTZYX"[-content.ndim::])
+        img_shape = (content.shape[dims.index('X')], content.shape[dims.index('Y')])
+        # half shape on world coordinates
+        half_shape_wc = (
+            img_shape[0] * ps[0] / 2,
+            img_shape[1] * ps[1] / 2,
+        )
+        md_pos = md[model.MD_POS]
+        rect = (
+            md_pos[0] - half_shape_wc[0],
+            md_pos[1] - half_shape_wc[1],
+            md_pos[0] + half_shape_wc[0],
+            md_pos[1] + half_shape_wc[1],
+        )
+        return rect
+
     def _updateDRange(self, data=None):
         """
         Update the ._drange, with whatever data is known so far.
@@ -570,9 +592,11 @@ class Stream(object):
                 if isinstance(self.raw, list):
                     data = self.raw[0]
                 else:
-                    rect = (0, 0, 1, 1)
-                    data = self.raw.getSubData(self.n, self.raw.content[self.n].maxzoom, rect)
-                    data = data[0][0]
+                    content = self.raw.content[self.n]
+                    full_rect = Stream._fullRect(content)
+                    rect = self.rectWorldToPixel(full_rect)
+                    tiles = self.raw.getSubData(self.n, content.maxzoom, rect)
+                    data = img.mergeTiles(tiles)
 
         # 2 types of drange management:
         # * dtype is int -> follow MD_BPP/shape/dtype.max, and if too wide use data.max
@@ -798,6 +822,34 @@ class Stream(object):
 
         gc.collect()
 
+    def zFromMpp(self):
+        content = self.raw.content[self.n]
+        md = content.metadata
+        ps = md[model.MD_PIXEL_SIZE]
+        return int(math.log(self.mpp.value / ps[0], 2))
+        
+    def rectWorldToPixel(self, rect):
+        content = self.raw.content[self.n]
+        md = content.metadata
+        ps = md[model.MD_PIXEL_SIZE]
+        # TODO calculate rect correctly
+        pos = md[model.MD_POS]
+        rect = (
+            rect[0] - pos[0],
+            rect[1] - pos[1],
+            rect[2] - pos[0],
+            rect[3] - pos[1]
+        )
+        dims = md.get(model.MD_DIMS, "CTZYX"[-content.ndim::])
+        img_shape = (content.shape[dims.index('X')], content.shape[dims.index('Y')])
+
+        return (
+            int(rect[0] / ps[0] + img_shape[0] / 2),
+            int(rect[1] / ps[1] + img_shape[1] / 2),
+            int(rect[2] / ps[0] + img_shape[0] / 2),
+            int(rect[3] / ps[1] + img_shape[1] / 2),
+        )
+    
     def _updateImage(self):
         """ Recomputes the image with all the raw data available
         """
@@ -810,29 +862,8 @@ class Stream(object):
                 raw = self.raw[0]
                 self.image.value = self._projectXY2RGB(raw, self.tint.value)
             else:
-                content = self.raw.content[self.n]
-                md = content.metadata
-                ps = md[model.MD_PIXEL_SIZE]
-                z = int(math.log(self.mpp.value / ps[0], 2))
-                # TODO calculate rect correctly
-                pos = md[model.MD_POS]
-                rect = (
-                    self.rect.value[0] - pos[0],
-                    self.rect.value[1] - pos[1],
-                    self.rect.value[2] - pos[0],
-                    self.rect.value[3] - pos[1]
-                )
-                dims = md.get(model.MD_DIMS, "CTZYX"[-content.ndim::])
-                img_shape = (content.shape[dims.index('X')], content.shape[dims.index('Y')])
-
-                rect = (
-                    int(rect[0] / ps[0] + img_shape[0] / 2),
-                    int(rect[1] / ps[1] + img_shape[1] / 2),
-                    int(rect[2] / ps[0] + img_shape[0] / 2),
-                    int(rect[3] / ps[1] + img_shape[1] / 2),
-                )
-
-                tiles = self.raw.getSubData(self.n, z, rect)
+                rect = self.rectWorldToPixel(self.rect.value)
+                tiles = self.raw.getSubData(self.n, self.zFromMpp(), rect)
                 projectedTiles = []
                 for tiles_row in tiles:
                     tiles_row_array = []
