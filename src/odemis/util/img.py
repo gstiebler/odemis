@@ -29,6 +29,7 @@ import math
 import numpy
 from odemis import model
 import scipy.ndimage
+from odemis.util.conversion import get_img_transformation_matrix
 
 
 # See if the optimised (cython-based) functions are available
@@ -597,6 +598,20 @@ def mergeTiles(tiles):
     tiles (tuple of tuple of DataArray): Tiles to be merged
     return (DataArray): Merge of all the tiles
     """
+
+    def get_corner_pos(tile, cm):
+        md = tile.metadata
+        dims = md.get(model.MD_DIMS, "CTZYX"[-tile.ndim::])
+        tile_shape = [tile.shape[dims.index('X')], tile.shape[dims.index('Y')]]
+        corner_dist_to_center_pixels = numpy.array([cm[0] * tile_shape[0]/2, cm[1] * tile_shape[1]/2])
+        corner_dist_to_center_pixels = numpy.matrix(corner_dist_to_center_pixels).getT()
+        tmat = get_img_transformation_matrix(tiles[0][0].metadata)
+        rel_centerw = tmat * corner_dist_to_center_pixels
+        rel_centerw = numpy.ravel(rel_centerw)
+        centerw = tile.metadata[model.MD_POS]
+        return [rel_centerw[0] + centerw[0], rel_centerw[1] + centerw[1]]
+
+
     height = 0
     for tile in tiles[0]:
         height += tile.shape[0]
@@ -621,5 +636,15 @@ def mergeTiles(tiles):
 
         width_sum += tile_width
 
-        
+    num_rows = len(tiles)
+    num_cols = len(tiles[0])
+
+    first_tile_pos = get_corner_pos(tiles[0][0], [-1, -1])
+
+    last_tile = tiles[num_rows - 1][num_cols - 1]
+    last_tile_pos = get_corner_pos(last_tile, [1, 1])
+
+    pos = tuple((ftp + ltp) / 2 for ftp, ltp in zip(first_tile_pos, last_tile_pos))
+    result.metadata[model.MD_POS] = pos
+
     return result

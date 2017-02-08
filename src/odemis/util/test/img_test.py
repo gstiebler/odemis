@@ -756,6 +756,7 @@ class TestMergeTiles(unittest.TestCase):
         tiles = rdata.getSubData(0, 0, (0, 0, 1, 1))
         merged_img = img.mergeTiles(tiles)
         self.assertEqual(merged_img.shape, (200, 250))
+        self.assertEqual(merged_img.metadata[model.MD_POS], POS)
 
         del rdata
 
@@ -782,6 +783,12 @@ class TestMergeTiles(unittest.TestCase):
         tiles = rdata.getSubData(0, 0, (0, 0, 1999, 999))
         merged_img = img.mergeTiles(tiles)
         self.assertEqual(merged_img.shape, (1000, 2000))
+        self.assertEqual(merged_img.metadata[model.MD_POS], POS)
+
+        tiles = rdata.getSubData(0, 0, (0, 0, 999, 499))
+        merged_img = img.mergeTiles(tiles)
+        self.assertEqual(merged_img.shape, (512, 1024))
+        numpy.testing.assert_almost_equal(merged_img.metadata[model.MD_POS], (4.999512, 7.000244))
 
         del rdata
 
