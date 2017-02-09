@@ -436,7 +436,7 @@ class TestSpatialExport(unittest.TestCase):
         self.spec_stream = stream.StaticSpectrumStream("test spec", spec_data)
 
         # Wait for all the streams to get an RGB image
-        time.sleep(3)
+        time.sleep(0.5)
 
     def test_spec_pr(self):
         view_hfw = (0.00025158414075691866, 0.00017445320835792754)
@@ -571,8 +571,8 @@ class TestSpatialExportAcquisitionData(unittest.TestCase):
         tiff.export(FILENAME, image, pyramid=True)
         # read back
         acd = tiff.open_data(FILENAME)
-        #sem_stream = stream.StaticSEMStream(metadata['Description'], acd, 0)
-        sem_stream = stream.StaticSEMStream(metadata['Description'], image)
+        sem_stream = stream.StaticSEMStream(metadata['Description'], acd, 0)
+        #sem_stream = stream.StaticSEMStream(metadata['Description'], image)
 
         self.streams = [fluo_stream, sem_stream]
         self.min_res = (623, 432)
