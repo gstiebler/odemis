@@ -845,11 +845,21 @@ class Stream(object):
             int(rect[3] / ps[1] + img_shape[1] / 2),
         )
 
+    def getMergedImage(self):
+        """
+        Returns the merged image based on .mpp and .rect
+        """
+        z = self._zFromMpp()
+        return self._getMergedImage(z)
+
     def _getMergedImage(self, z):
+        """
+        Returns the merged image based on z and .rect
+        """
         content = self.raw.content[self.n]
         full_rect = Stream._fullRect(content)
         rect = self._rectWorldToPixel(full_rect)
-        tiles = self.raw.getSubData(self.n, content.maxzoom, rect)
+        tiles = self.raw.getSubData(self.n, z, rect)
         return img.mergeTiles(tiles)
 
     def _updateImage(self):

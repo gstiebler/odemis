@@ -1611,9 +1611,16 @@ def get_ordered_images(streams, raw=False):
         # FluoStreams are merged using the "Screen" method that handles colour
         # merging without decreasing the intensity.
         if not raw:
-            data = s.image.value
+            if isinstance(s.raw, list):
+                data = s.image.value
+            else:
+                data = s.getMergedImage()
         else:
-            data_raw = s.raw[0]
+            if isinstance(s.raw, list):
+                data_raw = s.raw[0]
+            else:
+                # TODO check the line below
+                data = s.getMergedImage()
 
             # Pretend to be RGB for the drawing by cairo
             if numpy.can_cast(im_min_type, min_type(data_raw)):

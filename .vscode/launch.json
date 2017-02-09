@@ -24,7 +24,7 @@
             ]
         },
         {
-            "name": "Python img_test",
+            "name": "Python util.img_test",
             "type": "python",
             "request": "launch",
             "stopOnEntry": false,
@@ -41,6 +41,27 @@
             },
             "args": [
                 "TestMergeTiles"
+            ]
+        },
+        {
+            "name": "Python gui.img_test",
+            "type": "python",
+            "request": "launch",
+            "stopOnEntry": false,
+            "pythonPath": "${config.python.pythonPath}",
+            "program": "${workspaceRoot}/src/odemis/gui/util/test/img_test.py",
+            "cwd": "${workspaceRoot}",
+            "debugOptions": [
+                "WaitOnAbnormalExit",
+                "WaitOnNormalExit",
+                "RedirectOutput"
+            ],
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}/src:${workspaceRoot}/../../pylibtiff"
+            },
+            "args": [
+                //"TestSpatialExport"
+                "TestSpatialExportAcquisitionData"
             ]
         },
         {
@@ -108,7 +129,7 @@
             "args": [
                 //"StaticStreamsTestCase",
                 //"StreamTestCase"
-                "StaticStreamsTestCase.test_tiled_stream"
+                "StaticStreamsTestCase.test_rgb_tiled_stream"
                 //"StreamTestCase.test_histogram"
             ]
         },

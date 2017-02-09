@@ -33,6 +33,7 @@ from odemis import model, dataio
 from odemis.acq import stream
 from odemis.gui.util import img
 from odemis.gui.util.img import wxImage2NDImage, format_rgba_darray
+from odemis.dataio import tiff
 
 
 logging.getLogger().setLevel(logging.DEBUG)
@@ -435,7 +436,7 @@ class TestSpatialExport(unittest.TestCase):
         self.spec_stream = stream.StaticSpectrumStream("test spec", spec_data)
 
         # Wait for all the streams to get an RGB image
-        time.sleep(0.5)
+        time.sleep(100)
 
     def test_spec_pr(self):
         view_hfw = (0.00025158414075691866, 0.00017445320835792754)
@@ -537,6 +538,47 @@ class TestSpatialExport(unittest.TestCase):
         self.assertEqual(len(exp_data), len(self.streams))
         self.assertEqual(len(exp_data[0].shape), 2)  # greyscale
         self.assertEqual(exp_data[0].shape[1], img.CROP_RES_LIMIT)
+
+
+class TestSpatialExportAcquisitionData(unittest.TestCase):
+
+    def setUp(self):
+        FILENAME = u"test" + tiff.EXTENSIONS[0]
+        self.app = wx.App()
+
+        data = numpy.zeros((1024, 1024), dtype=numpy.uint16)
+        dataRGB = numpy.zeros((1024, 1024, 4))
+        metadata = {'Hardware name': 'pcie-6251', 'Description': 'Secondary electrons',
+                    'Exposure time': 3e-06, 'Pixel size': (5.9910982493639e-08, 6.0604642506361e-08),
+                    'Acquisition date': 1441361562.0, 'Hardware version': 'Unknown (driver 2.1-160-g17a59fb (driver ni_pcimio v0.7.76))',
+                    'Centre position': (-0.001203511795256, -0.000295338300158), 'Lens magnification': 5000.0, 'Rotation': 0.0,
+                    'Shear': 0.003274715695854}
+
+        image = model.DataArray(data, metadata)
+
+        # export
+        tiff.export(FILENAME, image, pyramid=True)
+        # read back
+        acd = tiff.open_data(FILENAME)
+        sem_stream = stream.StaticSEMStream(metadata['Description'], acd, 0)
+        #sem_stream.image.value = model.DataArray(dataRGB, metadata)
+        self.streams = [sem_stream]
+        self.min_res = (623, 432)
+
+        # Wait for all the streams to get an RGB image
+        time.sleep(0.5)
+
+    def test_first(self):
+        """
+        Data roi covers part of the window view and data resolution is below
+        the minimum limit thus we need to interpolate the data in order to
+        keep the shape ratio unchanged
+        """
+        view_hfw = (0.0010063365630276746, 0.0006978128334317102)
+        view_pos = [-0.0015823014004405739, -0.0008081984265806109]
+        draw_merge_ratio = 0.3
+        exp_data = img.images_to_export_data([self.streams[0]], view_hfw, view_pos, draw_merge_ratio, False)
+        self.assertEqual(exp_data[0].shape, (182, 1673, 4))  # RGB
 
 
 if __name__ == "__main__":
