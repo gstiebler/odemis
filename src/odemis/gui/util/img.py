@@ -1625,7 +1625,7 @@ def get_ordered_images(streams, raw=False):
                 data_raw = s.raw[0]
             else:
                 # TODO check the line below
-                data = img.mergeTiles(s.image.value)
+                data_raw = s.raw.getData(0)
 
             # Pretend to be RGB for the drawing by cairo
             if numpy.can_cast(im_min_type, min_type(data_raw)):
