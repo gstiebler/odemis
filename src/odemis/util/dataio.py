@@ -205,7 +205,7 @@ def _split_planes(data):
 
     return das
 
-def open_acquisition(self, filename):
+def open_acquisition(filename):
     formats_to_ext = dataio.get_available_formats(os.O_RDONLY)
     _, formats = guiutil.formats_to_wildcards(formats_to_ext, include_all=True)
 
@@ -221,6 +221,7 @@ def open_acquisition(self, filename):
                         filename, fmt)
 
     converter = dataio.get_converter(fmt)
+    data = []
     try:
         if hasattr(converter, 'open_data'):
             acd = converter.open_data()
@@ -230,4 +231,4 @@ def open_acquisition(self, filename):
     except Exception:
         logging.exception("Failed to open file '%s' with format %s", filename, fmt)
 
-    self.display_new_data(filename, data)
+    return data
