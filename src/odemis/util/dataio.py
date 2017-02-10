@@ -26,6 +26,9 @@ import logging
 import numpy
 from odemis import model
 from odemis.acq import stream
+from odemis import dataio
+import odemis.gui.util as guiutil
+import os
 
 
 def data_to_static_streams(data):
@@ -189,3 +192,30 @@ def _split_planes(data):
         das.append(plane)
 
     return das
+
+def open_acquisition(self, filename):
+    formats_to_ext = dataio.get_available_formats(os.O_RDONLY)
+    _, formats = guiutil.formats_to_wildcards(formats_to_ext, include_all=True)
+
+    # Try to guess from the extension
+    for f, exts in formats_to_ext.items():
+        if any(filename.endswith(e) for e in exts):
+            fmt = f
+            break
+    else:
+        # pick a random format hoping it's the right one
+        fmt = formats[1]
+        logging.warning("Couldn't guess format from filename '%s', will use %s.",
+                        filename, fmt)
+
+    converter = dataio.get_converter(fmt)
+    try:
+        if hasattr(converter, 'open_data'):
+            acd = converter.open_data()
+            data = [(c, acd, i) for i, c in enumerate(acd.content)]
+        else:
+            data = converter.read_data(filename)
+    except Exception:
+        logging.exception("Failed to open file '%s' with format %s", filename, fmt)
+
+    self.display_new_data(filename, data)
