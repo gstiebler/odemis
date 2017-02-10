@@ -64,7 +64,8 @@ class StaticStream(Stream):
             if hasattr(raw.content[n], 'maxzoom'):
                 md = raw.content[n].metadata
                 # get the pixel size of the full image
-                ps = md[model.MD_PIXEL_SIZE]
+                # TODO check if an exception must be raised here
+                ps = md.get(model.MD_PIXEL_SIZE, (1e-6, 1e-6))
                 default_mpp = ps[0] * raw.content[n].maxzoom ** 2
                 # sets the mpp as the X axis of the pixel size of the full image
                 self.mpp = model.FloatVA(default_mpp, setter=self._mpp_setter)

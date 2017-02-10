@@ -51,11 +51,8 @@ def data_to_static_streams(data):
 
     # Add each data as a stream of the correct type
     for d in data:
-        if isinstance(d, model.AcquisitionData):
-            das, acd, i = d
-            d = das
-        else:
-            d = d.content[0]
+        if isinstance(d, tuple):
+            d, acd, i = d
 
         acqtype = d.metadata.get(model.MD_ACQ_TYPE)
         # Hack for not displaying Anchor region data
@@ -205,29 +202,21 @@ def _split_planes(data):
 
     return das
 
-def open_acquisition(filename):
-    formats_to_ext = dataio.get_available_formats(os.O_RDONLY)
-    _, formats = guiutil.formats_to_wildcards(formats_to_ext, include_all=True)
-
-    # Try to guess from the extension
-    for f, exts in formats_to_ext.items():
-        if any(filename.endswith(e) for e in exts):
-            fmt = f
-            break
+def open_acquisition(filename, fmt=None):
+    if fmt:
+        converter = dataio.get_converter(fmt)
     else:
-        # pick a random format hoping it's the right one
-        fmt = formats[1]
-        logging.warning("Couldn't guess format from filename '%s', will use %s.",
-                        filename, fmt)
-
-    converter = dataio.get_converter(fmt)
+        converter = dataio.find_fittest_converter(filename, mode=os.O_RDONLY)
     data = []
     try:
+        #'''
         if hasattr(converter, 'open_data'):
-            acd = converter.open_data()
+            acd = converter.open_data(filename)
             data = [(c, acd, i) for i, c in enumerate(acd.content)]
         else:
             data = converter.read_data(filename)
+        #'''
+        #data = converter.read_data(filename)
     except Exception:
         logging.exception("Failed to open file '%s' with format %s", filename, fmt)
 
