@@ -1,6 +1,7 @@
 {
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "Python Odemis GUI",
             "type": "python",
@@ -81,13 +82,13 @@
                 "PYTHONPATH": "${workspaceRoot}/src:${workspaceRoot}/../../pylibtiff"
             },
             "args": [                
-                "TestTiffIO.testExportSmallPyramid",
-                "TestTiffIO.testExportThinPyramid",
-                "TestTiffIO.testExportMultiArrayPyramid",
-                "TestTiffIO.testExportNoWL",
+                //"TestTiffIO.testExportSmallPyramid",
+                //"TestTiffIO.testExportThinPyramid",
+                //"TestTiffIO.testExportMultiArrayPyramid",
+                //"TestTiffIO.testExportNoWL",
                 "TestTiffIO.testAcquisitionDataTIFF",
-                "TestTiffIO.testExportRead",
-                "TestTiffIO.testAcquisitionDataTIFFLargerFile"
+                //"TestTiffIO.testExportRead",
+                //"TestTiffIO.testAcquisitionDataTIFFLargerFile"
             ]
         },
         {
