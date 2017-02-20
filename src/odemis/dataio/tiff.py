@@ -1777,11 +1777,10 @@ class DataArrayShadowTIFF(DataArrayShadow):
         if type(tiff_info) is list:
             return self._readAndMergeImages()
         else:
-            image = DataArrayShadowTIFF._readImage(self.tiff_info['handle'], self.tiff_info['dir_index'])
+            image = self._readImage(self.tiff_info['handle'], self.tiff_info['dir_index'])
             return model.DataArray(image, metadata=self.metadata.copy())
         
-    @staticmethod
-    def _readImage(tiff_file, dir_index):
+    def _readImage(self, tiff_file, dir_index):
         """
         Reads the image of a given directory
         tiff_file (handle): Handle of the tiff file
@@ -1805,7 +1804,7 @@ class DataArrayShadowTIFF(DataArrayShadow):
         """
         imset = numpy.empty(self.shape, self.dtype)
         for tiff_info_item in self.tiff_info:
-            image = AcquisitionDataTIFF._readImage(tiff_info_item['handle'], tiff_info_item['dir_index'])
+            image = self._readImage(tiff_info_item['handle'], tiff_info_item['dir_index'])
             imset[tiff_info_item['hdim_index']] = image
 
         return model.DataArray(imset, metadata=data_array_shadow.metadata)
