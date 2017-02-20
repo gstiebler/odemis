@@ -38,7 +38,7 @@ class DataArrayShadow(object):
     """
     __metaclass__ = ABCMeta
 
-    def __init__(self, shape, dtype, metadata=None, maxzoom=None):
+    def __init__(self, shape, dtype, metadata=None, maxzoom=None, tile_shape=None):
         """
         Constructor
         shape (tuple of int): The shape of the corresponding DataArray
@@ -49,6 +49,8 @@ class DataArrayShadow(object):
             The shape of the images in each zoom level is as following:
             (shape of full image) // (2**z)
             where z is the index of the zoom level
+        tile_shape (tuple): the shape of the tile, if the image is tiled. It is only present
+            when maxzoom is also present
         """
         self.shape = shape
         self.ndim = len(shape)
@@ -56,6 +58,7 @@ class DataArrayShadow(object):
         self.metadata = metadata if metadata else {}
         if maxzoom is not None:
             self.maxzoom = maxzoom
+            self.tile_shape = tile_shape
 
     @abstractmethod
     def getData(self, n):
