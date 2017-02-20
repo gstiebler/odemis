@@ -20,7 +20,7 @@ PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 Odemis. If not, see http://www.gnu.org/licenses/.
 '''
-from abc import abstractmethod
+from abc import ABCMeta, abstractmethod
 
 
 class DataArrayShadow(object):
@@ -28,6 +28,8 @@ class DataArrayShadow(object):
     This class contains information about a DataArray.
     It has all the useful attributes of a DataArray, but not the actual data.
     """
+    __metaclass__ = ABCMeta
+
     def __init__(self, shape, dtype, metadata=None, maxzoom=None):
         """
         Constructor
@@ -69,12 +71,14 @@ class DataArrayShadow(object):
         '''
         pass
 
+
 class AcquisitionData(object):
     """
     It's an abstract class to represent an opened file. It allows
     to have random access to a sub-part of any image in the file. It's extended by
     each dataio converter to actually support the specific file format.
     """
+    __metaclass__ = ABCMeta
 
     def __init__(self, content, thumbnails=None):
         self.content = content
