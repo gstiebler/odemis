@@ -1724,7 +1724,7 @@ def read_thumbnail(filename):
     """
     # TODO: support filename to be a File or Stream
     acd = open_data(filename)
-    return [acd.getThumbnail(i) for i in range(len(acd.thumbnails))]
+    return [acd.thumbnails[n].getData(0) for n in range(len(acd.thumbnails))]
 
 
 def open_data(filename):

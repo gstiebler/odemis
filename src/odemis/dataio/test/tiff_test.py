@@ -1559,6 +1559,17 @@ class TestTiffIO(unittest.TestCase):
         os.remove(FILENAME)
 
     def testAcquisitionDataTIFFLargerFile(self):
+
+        def getSubData(dast, zoom, rect):
+            x1, y1, x2, y2 = rect
+            tiles = []
+            for x in range(x1, x2 + 1):
+                tiles_column = []
+                for y in range(y1, y2 + 1):
+                    tiles_column.append(dast.getTile(x, y, zoom))
+                tiles.append(tiles_column)
+            return tiles
+
         PIXEL_SIZE = (1e-6, 1e-6)
         ROTATION = 0.3
         SHEAR = 0.2
@@ -1579,7 +1590,7 @@ class TestTiffIO(unittest.TestCase):
 
         # check data
         rdata = tiff.open_data(FILENAME)
-        self.assertEqual(rdata.content[0].maxzoom, 6)
+        self.assertEqual(rdata.content[0].maxzoom, 5)
         self.assertEqual(rdata.content[0].shape, size[::-1])
 
         # calculate the shapes of each zoomed image
@@ -1591,7 +1602,7 @@ class TestTiffIO(unittest.TestCase):
         zoom_level = 0
         # get the top-left tile
         tile_shape = (0, 0, 0, 0)
-        tiles = rdata.getSubData(0, zoom_level, tile_shape)
+        tiles = getSubData(rdata.content[0], zoom_level, tile_shape)
         # returns only one tile
         self.assertEqual(len(tiles), 1)
         self.assertEqual(len(tiles[0]), 1)
@@ -1604,8 +1615,8 @@ class TestTiffIO(unittest.TestCase):
         self.assertEqual(tiles[0][0].shape, (256, 256))
 
         # get the bottom-right tile
-        tile_shape = (5998, 4998, 5999, 4999)
-        tiles = rdata.getSubData(0, zoom_level, tile_shape)
+        tile_shape = (6000 // 256, 5000 // 256, 6000 // 256, 5000 // 256)
+        tiles = getSubData(rdata.content[0], zoom_level, tile_shape)
         # returns only one tile
         self.assertEqual(len(tiles), 1)
         self.assertEqual(len(tiles[0]), 1)
@@ -1613,12 +1624,12 @@ class TestTiffIO(unittest.TestCase):
         self.assertEqual(tile_md[model.MD_PIXEL_SIZE], exp_pixel_size)
         self.assertAlmostEqual(tile_md[model.MD_ROTATION], ROTATION)
         self.assertAlmostEqual(tile_md[model.MD_SHEAR], SHEAR)
-        numpy.testing.assert_almost_equal(tile_md[model.MD_POS], [4.9962948, 7.0020159])
+        numpy.testing.assert_almost_equal(tile_md[model.MD_POS], [5.0037052, 6.9979841])
         self.assertEqual(tiles[0][0].shape, (136, 112))
 
         # get all tiles
-        tile_shape = (0, 0, 5999, 4999)
-        tiles = rdata.getSubData(0, zoom_level, tile_shape)
+        tile_shape = (0, 0, 6000 // 256, 5000 // 256)
+        tiles = getSubData(rdata.content[0], zoom_level, tile_shape)
         # check the number of tiles in both dimensions
         self.assertEqual(len(tiles), 24)
         self.assertEqual(len(tiles[0]), 20)
@@ -1629,7 +1640,7 @@ class TestTiffIO(unittest.TestCase):
         zoom_level = 3
         # get the top-left tile
         tile_shape = (0, 0, 0, 0)
-        tiles = rdata.getSubData(0, zoom_level, tile_shape)
+        tiles = getSubData(rdata.content[0], zoom_level, tile_shape)
         # returns only one tile
         self.assertEqual(len(tiles), 1)
         self.assertEqual(len(tiles[0]), 1)
@@ -1642,8 +1653,8 @@ class TestTiffIO(unittest.TestCase):
         self.assertEqual(tiles[0][0].shape, (256, 256))
 
         # get the bottom-right tile
-        tile_shape = (5998, 4998, 5999, 4999)
-        tiles = rdata.getSubData(0, zoom_level, tile_shape)
+        tile_shape = (6000 // 256 // 8, 5000 // 256 // 8, 6000 // 256 // 8, 5000 // 256 // 8)
+        tiles = getSubData(rdata.content[0], zoom_level, tile_shape)
         # returns only one tile
         self.assertEqual(len(tiles), 1)
         self.assertEqual(len(tiles[0]), 1)
@@ -1651,12 +1662,12 @@ class TestTiffIO(unittest.TestCase):
         self.assertEqual(tile_md[model.MD_PIXEL_SIZE], exp_pixel_size)
         self.assertAlmostEqual(tile_md[model.MD_ROTATION], ROTATION)
         self.assertAlmostEqual(tile_md[model.MD_SHEAR], SHEAR)
-        numpy.testing.assert_almost_equal(tile_md[model.MD_POS], [4.9973172, 7.0017426])
+        numpy.testing.assert_almost_equal(tile_md[model.MD_POS], [5.0026828, 6.9982574])
         self.assertEqual(tiles[0][0].shape, (113, 238))
 
         # get all tiles
-        tile_shape = (0, 0, 5999, 4999)
-        tiles = rdata.getSubData(0, zoom_level, tile_shape)
+        tile_shape = (0, 0, 6000 // 256 // 8, 5000 // 256 // 8)
+        tiles = getSubData(rdata.content[0], zoom_level, tile_shape)
         # check the number of tiles in both dimensions
         self.assertEqual(len(tiles), 3)
         self.assertEqual(len(tiles[0]), 3)
@@ -1668,7 +1679,7 @@ class TestTiffIO(unittest.TestCase):
         zoom_level = 5
         # get the top-left tile
         tile_shape = (0, 0, 0, 0)
-        tiles = rdata.getSubData(0, zoom_level, tile_shape)
+        tiles = getSubData(rdata.content[0], zoom_level, tile_shape)
         # returns only one tile
         self.assertEqual(len(tiles), 1)
         self.assertEqual(len(tiles[0]), 1)
