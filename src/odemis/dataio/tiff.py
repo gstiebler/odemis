@@ -1708,7 +1708,6 @@ def read_data(filename):
     # TODO: support filename to be a File or Stream (but it seems very difficult
     # to do it without looking at the .filename attribute)
     # see http://pytables.github.io/cookbook/inmemory_hdf5_files.html
-    filename = _ensure_fs_encoding(filename)
     acd = open_data(filename)
     return [acd.getData(i) for i in range(len(acd.content))]
 
@@ -1724,7 +1723,6 @@ def read_thumbnail(filename):
         IOError in case the file format is not as expected.
     """
     # TODO: support filename to be a File or Stream
-    filename = _ensure_fs_encoding(filename)
     acd = open_data(filename)
     return [acd.getThumbnail(i) for i in range(len(acd.thumbnails))]
 
@@ -1747,11 +1745,14 @@ class DataArrayShadowTIFF(DataArrayShadow):
     This class contains information about a DataArray.
     It has all the useful attributes of a DataArray, but not the actual data.
     """
-    def __init__(self, tiff_info, *args,**kwargs):
+    def __init__(self, tiff_info, *args, **kwargs):
         """
         Constructor
-        tiff_info (dictionary): Information about the source tiff file and directory from which
-            the image should be read. It has 2 values:
+        tiff_info (dictionary or list of dictionaries): Information about the source tiff file
+            and directory from which the image should be read. It can be a dictionary or
+            a list of dictionaries. It is a list of dictionaries when
+            the DataArray has multiple pixelData
+            The dictionary (or each dictionary in the list) has 2 values:
             'tiff_file' (handle): Handle of the tiff file
             'dir_index' (int): Index of the directory
         """
