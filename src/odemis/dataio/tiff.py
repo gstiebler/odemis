@@ -1709,7 +1709,7 @@ def read_data(filename):
     # to do it without looking at the .filename attribute)
     # see http://pytables.github.io/cookbook/inmemory_hdf5_files.html
     acd = open_data(filename)
-    return [acd.getData(i) for i in range(len(acd.content))]
+    return [acd.content[n].getData(0) for n in range(len(acd.content))]
 
 
 def read_thumbnail(filename):
@@ -1737,7 +1737,8 @@ def open_data(filename):
     # to do it without looking at the .filename attribute)
     # see http://pytables.github.io/cookbook/inmemory_hdf5_files.html
     filename = _ensure_fs_encoding(filename)
-    return AcquisitionDataTIFF(filename)
+    acd = AcquisitionDataTIFF(filename)
+    return acd
 
 
 class DataArrayShadowTIFF(DataArrayShadow):
@@ -1807,7 +1808,7 @@ class DataArrayShadowTIFF(DataArrayShadow):
         """
         # if tiff_info is a list, it means that self.content[n]
         # is a DataArrayShadow with multiple images
-        if type(tiff_info) is list:
+        if type(self.tiff_info) is list:
             return self._readAndMergeImages()
         else:
             image = self._readImage(self.tiff_info)
@@ -1823,7 +1824,7 @@ class DataArrayShadowTIFF(DataArrayShadow):
         return (numpy.array): The image
         """
         tiff_info['handle'].SetDirectory(tiff_info['dir_index'])
-        return tiff_file.read_image()
+        return tiff_info['handle'].read_image()
 
     def _readAndMergeImages(self):
         """
@@ -1837,7 +1838,7 @@ class DataArrayShadowTIFF(DataArrayShadow):
             image = self._readImage(tiff_info_item)
             imset[tiff_info_item['hdim_index']] = image
 
-        return model.DataArray(imset, metadata=data_array_shadow.metadata)
+        return model.DataArray(imset, metadata=self.metadata)
 
     def _getTile(self, x, y, zoom):
         '''
@@ -1886,19 +1887,6 @@ class DataArrayShadowTIFF(DataArrayShadow):
         # calculate the center of the tile
         tile.metadata[model.MD_POS] = get_tile_md_pos((x, y), self.tile_shape, tile, self)
         return tile
-
-    def close(self):
-        """
-        Releases the handles of the opened tiff files
-        """
-        if isinstance(self.tiff_info, list):
-            for _tiff_info in self.tiff_info:
-                _tiff_info['handle'].close()
-        else:
-            self.tiff_info['handle'].close()
-
-    def __del__(self):
-        self.close()
 
 
 class AcquisitionDataTIFF(AcquisitionData):
@@ -2175,7 +2163,6 @@ class AcquisitionDataTIFF(AcquisitionData):
             tiff_info_list.append(local_tiff_info)
 
         # add the information about each of the merged DataArrayShadows
-        mergedDataArrayShadow.tiff_info = tiff_info_list
         mergedDataArrayShadow = DataArrayShadowTIFF(tiff_info_list, tshape, fim.dtype, fim.metadata)
         return mergedDataArrayShadow
 
