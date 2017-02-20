@@ -1768,10 +1768,13 @@ class DataArrayShadowTIFF(DataArrayShadow):
 
         if num_tcols and num_trows:
             self.tile_shape = (num_tcols, num_trows)
-        else:
-            # TODO remove member
-            # del self.getTile
-            pass
+            # make getTile available as a public method. 
+            # An other possibility would be to make the DataArrayShadowTIFF have a method
+            # called getTile directly, instead of _getTile, and then call 
+            # 'del self.getTile' if the image is not tiled. But Python does not allow
+            # to delete a method from an instance, only a method from the class. But it would
+            # remove the method from all instance, and it is not what we want to do.
+            self.getTile = self._getTile
 
         self.tiff_info = tiff_info
 
@@ -1816,7 +1819,7 @@ class DataArrayShadowTIFF(DataArrayShadow):
 
         return model.DataArray(imset, metadata=data_array_shadow.metadata)
 
-    def getTile(self, x, y, zoom):
+    def _getTile(self, x, y, zoom):
         '''
         Fetches one tile
         x (0<=int): X index of the tile.

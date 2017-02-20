@@ -1545,7 +1545,7 @@ class TestTiffIO(unittest.TestCase):
         with self.assertRaises(AttributeError):
             rdata.content[0].maxzoom
 
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(AttributeError):
             # the image is not tiled
             rdata.content[0].getTile(0, 0, 0)
 
