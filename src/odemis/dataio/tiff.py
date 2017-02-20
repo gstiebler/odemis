@@ -1559,6 +1559,7 @@ def _saveAsMultiTiffLT(filename, ldata, thumbnail, compressed=True, multiple_fil
                 c = compression
             write_image(f, data[i], write_rgb=write_rgb, compression=c, pyramid=pyramid)
 
+
 def _thumbsFromTIFF(filename):
     """
     Read thumbnails from an TIFF file.
@@ -1582,6 +1583,7 @@ def _thumbsFromTIFF(filename):
 
     return data
 
+
 def _genResizedShapes(data):
     """
     Generates a list of tuples with the size of the resized images
@@ -1591,7 +1593,7 @@ def _genResizedShapes(data):
     # initializes the first shape with the shape of the input DataArray
     shape = data.shape
     dims = data.metadata.get(model.MD_DIMS, "CTZYX"[-data.ndim:])
-    
+
     resized_shapes = []
     z = 0
     while shape[dims.index("X")] >= TILE_SIZE and shape[dims.index("Y")] >= TILE_SIZE:
@@ -1600,8 +1602,9 @@ def _genResizedShapes(data):
         # Copy the dimensions other than X and Y from the input DataArray shape
         shape = tuple(s // 2**z if d in "XY" else s for s,d in zip(data.shape, dims))
         resized_shapes.append(shape)
-        
+
     return resized_shapes
+
 
 def _ensure_fs_encoding(filename):
     if not isinstance(filename, unicode):
@@ -1610,6 +1613,7 @@ def _ensure_fs_encoding(filename):
         return filename # hope it's the correct encoding
     else:
         return filename.encode(sys.getfilesystemencoding())
+
 
 def write_image(f, arr, compression=None, write_rgb=False, pyramid=False):
     """
@@ -1645,6 +1649,7 @@ def write_image(f, arr, compression=None, write_rgb=False, pyramid=False):
         f.SetField(T.TIFFTAG_SUBFILETYPE, T.FILETYPE_REDUCEDIMAGE)
         # write the tiled image to the TIFF file
         f.write_tiles(subim, TILE_SIZE, TILE_SIZE, compression, write_rgb)
+
 
 def export(filename, data, thumbnail=None, compressed=True, multiple_files=False, pyramid=False):
     '''
@@ -1686,6 +1691,7 @@ def export(filename, data, thumbnail=None, compressed=True, multiple_files=False
         assert(isinstance(data, model.DataArray))
         _saveAsMultiTiffLT(filename, [data], thumbnail, compressed, pyramid=pyramid)
 
+
 def read_data(filename):
     """
     Read an TIFF file and return its content (skipping the thumbnail).
@@ -1706,6 +1712,7 @@ def read_data(filename):
     acd = open_data(filename)
     return [acd.getData(i) for i in range(len(acd.content))]
 
+
 def read_thumbnail(filename):
     """
     Read the thumbnail data of a given TIFF file.
@@ -1721,13 +1728,154 @@ def read_thumbnail(filename):
     acd = open_data(filename)
     return [acd.getThumbnail(i) for i in range(len(acd.thumbnails))]
 
-def open_data(fn):
+
+def open_data(filename):
     """
     Opens a TIFF file, and return an AcquisitionData instance
-    fn (string): path to the file
+    filename (string): path to the file
     return (AcquisitionData): an opened file
     """
-    return AcquisitionDataTIFF(fn)
+    # TODO: support filename to be a File or Stream (but it seems very difficult
+    # to do it without looking at the .filename attribute)
+    # see http://pytables.github.io/cookbook/inmemory_hdf5_files.html
+    filename = _ensure_fs_encoding(filename)
+    return AcquisitionDataTIFF(filename)
+
+
+class DataArrayShadowTIFF(DataArrayShadow):
+    """
+    This class contains information about a DataArray.
+    It has all the useful attributes of a DataArray, but not the actual data.
+    """
+    def __init__(self, tiff_info, *args,**kwargs):
+        """
+        Constructor
+        tiff_info (dictionary): Information about the source tiff file and directory from which
+            the image should be read. It has 2 values:
+            'tiff_file' (handle): Handle of the tiff file
+            'dir_index' (int): Index of the directory
+        """
+        DataArrayShadow.__init__(self, *args, **kwargs)
+
+        if isinstance(tiff_info, list):
+            tiff_handle = tiff_info[0]['handle']
+        else:
+            tiff_handle = tiff_info['handle']
+
+        num_tcols = tiff_handle.GetField(T.TIFFTAG_TILEWIDTH)
+        num_trows = tiff_handle.GetField(T.TIFFTAG_TILELENGTH)
+
+        if num_tcols and num_trows:
+            self.tile_shape = (num_tcols, num_trows)
+        else:
+            # TODO remove member
+            # del self.getTile
+            pass
+
+        self.tiff_info = tiff_info
+
+    def getData(self, n):
+        """
+        Fetches the whole data (at full resolution) of image at index n.
+        n (0<=int): index of the image
+        return DataArray: the data, with its metadata (ie, identical to .content[n] but
+            with the actual data)
+        """
+        # if tiff_info is a list, it means that self.content[n]
+        # is a DataArrayShadow with multiple images
+        if type(tiff_info) is list:
+            return self._readAndMergeImages()
+        else:
+            image = self._readImage(self.tiff_info)
+            return model.DataArray(image, metadata=self.metadata.copy())
+
+    def _readImage(self, tiff_info):
+        """
+        Reads the image of a given directory
+        tiff_info (dictionary): Information about the source tiff file and directory from which
+            the image should be read. It has 2 values:
+            'tiff_file' (handle): Handle of the tiff file
+            'dir_index' (int): Index of the directory
+        return (numpy.array): The image
+        """
+        tiff_info['handle'].SetDirectory(tiff_info['dir_index'])
+        return tiff_file.read_image()
+
+    def _readAndMergeImages(self):
+        """
+        Read the images from file, and merge them into a higher dimension DataArray.
+        return (DataArray): the merge of all the DAs. The shape is hdim_index.shape
+            + shape of original DataArrayShadow. The metadata is the metadata of the first
+            DataArrayShadow of the list
+        """
+        imset = numpy.empty(self.shape, self.dtype)
+        for tiff_info_item in self.tiff_info:
+            image = self._readImage(tiff_info_item)
+            imset[tiff_info_item['hdim_index']] = image
+
+        return model.DataArray(imset, metadata=data_array_shadow.metadata)
+
+    def getTile(self, x, y, zoom):
+        '''
+        Fetches one tile
+        x (0<=int): X index of the tile.
+        y (0<=int): Y index of the tile
+        zoom (0<=int): zoom level to use. The total shape of the image is shape / 2**zoom.
+            The number of tiles available in an image is ceil((shape//zoom)/tile_shape)
+        return (DataArray): the shape of the DataArray is typically of shape
+        '''
+        # get information about how to retrieve the actual pixels from the TIFF file
+        tiff_info = self.tiff_info
+        # TODO Implement the reading of the subdata when tiff_info is a list. 
+        # It is the case when the DataArray has multiple pixelData (eg, when data has more than 2D).
+        if type(tiff_info) is list:
+            raise NotImplemented("Not implemented when DataArray has multiple pixelData")
+
+        tiff_file = tiff_info['handle']
+        tiff_file.SetDirectory(tiff_info['dir_index'])
+
+        if zoom != 0:
+            # get an array of offsets, one for each subimage
+            sub_ifds = tiff_file.GetField(T.TIFFTAG_SUBIFD)
+            if not sub_ifds:
+                raise ValueError("Image does not have zoom levels")
+
+            if not (0 <= zoom <= len(sub_ifds)):
+                raise ValueError("Invalid Z value %d" % (zoom,))
+
+            # set the offset of the subimage. Z=0 is the main image
+            tiff_file.SetSubDirectory(sub_ifds[zoom - 1])
+
+        if not hasattr(self, 'tile_shape'):
+            raise RuntimeError("the image is not tiled")
+
+        orig_pixel_size = self.metadata.get(model.MD_PIXEL_SIZE, (1, 1))
+
+        # calculate the pixel size of the tile for the zoom level
+        tile_pixel_size = tuple(ps * 2 ** zoom for ps in orig_pixel_size)
+
+        xp = x * self.tile_shape[0]
+        yp = y * self.tile_shape[1]
+        tile = tiff_file.read_one_tile(xp, yp)
+        tile = model.DataArray(tile, self.metadata.copy())
+        tile.metadata[model.MD_PIXEL_SIZE] = tile_pixel_size
+        # calculate the center of the tile
+        tile.metadata[model.MD_POS] = get_tile_md_pos((x, y), self.tile_shape, tile, self)
+        return tile
+
+    def close(self):
+        """
+        Releases the handles of the opened tiff files
+        """
+        if isinstance(self.tiff_info, list):
+            for _tiff_info in self.tiff_info:
+                _tiff_info['handle'].close()
+        else:
+            self.tiff_info['handle'].close()
+
+    def __del__(self):
+        self.close()
+
 
 class DataArrayShadowTIFF(DataArrayShadow):
     """
@@ -1895,21 +2043,20 @@ class AcquisitionDataTIFF(AcquisitionData):
         desc = tiff_file.GetField(T.TIFFTAG_IMAGEDESCRIPTION)
 
         if (desc and ((desc.startswith("<?xml") and "<ome " in desc.lower())
-                    or desc[:4].lower() == '<ome')):
+                      or desc[:4].lower() == '<ome')):
             try:
                 # take care of multiple file distribution
 
                 file_data, data = data, [] # keep the original data in case it doesn't go smoothly
                 path, basename = os.path.split(filename)
                 desc = re.sub('xmlns="http://www.openmicroscopy.org/Schemas/OME/....-.."',
-                            "", desc, count=1)
+                              "", desc, count=1)
                 desc = re.sub('xmlns="http://www.openmicroscopy.org/Schemas/ROI/....-.."',
-                            "", desc)
+                              "", desc)
                 root = ET.fromstring(desc)
 
                 # Keep track of the files that were already opened
                 file_read = set()
-    #             ifd_counter = 0
                 for tiff_data in root.findall("Image/Pixels/TiffData"):
 
                     uuid = tiff_data.find("UUID")
@@ -1918,9 +2065,6 @@ class AcquisitionDataTIFF(AcquisitionData):
                         continue
                     else:
                         uuid_data = uuid.get("FileName")
-    #                 tiff_data.set("IFD", ifd_counter)
-                    ifd_data = tiff_data.get("IFD")
-    #                 ifd_counter += 1
                     # attach to the right path
                     uuid_path = os.path.join(path, uuid_data)
                     if uuid_data in file_read:
@@ -1952,7 +2096,7 @@ class AcquisitionDataTIFF(AcquisitionData):
         content = [i for i in data if i is not None]
 
         AcquisitionData.__init__(self, tuple(content), tuple(thumbnails))
-    
+
     @staticmethod
     def _createDataArrayShadows(tfile, dir_index, data_array_shadows, thumbnails):
         """
@@ -1980,7 +2124,7 @@ class AcquisitionDataTIFF(AcquisitionData):
             maxzoom = len(sub_ifds)
         else:
             maxzoom = None
-            
+
         md = _readTiffTag(tfile)  # reads tag of the current image
 
         shape = (height, width)
@@ -2015,7 +2159,7 @@ class AcquisitionDataTIFF(AcquisitionData):
         # Remove "xmlns" which is the default namespace and is appended everywhere
         # It's not beautiful, but the simplest with ET to handle expected namespaces.
         xml = re.sub('xmlns="http://www.openmicroscopy.org/Schemas/OME/....-.."',
-                    "", xml, count=1)
+                     "", xml, count=1)
         # Remove ROI namespace too
         xml = re.sub('xmlns="http://www.openmicroscopy.org/Schemas/ROI/....-.."', "", xml)
         root = ET.fromstring(xml)

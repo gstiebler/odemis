@@ -1417,7 +1417,7 @@ class TestTiffIO(unittest.TestCase):
 
             f.SetDirectory(count)
             count += 1
-            
+
             main_images.append(zoom_level_images)
 
         # check the total number of main images
@@ -1515,7 +1515,7 @@ class TestTiffIO(unittest.TestCase):
         self.assertEqual(len(tiles), 2)
         self.assertEqual(len(tiles[0]), 2)
         self.assertEqual(tiles[1][1].shape, (39, 1, 3))
-        
+
         # Test different zoom levels
         tiles = getSubData(rdata.content[0], 1, (0, 0, 0, 0))
         self.assertEqual(len(tiles), 1)
@@ -1531,7 +1531,10 @@ class TestTiffIO(unittest.TestCase):
         data = model.DataArray(arr, metadata=md)
         tiff.export(FILENAME, data)
 
-        # the exception below is here only to call the __del__ method from rdata
+        # Raise another exception, just to flush the previous one from the
+        # internal python system which holds a complete stack trace of the last
+        # exception. As the exception was in a method of rdata, a reference to
+        # rdata is hold until another exception (or the method goes out of scope)
         try:
             raise Exception()
         except:
@@ -1546,7 +1549,7 @@ class TestTiffIO(unittest.TestCase):
             # the image is not tiled
             rdata.content[0].getTile(0, 0, 0)
 
-        # the exception below is here only to call the __del__ method from rdata
+        # Another exception for flushing the previous exception
         try:
             raise Exception()
         except:
@@ -1578,7 +1581,7 @@ class TestTiffIO(unittest.TestCase):
         rdata = tiff.open_data(FILENAME)
         self.assertEqual(rdata.content[0].maxzoom, 6)
         self.assertEqual(rdata.content[0].shape, size[::-1])
-        
+
         # calculate the shapes of each zoomed image
         shapes = tiff._genResizedShapes(rdata.content[0])
         # add the full image to the shape list
@@ -1678,7 +1681,7 @@ class TestTiffIO(unittest.TestCase):
         # the size of this tile is also the size of the image
         self.assertEqual(tiles[0][0].shape, (156, 187))
 
-        # the exception below is here only to call the __del__ method from rdata
+        # TODO: not needed here? (as there is no exception before)
         try:
             raise Exception()
         except:
