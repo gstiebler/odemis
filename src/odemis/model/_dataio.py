@@ -20,15 +20,25 @@ PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with
 Odemis. If not, see http://www.gnu.org/licenses/.
 '''
-from abc import abstractmethod
+from abc import ABCMeta, abstractmethod
 
 
 class DataArrayShadow(object):
     """
     This class contains information about a DataArray.
     It has all the useful attributes of a DataArray, but not the actual data.
+    If the image represented by an instance of this class is tiled, it should have a
+    method called 'getTile', that fetches one tile from the image. 
+    It should have the following parameters, and return:
+        x (0<=int): X index of the tile.
+        y (0<=int): Y index of the tile
+        zoom (0<=int): zoom level to use. The total shape of the image is shape / 2**zoom.
+            The number of tiles available in an image is ceil((shape//zoom)/tile_shape)
+        return (DataArray): the shape of the DataArray is typically of shape
     """
-    def __init__(self, shape, dtype, metadata=None, maxzoom=None):
+    __metaclass__ = ABCMeta
+
+    def __init__(self, shape, dtype, metadata=None, maxzoom=None, tile_shape=None):
         """
         Constructor
         shape (tuple of int): The shape of the corresponding DataArray
@@ -39,6 +49,8 @@ class DataArrayShadow(object):
             The shape of the images in each zoom level is as following:
             (shape of full image) // (2**z)
             where z is the index of the zoom level
+        tile_shape (tuple): the shape of the tile, if the image is tiled. It is only present
+            when maxzoom is also present
         """
         self.shape = shape
         self.ndim = len(shape)
@@ -46,6 +58,7 @@ class DataArrayShadow(object):
         self.metadata = metadata if metadata else {}
         if maxzoom is not None:
             self.maxzoom = maxzoom
+            self.tile_shape = tile_shape
 
     @abstractmethod
     def getData(self, n):
@@ -57,17 +70,6 @@ class DataArrayShadow(object):
         """
         pass
 
-    @abstractmethod
-    def getTile(self, x, y, zoom):
-        '''
-        Fetches one tile
-        x (0<=int): X index of the tile.
-        y (0<=int): Y index of the tile
-        zoom (0<=int): zoom level to use. The total shape of the image is shape / 2**zoom.
-            The number of tiles available in an image is ceil((shape//zoom)/tile_shape)
-        return (DataArray): the shape of the DataArray is typically of shape
-        '''
-        pass
 
 class AcquisitionData(object):
     """
@@ -75,6 +77,7 @@ class AcquisitionData(object):
     to have random access to a sub-part of any image in the file. It's extended by
     each dataio converter to actually support the specific file format.
     """
+    __metaclass__ = ABCMeta
 
     def __init__(self, content, thumbnails=None):
         self.content = content
