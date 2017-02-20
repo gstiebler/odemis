@@ -145,8 +145,17 @@ class RGBStream(StaticStream):
                 rgbim.metadata[model.MD_DIMS] = "YXC" # RGB format
                 self.image.value = rgbim
             else:
+                content = self.raw.content[self.n]
+                z = self._zFromMpp()
                 rect = self._rectWorldToPixel(self.rect.value)
-                tiles = self.raw.getSubData(self.n, self._zFromMpp(), rect)
+                # convert the rect coords to tile indexes
+                rect = [int(math.ceil(l / content.tile_shape[0] / (2 ** z))) for l in rect]
+                tiles = []
+                for x in range(rect[0], rect[2]):
+                    tiles_column = []
+                    for y in range(rect[1], rect[3]):
+                        tiles_column.append(content.getTile(x, y, z))
+                    tiles.append(tiles_column)
 
                 updatedTiles = []
                 for tiles_row in tiles:

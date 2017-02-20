@@ -857,9 +857,18 @@ class Stream(object):
         Returns the merged image based on z and .rect
         """
         content = self.raw.content[self.n]
-        full_rect = Stream._fullRect(content)
-        rect = self._rectWorldToPixel(full_rect)
-        tiles = self.raw.getSubData(self.n, z, rect)
+        width_zoomed = content.shape[1] / (2 ** z)
+        height_zoomed = content.shape[0] / (2 ** z)
+        num_tiles_x = int(math.ceil(width_zoomed / content.tile_shape[1]))
+        num_tiles_y = int(math.ceil(height_zoomed/ content.tile_shape[0]))
+
+        tiles = []
+        for x in range(num_tiles_x):
+            tiles_column = []
+            for y in range(num_tiles_y):
+                tiles_column.append(content.getTile(x, y, z))
+            tiles.append(tiles_column)
+
         return img.mergeTiles(tiles)
 
     def _updateImage(self):
@@ -874,8 +883,18 @@ class Stream(object):
                 raw = self.raw[0]
                 self.image.value = self._projectXY2RGB(raw, self.tint.value)
             else:
+                content = self.raw.content[self.n]
+                z = self._zFromMpp()
                 rect = self._rectWorldToPixel(self.rect.value)
-                tiles = self.raw.getSubData(self.n, self._zFromMpp(), rect)
+                # convert the rect coords to tile indexes
+                rect = [int(math.ceil(l / content.tile_shape[0] / (2 ** z))) for l in rect]
+                tiles = []
+                for x in range(rect[0], rect[2]):
+                    tiles_column = []
+                    for y in range(rect[1], rect[3]):
+                        tiles_column.append(content.getTile(x, y, z))
+                    tiles.append(tiles_column)
+
                 projectedTiles = []
                 for tiles_row in tiles:
                     tiles_row_array = []
