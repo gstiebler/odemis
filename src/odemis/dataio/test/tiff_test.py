@@ -1481,6 +1481,17 @@ class TestTiffIO(unittest.TestCase):
         os.remove(FILENAME)
 
     def testAcquisitionDataTIFF(self):
+
+        def getSubData(dast, zoom, rect):
+            x1, y1, x2, y2 = rect
+            tiles = []
+            for x in range(x1, x2 + 1):
+                tiles_column = []
+                for y in range(y1, y2 + 1):
+                    tiles_column.append(dast.getTile(x, y, zoom))
+                tiles.append(tiles_column)
+            return tiles
+
         size = (3, 257, 295)
         dtype = numpy.uint16
         md = {
@@ -1497,27 +1508,23 @@ class TestTiffIO(unittest.TestCase):
 
         # check data
         rdata = tiff.open_data(FILENAME)
-        self.assertEqual(rdata.content[0].maxzoom, 2)
+        self.assertEqual(rdata.content[0].maxzoom, 1)
         self.assertEqual(rdata.content[0].shape, size[::-1])
 
-        tiles = rdata.getSubData(0, 0, (0, 0, 256, 294))
+        tiles = getSubData(rdata.content[0], 0, (0, 0, 1, 1))
         self.assertEqual(len(tiles), 2)
         self.assertEqual(len(tiles[0]), 2)
         self.assertEqual(tiles[1][1].shape, (39, 1, 3))
 
         # Test different zoom levels
-        tiles = rdata.getSubData(0, 1, (0, 0, 128, 147))
+        tiles = getSubData(rdata.content[0], 1, (0, 0, 0, 0))
         self.assertEqual(len(tiles), 1)
         self.assertEqual(len(tiles[0]), 1)
         self.assertEqual(tiles[0][0].shape, (147, 128, 3))
 
         with self.assertRaises(ValueError):
             # invalid Z
-            tiles = rdata.getSubData(0, 50, (0, 0, 256, 294))
-
-        with self.assertRaises(ValueError):
-            # invalid N
-            tiles = rdata.getSubData(50, 0, (0, 0, 256, 294))
+            tile = rdata.content[0].getTile(50, 0, 0)
 
         # save the same file, but not pyramidal this time
         arr = numpy.array(range(size[0] * size[1] * size[2])).reshape(size[::-1]).astype(dtype)
@@ -1540,7 +1547,7 @@ class TestTiffIO(unittest.TestCase):
 
         with self.assertRaises(RuntimeError):
             # the image is not tiled
-            rdata.getSubData(0, 0, (0, 0, 256, 294))
+            rdata.content[0].getTile(0, 0, 0)
 
         # Another exception for flushing the previous exception
         try:
