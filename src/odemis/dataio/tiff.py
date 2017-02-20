@@ -1745,7 +1745,7 @@ class DataArrayShadowTIFF(DataArrayShadow):
     This class contains information about a DataArray.
     It has all the useful attributes of a DataArray, but not the actual data.
     """
-    def __init__(self, tiff_info, *args, **kwargs):
+    def __init__(self, tiff_info, shape, dtype, metadata=None):
         """
         Constructor
         tiff_info (dictionary or list of dictionaries): Information about the source tiff file
@@ -1755,19 +1755,36 @@ class DataArrayShadowTIFF(DataArrayShadow):
             The dictionary (or each dictionary in the list) has 2 values:
             'tiff_file' (handle): Handle of the tiff file
             'dir_index' (int): Index of the directory
+        shape (tuple of int): The shape of the corresponding DataArray
+        dtype (numpy.dtype): The data type
+        metadata (dict str->val): The metadata
+        maxzoom (0<=int): the maximum zoom level possible. If the data isn't
+            encoded in pyramidal format, the attribute is not present.
+            The shape of the images in each zoom level is as following:
+            (shape of full image) // (2**z)
+            where z is the index of the zoom level
+        tile_shape (tuple): the shape of the tile, if the image is tiled. It is only present
+            when maxzoom is also present
         """
-        DataArrayShadow.__init__(self, *args, **kwargs)
-
         if isinstance(tiff_info, list):
             tiff_handle = tiff_info[0]['handle']
         else:
             tiff_handle = tiff_info['handle']
 
-        num_tcols = tiff_handle.GetField(T.TIFFTAG_TILEWIDTH)
-        num_trows = tiff_handle.GetField(T.TIFFTAG_TILELENGTH)
+        self.tiff_info = tiff_info
 
-        if num_tcols and num_trows:
-            self.tile_shape = (num_tcols, num_trows)
+        sub_ifds = tiff_handle.GetField(T.TIFFTAG_SUBIFD)
+        if sub_ifds:
+            # add the number of subdirectories, and the main image
+            maxzoom = len(sub_ifds)
+
+            num_tcols = tiff_handle.GetField(T.TIFFTAG_TILEWIDTH)
+            num_trows = tiff_handle.GetField(T.TIFFTAG_TILELENGTH)
+            if num_tcols is None or num_trows is None:
+                raise RuntimeError("The image is not tiled")
+
+            tile_shape = (num_tcols, num_trows)
+
             # make getTile available as a public method. 
             # An other possibility would be to make the DataArrayShadowTIFF have a method
             # called getTile directly, instead of _getTile, and then call 
@@ -1775,8 +1792,11 @@ class DataArrayShadowTIFF(DataArrayShadow):
             # to delete a method from an instance, only a method from the class. But it would
             # remove the method from all instance, and it is not what we want to do.
             self.getTile = self._getTile
+        else:
+            maxzoom = None
+            tile_shape = None
 
-        self.tiff_info = tiff_info
+        DataArrayShadow.__init__(self, shape, dtype, metadata, maxzoom, tile_shape)
 
     def getData(self, n):
         """
@@ -1980,12 +2000,6 @@ class AcquisitionDataTIFF(AcquisitionData):
         samples_pp = tfile.GetField(T.TIFFTAG_SAMPLESPERPIXEL)
         if samples_pp is None:  # default is 1
             samples_pp = 1
-        sub_ifds = tfile.GetField(T.TIFFTAG_SUBIFD)
-        if sub_ifds:
-            # add the number of subdirectories, and the main image
-            maxzoom = len(sub_ifds)
-        else:
-            maxzoom = None
 
         md = _readTiffTag(tfile)  # reads tag of the current image
 
@@ -2000,7 +2014,7 @@ class AcquisitionDataTIFF(AcquisitionData):
         # It can also be a a list of tiff_info, 
         # in case the DataArray has multiple pixelData (eg, when data has more than 2D).
         tiff_info = {'handle': tfile, 'dir_index': dir_index}
-        das = DataArrayShadowTIFF(tiff_info, shape, typ, md, maxzoom)
+        das = DataArrayShadowTIFF(tiff_info, shape, typ, md)
 
         if _isThumbnail(tfile):
             data_array_shadows.append(None)
@@ -2160,13 +2174,9 @@ class AcquisitionDataTIFF(AcquisitionData):
             local_tiff_info['hdim_index'] = hi
             tiff_info_list.append(local_tiff_info)
 
-        try:
-            maxzoom = fim.maxzoom
-        except AttributeError:
-            maxzoom = None
         # add the information about each of the merged DataArrayShadows
         mergedDataArrayShadow.tiff_info = tiff_info_list
-        mergedDataArrayShadow = DataArrayShadowTIFF(tiff_info_list, tshape, fim.dtype, fim.metadata, maxzoom)
+        mergedDataArrayShadow = DataArrayShadowTIFF(tiff_info_list, tshape, fim.dtype, fim.metadata)
         return mergedDataArrayShadow
 
     @staticmethod
