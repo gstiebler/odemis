@@ -108,6 +108,9 @@ class Stream(object):
         else:
             self.raw = raw
 
+        # initialize the tiles cache used on _updateImage
+        self.tilesCache = {}
+
         # TODO: should better be based on a BufferedDataFlow: subscribing starts
         # acquisition and sends (raw) data to whoever is interested. .get()
         # returns the previous or next image acquired.
@@ -166,9 +169,6 @@ class Stream(object):
         self.histogram = model.VigilantAttribute(numpy.empty(0), readonly=True)
         self.histogram._full_hist = numpy.ndarray(0) # for finding the outliers
         self.histogram._edges = None
-
-        # initialize the tiles cache used on _updateImage
-        self.tilesCache = {}
 
         self.auto_bc.subscribe(self._onAutoBC)
         self.auto_bc_outliers.subscribe(self._onOutliers)
@@ -870,7 +870,8 @@ class Stream(object):
         for x in range(num_tiles_x):
             tiles_column = []
             for y in range(num_tiles_y):
-                tiles_column.append(content.getTile(x, y, z))
+                tile = self._getTile(content, x, y, z, self.tilesCache)
+                tiles_column.append(tile)
             tiles.append(tiles_column)
 
         return img.mergeTiles(tiles)
