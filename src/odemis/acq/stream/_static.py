@@ -127,6 +127,14 @@ class RGBStream(StaticStream):
 
         super(RGBStream, self).__init__(name, raw, n)
 
+    def _processTile(self, tile):
+        tile = img.ensureYXC(tile)
+        tile.flags.writeable = False
+        # merge and ensures all the needed metadata is there
+        tile.metadata = self._find_metadata(tile.metadata)
+        tile.metadata[model.MD_DIMS] = "YXC" # RGB format
+        return tile
+
     # Copy from RGBCameraStream
     def _updateImage(self):
         # Just pass the RGB data on
@@ -145,26 +153,7 @@ class RGBStream(StaticStream):
                 rgbim.metadata[model.MD_DIMS] = "YXC" # RGB format
                 self.image.value = rgbim
             else:
-                content = self.raw.content[self.n]
-                z = self._zFromMpp()
-                rect = self._rectWorldToPixel(self.rect.value)
-                # convert the rect coords to tile indexes
-                rect = [int(math.ceil(l / content.tile_shape[0] / (2 ** z))) for l in rect]
-                tiles = []
-                x1, y1, x2, y2 = rect
-                for x in range(x1, x2):
-                    tiles_column = []
-                    for y in range(y1, y2):
-                        tile = self._getTile(content, self.n, x, y, z)
-                        tile = img.ensureYXC(tile)
-                        tile.flags.writeable = False
-                        # merge and ensures all the needed metadata is there
-                        tile.metadata = self._find_metadata(tile.metadata)
-                        tile.metadata[model.MD_DIMS] = "YXC" # RGB format
-                        tiles_column.append(tile)
-                    tiles.append(tuple(tiles_column))
-
-                self.image.value = tuple(tiles)
+                self.image.value = self._getTilesFromSelectedArea()
 
         except Exception:
             logging.exception("Updating %s image", self.__class__.__name__)

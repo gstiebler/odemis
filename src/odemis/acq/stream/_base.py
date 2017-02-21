@@ -894,6 +894,27 @@ class Stream(object):
             self.tilesCache[tile_key] = tile
         return tile
 
+    def _processTile(self, tile):
+        return self._projectXY2RGB(tile, self.tint.value)
+
+    def _getTilesFromSelectedArea(self):
+        content = self.raw.content[self.n]
+        z = self._zFromMpp()
+        rect = self._rectWorldToPixel(self.rect.value)
+        # convert the rect coords to tile indexes
+        rect = [int(math.ceil(l / content.tile_shape[0] / (2 ** z))) for l in rect]
+        tiles = []
+        x1, y1, x2, y2 = rect
+        for x in range(x1, x2):
+            tiles_column = []
+            for y in range(y1, y2):
+                tile = self._getTile(content, self.n, x, y, z)
+                tile = self._processTile(tile)
+                tiles_column.append(tile)
+            tiles.append(tuple(tiles_column))
+
+        return tuple(tiles)
+
     def _updateImage(self):
         """ Recomputes the image with all the raw data available
         """
@@ -906,22 +927,7 @@ class Stream(object):
                 raw = self.raw[0]
                 self.image.value = self._projectXY2RGB(raw, self.tint.value)
             else:
-                content = self.raw.content[self.n]
-                z = self._zFromMpp()
-                rect = self._rectWorldToPixel(self.rect.value)
-                # convert the rect coords to tile indexes
-                rect = [int(math.ceil(l / content.tile_shape[0] / (2 ** z))) for l in rect]
-                tiles = []
-                x1, y1, x2, y2 = rect
-                for x in range(x1, x2):
-                    tiles_column = []
-                    for y in range(y1, y2):
-                        tile = self._getTile(content, self.n, x, y, z)
-                        tile = self._projectXY2RGB(tile, self.tint.value)
-                        tiles_column.append(tile)
-                    tiles.append(tuple(tiles_column))
-
-                self.image.value = tuple(tiles)
+                self.image.value = self._getTilesFromSelectedArea()
 
         except Exception:
             logging.exception("Updating %s %s image", self.__class__.__name__, self.name.value)
