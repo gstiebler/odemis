@@ -912,24 +912,17 @@ class Stream(object):
                 # convert the rect coords to tile indexes
                 rect = [int(math.ceil(l / content.tile_shape[0] / (2 ** z))) for l in rect]
                 tiles = []
-                for x in range(rect[0], rect[2]):
+                x1, y1, x2, y2 = rect
+                for x in range(x1, x2):
                     tiles_column = []
-                    for y in range(rect[1], rect[3]):
+                    for y in range(y1, y2):
                         tile = self._getTile(content, self.n, x, y, z)
-                        tiles_column.append(tile)
-                    tiles.append(tiles_column)
-
-                projectedTiles = []
-                for tiles_row in tiles:
-                    tiles_row_array = []
-                    for tile in tiles_row:
                         tile = self._projectXY2RGB(tile, self.tint.value)
-                        tiles_row_array.append(tile)
-                    projectedTiles.append(tuple(tiles_row_array))
+                        tiles_column.append(tile)
+                    tiles.append(tuple(tiles_column))
 
-                tiles.cachedTiles = {}
+                self.image.value = tuple(tiles)
 
-                self.image.value = tuple(projectedTiles)
         except Exception:
             logging.exception("Updating %s %s image", self.__class__.__name__, self.name.value)
 

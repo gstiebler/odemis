@@ -151,26 +151,20 @@ class RGBStream(StaticStream):
                 # convert the rect coords to tile indexes
                 rect = [int(math.ceil(l / content.tile_shape[0] / (2 ** z))) for l in rect]
                 tiles = []
-                for x in range(rect[0], rect[2]):
+                x1, y1, x2, y2 = rect
+                for x in range(x1, x2):
                     tiles_column = []
-                    for y in range(rect[1], rect[3]):
+                    for y in range(y1, y2):
                         tile = self._getTile(content, self.n, x, y, z)
-                        tiles_column.append(tile)
-                    tiles.append(tiles_column)
-
-                updatedTiles = []
-                for tiles_row in tiles:
-                    tiles_row_array = []
-                    for tile in tiles_row:
                         tile = img.ensureYXC(tile)
                         tile.flags.writeable = False
                         # merge and ensures all the needed metadata is there
                         tile.metadata = self._find_metadata(tile.metadata)
                         tile.metadata[model.MD_DIMS] = "YXC" # RGB format
-                        tiles_row_array.append(tile)
-                    updatedTiles.append(tuple(tiles_row_array))
+                        tiles_column.append(tile)
+                    tiles.append(tuple(tiles_column))
 
-                self.image.value = tuple(updatedTiles)
+                self.image.value = tuple(tiles)
 
         except Exception:
             logging.exception("Updating %s image", self.__class__.__name__)
