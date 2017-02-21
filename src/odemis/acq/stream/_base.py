@@ -167,6 +167,9 @@ class Stream(object):
         self.histogram._full_hist = numpy.ndarray(0) # for finding the outliers
         self.histogram._edges = None
 
+        # initialize the tiles cache used on _updateImage
+        self.tilesCache = {}
+
         self.auto_bc.subscribe(self._onAutoBC)
         self.auto_bc_outliers.subscribe(self._onOutliers)
         self.intensityRange.subscribe(self._onIntensityRange)
@@ -188,9 +191,6 @@ class Stream(object):
             else:
                 raw = self.raw
             self._onNewData(None, raw)
-
-        # initialize the tiles cache used on _updateImage
-        self.tilesCache = {}
 
     # No __del__: subscription should be automatically stopped when the object
     # disappears, and the user should stop the update first anyway.
@@ -874,7 +874,7 @@ class Stream(object):
 
         return img.mergeTiles(tiles)
 
-    def _getTile(self, das, n, x, y, z, previous_cache):
+    def _getTile(self, das, x, y, z, previous_cache):
         """
         Get a tile from a DataArrayShadow. Uses cache.
         das (DataArrayShadow): A DataArrayShadow where the tile will be fetched
