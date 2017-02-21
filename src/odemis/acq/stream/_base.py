@@ -903,15 +903,34 @@ class Stream(object):
         rect = self._rectWorldToPixel(self.rect.value)
         # convert the rect coords to tile indexes
         rect = [int(math.ceil(l / content.tile_shape[0] / (2 ** z))) for l in rect]
-        tiles = []
         x1, y1, x2, y2 = rect
-        for x in range(x1, x2):
-            tiles_column = []
-            for y in range(y1, y2):
-                tile = self._getTile(content, self.n, x, y, z)
-                tile = self._processTile(tile)
-                tiles_column.append(tile)
-            tiles.append(tuple(tiles_column))
+        curr_mpp = self.mpp.value
+        curr_rect = self.rect.value
+        while True:
+            tiles = []
+            for x in range(x1, x2):
+                tiles_column = []
+                mpp_rect_changed = False
+                for y in range(y1, y2):
+                    if curr_mpp != self.mpp.value or curr_rect != self.rect.value:
+                        curr_mpp = self.mpp.value
+                        curr_rect = self.rect.value
+                        mpp_rect_changed = True
+                        break
+
+                    tile = self._getTile(content, self.n, x, y, z)
+                    tile = self._processTile(tile)
+                    tiles_column.append(tile)
+
+                if mpp_rect_changed:
+                    break
+
+                tiles.append(tuple(tiles_column))
+
+            # if mpp and rect did not changed in the last execution of the loops,
+            # break the while loop
+            if not mpp_rect_changed:
+                break
 
         return tuple(tiles)
 
