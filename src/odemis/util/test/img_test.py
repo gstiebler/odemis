@@ -736,6 +736,17 @@ class TestRescaleHQ(unittest.TestCase):
 class TestMergeTiles(unittest.TestCase):
 
     def test_one_tile(self):
+
+        def getSubData(dast, zoom, rect):
+            x1, y1, x2, y2 = rect
+            tiles = []
+            for x in range(x1, x2 + 1):
+                tiles_column = []
+                for y in range(y1, y2 + 1):
+                    tiles_column.append(dast.getTile(x, y, zoom))
+                tiles.append(tiles_column)
+            return tiles
+
         FILENAME = u"test" + tiff.EXTENSIONS[0]
         POS = (5.0, 7.0)
         size = (250, 200)
@@ -753,7 +764,7 @@ class TestMergeTiles(unittest.TestCase):
 
         rdata = tiff.open_data(FILENAME)
 
-        tiles = rdata.getSubData(0, 0, (0, 0, 1, 1))
+        tiles = getSubData(rdata.content[0], 0, (0, 0, 0, 0))
         merged_img = img.mergeTiles(tiles)
         self.assertEqual(merged_img.shape, (200, 250))
         self.assertEqual(merged_img.metadata[model.MD_POS], POS)
@@ -763,6 +774,17 @@ class TestMergeTiles(unittest.TestCase):
         os.remove(FILENAME)
 
     def test_multiple_tiles(self):
+
+        def getSubData(dast, zoom, rect):
+            x1, y1, x2, y2 = rect
+            tiles = []
+            for x in range(x1, x2 + 1):
+                tiles_column = []
+                for y in range(y1, y2 + 1):
+                    tiles_column.append(dast.getTile(x, y, zoom))
+                tiles.append(tiles_column)
+            return tiles
+
         FILENAME = u"test" + tiff.EXTENSIONS[0]
         POS = (5.0, 7.0)
         size = (2000, 1000)
@@ -780,12 +802,12 @@ class TestMergeTiles(unittest.TestCase):
 
         rdata = tiff.open_data(FILENAME)
 
-        tiles = rdata.getSubData(0, 0, (0, 0, 1999, 999))
+        tiles = getSubData(rdata.content[0], 0, (0, 0, 7, 3))
         merged_img = img.mergeTiles(tiles)
         self.assertEqual(merged_img.shape, (1000, 2000))
         self.assertEqual(merged_img.metadata[model.MD_POS], POS)
 
-        tiles = rdata.getSubData(0, 0, (0, 0, 999, 499))
+        tiles = getSubData(rdata.content[0], 0, (0, 0, 3, 1))
         merged_img = img.mergeTiles(tiles)
         self.assertEqual(merged_img.shape, (512, 1024))
         numpy.testing.assert_almost_equal(merged_img.metadata[model.MD_POS], (4.999512, 7.000244))
