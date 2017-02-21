@@ -874,20 +874,20 @@ class Stream(object):
 
         return img.mergeTiles(tiles)
 
-    def _getTile(self, das, n, x, y, z):
+    def _getTile(self, das, n, x, y, z, previous_cache):
         """
         Get a tile from a DataArrayShadow. Uses cache.
         das (DataArrayShadow): A DataArrayShadow where the tile will be fetched
-        n (int): The index of the DataArrayShadow in the AcquisitionData (self.raw)
         x (int): The X coordinate of the tile
         y (int): The Y coordinate of the tile
         z (int): The zoom level where the tile is
+        previous_cache (dictionary): The cache from the last iteration of _updateImage
         """
         # the key of the tile on the cache
-        tile_key = "%d-%d-%d-%d" % (n, x, y, z)
+        tile_key = "%d-%d-%d-%d" % (self.n, x, y, z)
         # if the tile has been already cached, read it from the cache
-        if tile_key in self.tilesCache:
-            tile = self.tilesCache[tile_key]
+        if tile_key in previous_cache:
+            tile = previous_cache[tile_key]
         else:
             # The tile was not cached. Read it, and insert it on the cache
             tile = das.getTile(x, y, z)
@@ -906,6 +906,9 @@ class Stream(object):
         x1, y1, x2, y2 = rect
         curr_mpp = self.mpp.value
         curr_rect = self.rect.value
+        # store the previous cache to use in this iteration
+        previous_cache = self.tilesCache
+        self.tilesCache = {}
         while True:
             tiles = []
             for x in range(x1, x2):
@@ -918,7 +921,7 @@ class Stream(object):
                         mpp_rect_changed = True
                         break
 
-                    tile = self._getTile(content, self.n, x, y, z)
+                    tile = self._getTile(content, x, y, z, previous_cache)
                     tile = self._processTile(tile)
                     tiles_column.append(tile)
 
