@@ -154,7 +154,8 @@ class RGBStream(StaticStream):
                 for x in range(rect[0], rect[2]):
                     tiles_column = []
                     for y in range(rect[1], rect[3]):
-                        tiles_column.append(content.getTile(x, y, z))
+                        tile = self._getTile(content, self.n, x, y, z)
+                        tiles_column.append(tile)
                     tiles.append(tiles_column)
 
                 updatedTiles = []

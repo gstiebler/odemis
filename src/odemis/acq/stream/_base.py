@@ -189,6 +189,9 @@ class Stream(object):
                 raw = self.raw
             self._onNewData(None, raw)
 
+        # initialize the tiles cache used on _updateImage
+        self.tilesCache = {}
+
     # No __del__: subscription should be automatically stopped when the object
     # disappears, and the user should stop the update first anyway.
 
@@ -871,6 +874,26 @@ class Stream(object):
 
         return img.mergeTiles(tiles)
 
+    def _getTile(self, das, n, x, y, z):
+        """
+        Get a tile from a DataArrayShadow. Uses cache.
+        das (DataArrayShadow): A DataArrayShadow where the tile will be fetched
+        n (int): The index of the DataArrayShadow in the AcquisitionData (self.raw)
+        x (int): The X coordinate of the tile
+        y (int): The Y coordinate of the tile
+        z (int): The zoom level where the tile is
+        """
+        # the key of the tile on the cache
+        tile_key = "%d-%d-%d-%d" % (n, x, y, z)
+        # if the tile has been already cached, read it from the cache
+        if tile_key in self.tilesCache:
+            tile = self.tilesCache[tile_key]
+        else:
+            # The tile was not cached. Read it, and insert it on the cache
+            tile = das.getTile(x, y, z)
+            self.tilesCache[tile_key] = tile
+        return tile
+
     def _updateImage(self):
         """ Recomputes the image with all the raw data available
         """
@@ -892,7 +915,8 @@ class Stream(object):
                 for x in range(rect[0], rect[2]):
                     tiles_column = []
                     for y in range(rect[1], rect[3]):
-                        tiles_column.append(content.getTile(x, y, z))
+                        tile = self._getTile(content, self.n, x, y, z)
+                        tiles_column.append(tile)
                     tiles.append(tiles_column)
 
                 projectedTiles = []
@@ -902,6 +926,8 @@ class Stream(object):
                         tile = self._projectXY2RGB(tile, self.tint.value)
                         tiles_row_array.append(tile)
                     projectedTiles.append(tuple(tiles_row_array))
+
+                tiles.cachedTiles = {}
 
                 self.image.value = tuple(projectedTiles)
         except Exception:
