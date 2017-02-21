@@ -1774,13 +1774,16 @@ class DataArrayShadowTIFF(DataArrayShadow):
 
         self.tiff_info = tiff_info
 
-        sub_ifds = tiff_handle.GetField(T.TIFFTAG_SUBIFD)
-        if sub_ifds:
+        num_tcols = tiff_handle.GetField(T.TIFFTAG_TILEWIDTH)
+        num_trows = tiff_handle.GetField(T.TIFFTAG_TILELENGTH)
+        if num_tcols and num_trows:
+            sub_ifds = tiff_handle.GetField(T.TIFFTAG_SUBIFD)
             # add the number of subdirectories, and the main image
-            maxzoom = len(sub_ifds)
+            if sub_ifds:
+                maxzoom = len(sub_ifds)
+            else:
+                maxzoom = 0
 
-            num_tcols = tiff_handle.GetField(T.TIFFTAG_TILEWIDTH)
-            num_trows = tiff_handle.GetField(T.TIFFTAG_TILELENGTH)
             if num_tcols is None or num_trows is None:
                 raise RuntimeError("The image is not tiled")
 
