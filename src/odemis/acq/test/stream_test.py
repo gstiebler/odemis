@@ -2279,6 +2279,22 @@ class StaticStreamsTestCase(unittest.TestCase):
         self.assertEqual(len(ss.image.value), 6)
         self.assertEqual(len(ss.image.value[0]), 4)
 
+        # half image (left side), all tiles are cached
+        ss.rect.value = (POS[0] - 0.0015, POS[1] - 0.001, POS[0], POS[1] + 0.001)
+        # Wait a little bit to make sure the image has been generated
+        time.sleep(0.5)
+        self.assertEqual(26, len(read_tiles))
+        self.assertEqual(len(ss.image.value), 3)
+        self.assertEqual(len(ss.image.value[0]), 4)
+
+        # half image (right side), only the center tiles will are cached
+        ss.rect.value = (POS[0], POS[1] - 0.001, POS[0] + 0.0015, POS[1] + 0.001)
+        # Wait a little bit to make sure the image has been generated
+        time.sleep(0.5)
+        self.assertEqual(38, len(read_tiles))
+        self.assertEqual(len(ss.image.value), 4)
+        self.assertEqual(len(ss.image.value[0]), 4)
+
         del ss
         os.remove(FILENAME)
 

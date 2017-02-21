@@ -893,7 +893,8 @@ class Stream(object):
         else:
             # The tile was not cached. Read it, and insert it on the cache
             tile = das.getTile(x, y, z)
-            self.tilesCache[tile_key] = tile
+
+        self.tilesCache[tile_key] = tile
         return tile
 
     def _processTile(self, tile):
@@ -904,7 +905,8 @@ class Stream(object):
         z = self._zFromMpp()
         rect = self._rectWorldToPixel(self.rect.value)
         # convert the rect coords to tile indexes
-        rect = [int(math.ceil(l / content.tile_shape[0] / (2 ** z))) for l in rect]
+        rect = [l / (2 ** z) for l in rect]
+        rect = [int(math.floor(l / content.tile_shape[0])) for l in rect]
         x1, y1, x2, y2 = rect
         curr_mpp = self.mpp.value
         curr_rect = self.rect.value
@@ -913,10 +915,10 @@ class Stream(object):
         self.tilesCache = {}
         while True:
             tiles = []
-            for x in range(x1, x2):
+            for x in range(x1, x2 + 1):
                 tiles_column = []
                 mpp_rect_changed = False
-                for y in range(y1, y2):
+                for y in range(y1, y2 + 1):
                     if curr_mpp != self.mpp.value or curr_rect != self.rect.value:
                         curr_mpp = self.mpp.value
                         curr_rect = self.rect.value
