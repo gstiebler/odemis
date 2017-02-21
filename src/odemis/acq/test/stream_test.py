@@ -2189,7 +2189,6 @@ class StaticStreamsTestCase(unittest.TestCase):
         del ss
         os.remove(FILENAME)
 
-
     def test_rgb_tiled_stream(self):
         FILENAME = u"test" + tiff.EXTENSIONS[0]
         POS = (5.0, 7.0)
@@ -2235,6 +2234,50 @@ class StaticStreamsTestCase(unittest.TestCase):
         time.sleep(0.5)
         self.assertEqual(len(ss.image.value), 2)
         self.assertEqual(len(ss.image.value[0]), 1)
+
+        del ss
+        os.remove(FILENAME)
+
+    def test_rgb_tiled_stream_pan(self):
+        read_tiles = []
+        def getTileMock(self, x, y, zoom):
+            tile_desc = "(%d, %d), z: %d" % (x, y, zoom)
+            read_tiles.append(tile_desc)
+            return tiff.DataArrayShadowTIFF._getTileOld(self, x, y, zoom)
+
+        tiff.DataArrayShadowTIFF._getTileOld = tiff.DataArrayShadowTIFF._getTile
+        tiff.DataArrayShadowTIFF._getTile = getTileMock
+
+        FILENAME = u"test" + tiff.EXTENSIONS[0]
+        POS = (5.0, 7.0)
+        size = (3000, 2000, 3)
+        dtype = numpy.uint8
+        md = {
+            model.MD_DIMS: 'YXC',
+            model.MD_POS: POS,
+            model.MD_PIXEL_SIZE: (1e-6, 1e-6),
+        }
+        arr_shape = (2000, 3000, 3)
+        arr = numpy.array(range(size[0] * size[1] * size[2])).reshape(arr_shape).astype(dtype)
+        data = model.DataArray(arr, metadata=md)
+
+        # export
+        tiff.export(FILENAME, data, pyramid=True)
+
+        acd = tiff.open_data(FILENAME)
+        ss = stream.RGBStream("test", acd, 0)
+
+        full_image_rect = (POS[0] - 0.0015, POS[1] - 0.001, POS[0] + 0.0015, POS[1] + 0.001)
+
+        ss.mpp.value = 2e-6 # second zoom level
+        # full image
+        ss.rect.value = full_image_rect
+
+        # Wait a little bit to make sure the image has been generated
+        time.sleep(0.5)
+        self.assertEqual(26, len(read_tiles))
+        self.assertEqual(len(ss.image.value), 6)
+        self.assertEqual(len(ss.image.value[0]), 4)
 
         del ss
         os.remove(FILENAME)
