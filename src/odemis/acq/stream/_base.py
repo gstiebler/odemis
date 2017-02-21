@@ -558,7 +558,8 @@ class Stream(object):
     def _fullRect(content):
         md = content.metadata
         # get the pixel size of the full image
-        ps = md[model.MD_PIXEL_SIZE]
+        # TODO check if an exception must be raised here
+        ps = md.get(model.MD_PIXEL_SIZE, (1e-6, 1e-6))
 
         dims = md.get(model.MD_DIMS, "CTZYX"[-content.ndim::])
         img_shape = (content.shape[dims.index('X')], content.shape[dims.index('Y')])
@@ -567,7 +568,7 @@ class Stream(object):
             img_shape[0] * ps[0] / 2,
             img_shape[1] * ps[1] / 2,
         )
-        md_pos = md[model.MD_POS]
+        md_pos = md.get(model.MD_POS, (0.0, 0.0))
         rect = (
             md_pos[0] - half_shape_wc[0],
             md_pos[1] - half_shape_wc[1],
@@ -830,8 +831,8 @@ class Stream(object):
     def _rectWorldToPixel(self, rect):
         content = self.raw.content[self.n]
         md = content.metadata
-        ps = md[model.MD_PIXEL_SIZE]
-        pos = md[model.MD_POS]
+        ps = md.get(model.MD_PIXEL_SIZE, (1e-6, 1e-6))
+        pos = md.get(model.MD_POS, (0.0, 0.0))
         rect = (
             rect[0] - pos[0],
             rect[1] - pos[1],
