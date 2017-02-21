@@ -1709,7 +1709,7 @@ def read_data(filename):
     # to do it without looking at the .filename attribute)
     # see http://pytables.github.io/cookbook/inmemory_hdf5_files.html
     acd = open_data(filename)
-    return [acd.content[n].getData(0) for n in range(len(acd.content))]
+    return [acd.content[n].getData() for n in range(len(acd.content))]
 
 
 def read_thumbnail(filename):
@@ -1724,7 +1724,7 @@ def read_thumbnail(filename):
     """
     # TODO: support filename to be a File or Stream
     acd = open_data(filename)
-    return [acd.thumbnails[n].getData(0) for n in range(len(acd.thumbnails))]
+    return [acd.thumbnails[n].getData() for n in range(len(acd.thumbnails))]
 
 
 def open_data(filename):
@@ -1802,7 +1802,7 @@ class DataArrayShadowTIFF(DataArrayShadow):
 
         DataArrayShadow.__init__(self, shape, dtype, metadata, maxzoom, tile_shape)
 
-    def getData(self, n):
+    def getData(self):
         """
         Fetches the whole data (at full resolution) of image at index n.
         n (0<=int): index of the image

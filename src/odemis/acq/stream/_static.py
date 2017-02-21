@@ -75,7 +75,7 @@ class StaticStream(Stream):
             else:
                 # If raw does not have maxzoom,
                 # StaticStream should behave as when raw is a DataArray
-                raw = [raw.getData(n)]
+                raw = [raw.content[n].getData()]
         else:
             raise ValueError("'raw' must be an instance of DataArray or AcquisitionData")
 
