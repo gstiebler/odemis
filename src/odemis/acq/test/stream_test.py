@@ -2347,7 +2347,9 @@ class StaticStreamsTestCase(unittest.TestCase):
         # and .mpp are initialized to the maxzoom image
         self.assertEqual(4, len(read_tiles))
 
-        full_image_rect = (POS[0] - 0.0015, POS[1] - 0.001, POS[0] + 0.0015, POS[1] + 0.001)
+        # delta full rect
+        dfr = [ -0.0015, -0.001, 0.0015, 0.001]
+        full_image_rect = (POS[0] + dfr[0], POS[1] + dfr[1], POS[0] + dfr[2], POS[1] + dfr[3])
 
         # change both .rect and .mpp at the same time, to the same values
         # that are set on Stream constructor
@@ -2391,6 +2393,38 @@ class StaticStreamsTestCase(unittest.TestCase):
         self.assertEqual(7, len(read_tiles))
         self.assertEqual(len(ss.image.value), 2)
         self.assertEqual(len(ss.image.value[0]), 1)
+
+        delta = [d / 2 for d in dfr]
+        # this rect is half the size of the full image, in the center of the image
+        rect = (POS[0] + delta[0], POS[1] + delta[1],
+                POS[0] + delta[2], POS[1] + delta[3])
+        # changes .rect and .mpp simultaneously, simulating a GUI zoom
+        ss.rect.value = rect
+        # zoom 2
+        ss.mpp.value = 4e-6
+        # Wait a little bit to make sure the image has been generated
+        time.sleep(0.3)
+
+        # reads 6 tiles from the disk, no tile is cached becase the zoom changed
+        self.assertEqual(13, len(read_tiles))
+        self.assertEqual(len(ss.image.value), 3)
+        self.assertEqual(len(ss.image.value[0]), 2)
+
+        delta = [d / 8 for d in dfr]
+        # this rect is 1/8 the size of the full image, in the center of the image
+        rect = (POS[0] + delta[0], POS[1] + delta[1],
+                POS[0] + delta[2], POS[1] + delta[3])
+        # changes .rect and .mpp simultaneously, simulating a GUI zoom
+        ss.rect.value = rect
+        # zoom 0
+        ss.mpp.value = 1e-6
+        # Wait a little bit to make sure the image has been generated
+        time.sleep(0.5)
+
+        # reads 4 tiles from the disk, no tile is cached becase the zoom changed
+        self.assertEqual(17, len(read_tiles))
+        self.assertEqual(len(ss.image.value), 2)
+        self.assertEqual(len(ss.image.value[0]), 2)
 
         del ss
         os.remove(FILENAME)
