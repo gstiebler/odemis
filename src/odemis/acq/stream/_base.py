@@ -153,14 +153,13 @@ class Stream(object):
         # side.
         self.auto_bc_outliers = model.FloatContinuous(100 / 256, range=(0, 40))
 
+        imageForHistogramAndDRange = None
         if self.raw is not None:
             if isinstance(self.raw, list):
                 if len(self.raw) > 0:
                     imageForHistogramAndDRange = self.raw[0]
             else:
                 imageForHistogramAndDRange = self._getMergedRawImage(self.raw.maxzoom)
-        else:
-            imageForHistogramAndDRange = None
 
         # Used if auto_bc is False
         # min/max ratio of the whole intensity level which are mapped to

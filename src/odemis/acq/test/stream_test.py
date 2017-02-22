@@ -2295,6 +2295,20 @@ class StaticStreamsTestCase(unittest.TestCase):
         self.assertEqual(len(ss.image.value), 4)
         self.assertEqual(len(ss.image.value[0]), 4)
 
+        # really small rect on the center, the tile is in the cache
+        ss.rect.value = (POS[0], POS[1], POS[0] + 0.00001, POS[1] + 0.00001)
+        # Wait a little bit to make sure the image has been generated
+        time.sleep(0.5)
+        self.assertEqual(38, len(read_tiles))
+        self.assertEqual(len(ss.image.value), 1)
+        self.assertEqual(len(ss.image.value[0]), 1)
+
+        # rect out of the image
+        with self.assertRaises(ValueError): # "rect out of bounds"
+            ss.rect.value = (POS[0] - 15, POS[1] - 15, POS[0] + 16, POS[1] + 16)
+            # Wait a little bit to make sure the image has been generated
+            time.sleep(0.5)
+
         del ss
         os.remove(FILENAME)
 
