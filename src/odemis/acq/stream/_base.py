@@ -108,7 +108,8 @@ class Stream(object):
         else:
             self.raw = raw
 
-        # initialize the tiles cache used on _updateImage
+        # initialize the tiles cache used on _updateImage. This cache holds the
+        # projected tiles
         self.tilesCache = {}
 
         # TODO: should better be based on a BufferedDataFlow: subscribing starts
@@ -596,7 +597,7 @@ class Stream(object):
                 if isinstance(self.raw, list):
                     data = self.raw[0]
                 else:
-                    data = self._getMergedImage(self.raw.content[self.n].maxzoom)
+                    data = self._getMergedImage(self.raw.maxzoom)
 
         # 2 types of drange management:
         # * dtype is int -> follow MD_BPP/shape/dtype.max, and if too wide use data.max
@@ -823,14 +824,12 @@ class Stream(object):
         gc.collect()
 
     def _zFromMpp(self):
-        content = self.raw.content[self.n]
-        md = content.metadata
+        md = self.raw.metadata
         ps = md[model.MD_PIXEL_SIZE]
         return int(math.log(self.mpp.value / ps[0], 2))
 
     def _rectWorldToPixel(self, rect):
-        content = self.raw.content[self.n]
-        md = content.metadata
+        md = self.raw.metadata
         ps = md.get(model.MD_PIXEL_SIZE, (1e-6, 1e-6))
         pos = md.get(model.MD_POS, (0.0, 0.0))
         rect = (
@@ -839,8 +838,8 @@ class Stream(object):
             rect[2] - pos[0],
             rect[3] - pos[1]
         )
-        dims = md.get(model.MD_DIMS, "CTZYX"[-content.ndim::])
-        img_shape = (content.shape[dims.index('X')], content.shape[dims.index('Y')])
+        dims = md.get(model.MD_DIMS, "CTZYX"[-self.raw.ndim::])
+        img_shape = (self.raw.shape[dims.index('X')], self.raw.shape[dims.index('Y')])
 
         return (
             int(rect[0] / ps[0] + img_shape[0] / 2),
@@ -860,39 +859,37 @@ class Stream(object):
         """
         Returns the merged image based on z and .rect
         """
-        content = self.raw.content[self.n]
-        width_zoomed = content.shape[1] / (2 ** z)
-        height_zoomed = content.shape[0] / (2 ** z)
-        num_tiles_x = int(math.ceil(width_zoomed / content.tile_shape[1]))
-        num_tiles_y = int(math.ceil(height_zoomed/ content.tile_shape[0]))
+        width_zoomed = self.raw.shape[1] / (2 ** z)
+        height_zoomed = self.raw.shape[0] / (2 ** z)
+        num_tiles_x = int(math.ceil(width_zoomed / self.raw.tile_shape[1]))
+        num_tiles_y = int(math.ceil(height_zoomed/ self.raw.tile_shape[0]))
 
         tiles = []
         for x in range(num_tiles_x):
             tiles_column = []
             for y in range(num_tiles_y):
-                tile = self._getTile(content, x, y, z, self.tilesCache)
+                tile = self._getTile(x, y, z, self.tilesCache)
                 tiles_column.append(tile)
             tiles.append(tiles_column)
 
         return img.mergeTiles(tiles)
 
-    def _getTile(self, das, x, y, z, previous_cache):
+    def _getTile(self, x, y, z, previous_cache):
         """
         Get a tile from a DataArrayShadow. Uses cache.
-        das (DataArrayShadow): A DataArrayShadow where the tile will be fetched
         x (int): The X coordinate of the tile
         y (int): The Y coordinate of the tile
         z (int): The zoom level where the tile is
         previous_cache (dictionary): The cache from the last iteration of _updateImage
         """
         # the key of the tile on the cache
-        tile_key = "%d-%d-%d-%d" % (self.n, x, y, z)
+        tile_key = "%d-%d-%d" % (x, y, z)
         # if the tile has been already cached, read it from the cache
         if tile_key in previous_cache:
             tile = previous_cache[tile_key]
         else:
             # The tile was not cached. Read it, and insert it on the cache
-            tile = das.getTile(x, y, z)
+            tile = self.raw.getTile(x, y, z)
 
         self.tilesCache[tile_key] = tile
         return tile
@@ -901,12 +898,11 @@ class Stream(object):
         return self._projectXY2RGB(tile, self.tint.value)
 
     def _getTilesFromSelectedArea(self):
-        content = self.raw.content[self.n]
         z = self._zFromMpp()
         rect = self._rectWorldToPixel(self.rect.value)
         # convert the rect coords to tile indexes
         rect = [l / (2 ** z) for l in rect]
-        rect = [int(math.floor(l / content.tile_shape[0])) for l in rect]
+        rect = [int(math.floor(l / self.raw.tile_shape[0])) for l in rect]
         x1, y1, x2, y2 = rect
         curr_mpp = self.mpp.value
         curr_rect = self.rect.value
@@ -925,7 +921,7 @@ class Stream(object):
                         mpp_rect_changed = True
                         break
 
-                    tile = self._getTile(content, x, y, z, previous_cache)
+                    tile = self._getTile(x, y, z, previous_cache)
                     tile = self._processTile(tile)
                     tiles_column.append(tile)
 
@@ -987,8 +983,8 @@ class Stream(object):
         data (DataArray): the raw data to use, default to .raw[0]
         """
         # Compute histogram and compact version
-        if isinstance(self.raw, model.AcquisitionData):
-            data = self._getMergedImage(self.raw.content[self.n].maxzoom)
+        if isinstance(self.raw, model.DataArrayShadow):
+            data = self._getMergedImage(self.raw.maxzoom)
         elif (not self.raw or not isinstance(self.raw, list)) and data is None:
             return
 

@@ -2158,7 +2158,7 @@ class StaticStreamsTestCase(unittest.TestCase):
         tiff.export(FILENAME, data, pyramid=True)
 
         acd = tiff.open_data(FILENAME)
-        ss = stream.StaticStream("test", acd, 0)
+        ss = stream.StaticStream("test", acd.content[0])
 
         # out of bounds
         with self.assertRaises(ValueError):
@@ -2207,7 +2207,7 @@ class StaticStreamsTestCase(unittest.TestCase):
         tiff.export(FILENAME, data, pyramid=True)
 
         acd = tiff.open_data(FILENAME)
-        ss = stream.RGBStream("test", acd, 0)
+        ss = stream.RGBStream("test", acd.content[0])
 
         # out of bounds
         with self.assertRaises(ValueError):
@@ -2265,7 +2265,7 @@ class StaticStreamsTestCase(unittest.TestCase):
         tiff.export(FILENAME, data, pyramid=True)
 
         acd = tiff.open_data(FILENAME)
-        ss = stream.RGBStream("test", acd, 0)
+        ss = stream.RGBStream("test", acd.content[0])
 
         full_image_rect = (POS[0] - 0.0015, POS[1] - 0.001, POS[0] + 0.0015, POS[1] + 0.001)
 

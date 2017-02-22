@@ -43,49 +43,42 @@ class StaticStream(Stream):
     Stream containing one static image.
     For testing and static images.
     """
-    def __init__(self, name, raw, n=None):
+    def __init__(self, name, raw):
         """
         Note: parameters are different from the base class.
-        raw (list of DataArray or AcquisitionData): The data to display.
-            If it's an AcquisitionData, n must be None
-        n (None or 0 <= int): The index of the data in the AcquisitionData
+        raw (list of DataArray or DataArrayShadow): The data to display.
         """
-        if isinstance(raw, list):
+        if isinstance(raw, model.DataArray):
+            raw = [raw]
+        elif isinstance(raw, list):
             if len(raw) > 0 and not isinstance(raw[0], model.DataArray):
                 raise ValueError("'raw' must be a list of DataArray")
-
-            if n is not None:
-                raise ValueError("'n' parameter must be None if 'raw' is a DataArray")
-        elif isinstance(raw, model.AcquisitionData):
-            if not 0 <= n < len(raw.content):
-                raise ValueError("'n' parameter must be between 0 and len(raw.content)")
-
-            self.n = n
-            if hasattr(raw.content[n], 'maxzoom'):
-                md = raw.content[n].metadata
+        elif isinstance(raw, model.DataArrayShadow):
+            if hasattr(raw, 'maxzoom'):
+                md = raw.metadata
                 # get the pixel size of the full image
                 # TODO check if an exception must be raised here
                 ps = md.get(model.MD_PIXEL_SIZE, (1e-6, 1e-6))
-                default_mpp = ps[0] * raw.content[n].maxzoom ** 2
+                default_mpp = ps[0] * raw.maxzoom ** 2
                 # sets the mpp as the X axis of the pixel size of the full image
                 self.mpp = model.FloatVA(default_mpp, setter=self._mpp_setter)
 
-                full_rect = Stream._fullRect(raw.content[n])
+                full_rect = Stream._fullRect(raw)
                 self.rect = model.VigilantAttribute(full_rect, setter=self._rect_setter)
             else:
                 # If raw does not have maxzoom,
                 # StaticStream should behave as when raw is a DataArray
-                raw = [raw.content[n].getData()]
+                raw = raw.getData()
         else:
-            raise ValueError("'raw' must be an instance of DataArray or AcquisitionData")
+            raise ValueError("'raw' must be a list of DataArray or a DataArrayShadow")
 
         super(StaticStream, self).__init__(name, None, None, None, raw=raw)
 
     def _mpp_setter(self, mpp):
-        md = self.raw.content[self.n].metadata
+        md = self.raw.metadata
         ps = md[model.MD_PIXEL_SIZE]
         exp = math.log(mpp / ps[0], 2.0)
-        if not 0 <= exp <= self.raw.content[self.n].maxzoom:
+        if not 0 <= exp <= self.raw.maxzoom:
             raise ValueError("mpp out of bounds")
 
         self._shouldUpdateImage()
@@ -94,7 +87,7 @@ class StaticStream(Stream):
         return ps[0] * 2 ** exp
 
     def _rect_setter(self, rect):
-        full_rect = StaticStream._fullRect(self.raw.content[self.n])
+        full_rect = StaticStream._fullRect(self.raw)
         if not (full_rect[0] <= rect[0] <= full_rect[2] or
                 full_rect[0] <= rect[2] <= full_rect[2] or
                 full_rect[1] <= rect[1] <= full_rect[3] or
@@ -109,12 +102,10 @@ class RGBStream(StaticStream):
     """
     A static stream which gets as input the actual RGB image
     """
-    def __init__(self, name, raw, n=None):
+    def __init__(self, name, raw):
         """
         Note: parameters are different from the base class.
-        raw (DataArray or AcquisitionData): The data to display.
-            If it's an AcquisitionData, n must be None
-        n (None or 0 <= int): The index of the data in the AcquisitionData
+        raw (DataArray or DataArrayShadow): The data to display.
         """
         # Check it's 2D
         # TODO check if the checks below should still be done
@@ -122,10 +113,7 @@ class RGBStream(StaticStream):
         if not (len(image.shape) == 3 and image.shape[2] in [3, 4]):
             raise ValueError("Data must be RGB(A)")
         '''
-        if isinstance(raw, model.DataArray):
-            raw = [raw]
-
-        super(RGBStream, self).__init__(name, raw, n)
+        super(RGBStream, self).__init__(name, raw)
 
     def _processTile(self, tile):
         tile = img.ensureYXC(tile)
@@ -164,12 +152,10 @@ class Static2DStream(StaticStream):
     Stream containing one static image.
     For testing and static images.
     """
-    def __init__(self, name, raw, n=None):
+    def __init__(self, name, raw):
         """
         Note: parameters are different from the base class.
-        raw (DataArray or AcquisitionData): The data to display.
-            If it's an AcquisitionData, n must be None
-        n (None or 0 <= int): The index of the data in the AcquisitionData
+        raw (DataArray or DataArrayShadow): The data to display.
         """
 
         # TODO check if the checks below should still be done
@@ -181,10 +167,7 @@ class Static2DStream(StaticStream):
         if len(image.shape) > 2:
             image = img.ensure2DImage(image)
         '''
-        if isinstance(raw, model.DataArray):
-            raw = [raw]
-        
-        super(Static2DStream, self).__init__(name, raw, n)
+        super(Static2DStream, self).__init__(name, raw)
 
 
 class StaticSEMStream(Static2DStream):
