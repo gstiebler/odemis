@@ -153,6 +153,14 @@ class Stream(object):
         # side.
         self.auto_bc_outliers = model.FloatContinuous(100 / 256, range=(0, 40))
 
+        if self.raw:
+            if isinstance(self.raw, list):
+                imageForHistogramAndDRange = self.raw[0]
+            else:
+                imageForHistogramAndDRange = self._getMergedRawImage(self.raw.maxzoom)
+        else:
+            imageForHistogramAndDRange = None
+
         # Used if auto_bc is False
         # min/max ratio of the whole intensity level which are mapped to
         # black/white. Its range is ._drange (will be updated by _updateDRange)
@@ -163,7 +171,7 @@ class Stream(object):
         # Make it so that the value gets clipped when its range is updated and
         # the value is outside of it.
         self.intensityRange.clip_on_range = True
-        self._updateDRange()
+        self._updateDRange(imageForHistogramAndDRange)
 
         # Histogram of the current image _or_ slightly older image.
         # Note it's an ndarray. Use .tolist() to get a python list.
@@ -186,7 +194,7 @@ class Stream(object):
         # TODO: have this done by the child class, if needed.
         # TODO support AcquisitionData
         if self.raw:
-            self._updateHistogram()
+            self._updateHistogram(imageForHistogramAndDRange)
             if isinstance(self.raw, list):
                 raw = self.raw[0]
             else:
@@ -597,7 +605,7 @@ class Stream(object):
                 if isinstance(self.raw, list):
                     data = self.raw[0]
                 else:
-                    data = self._getMergedImage(self.raw.maxzoom)
+                    data = self._getMergedRawImage(self.raw.maxzoom)
 
         # 2 types of drange management:
         # * dtype is int -> follow MD_BPP/shape/dtype.max, and if too wide use data.max
@@ -868,13 +876,32 @@ class Stream(object):
         for x in range(num_tiles_x):
             tiles_column = []
             for y in range(num_tiles_y):
-                tile = self._getTile(x, y, z, self._projectedTilesCache)
+                tile = self._getProjectedTile(x, y, z, self._projectedTilesCache)
                 tiles_column.append(tile)
             tiles.append(tiles_column)
 
         return img.mergeTiles(tiles)
 
-    def _getTile(self, x, y, z, previous_cache):
+    def _getMergedRawImage(self, z):
+        """
+        Returns the merged image based on z and .rect
+        """
+        width_zoomed = self.raw.shape[1] / (2 ** z)
+        height_zoomed = self.raw.shape[0] / (2 ** z)
+        num_tiles_x = int(math.ceil(width_zoomed / self.raw.tile_shape[1]))
+        num_tiles_y = int(math.ceil(height_zoomed/ self.raw.tile_shape[0]))
+
+        tiles = []
+        for x in range(num_tiles_x):
+            tiles_column = []
+            for y in range(num_tiles_y):
+                tile = self.raw.getTile(x, y, z)
+                tiles_column.append(tile)
+            tiles.append(tiles_column)
+
+        return img.mergeTiles(tiles)
+
+    def _getProjectedTile(self, x, y, z, previous_cache):
         """
         Get a tile from a DataArrayShadow. Uses cache.
         x (int): The X coordinate of the tile
@@ -890,11 +917,12 @@ class Stream(object):
         else:
             # The tile was not cached. Read it, and insert it on the cache
             tile = self.raw.getTile(x, y, z)
+            tile = self._projectTile(tile)
 
         self._projectedTilesCache[tile_key] = tile
         return tile
 
-    def _processTile(self, tile):
+    def _projectTile(self, tile):
         return self._projectXY2RGB(tile, self.tint.value)
 
     def _getTilesFromSelectedArea(self):
@@ -921,8 +949,7 @@ class Stream(object):
                         mpp_rect_changed = True
                         break
 
-                    tile = self._getTile(x, y, z, previous_cache)
-                    tile = self._processTile(tile)
+                    tile = self._getProjectedTile(x, y, z, previous_cache)
                     tiles_column.append(tile)
 
                 if mpp_rect_changed:
@@ -983,10 +1010,11 @@ class Stream(object):
         data (DataArray): the raw data to use, default to .raw[0]
         """
         # Compute histogram and compact version
-        if isinstance(self.raw, model.DataArrayShadow):
-            data = self._getMergedImage(self.raw.maxzoom)
-        elif (not self.raw or not isinstance(self.raw, list)) and data is None:
-            return
+        if data is None:
+            if isinstance(self.raw, model.DataArrayShadow):
+                data = self._getMergedRawImage(self.raw.maxzoom)
+            elif not self.raw or not isinstance(self.raw, list):
+                return
 
         data = self.raw[0] if data is None else data
 
