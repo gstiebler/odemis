@@ -110,7 +110,7 @@ class Stream(object):
 
         # initialize the tiles cache used on _updateImage. This cache holds the
         # projected tiles
-        self.tilesCache = {}
+        self._projectedTilesCache = {}
 
         # TODO: should better be based on a BufferedDataFlow: subscribing starts
         # acquisition and sends (raw) data to whoever is interested. .get()
@@ -868,7 +868,7 @@ class Stream(object):
         for x in range(num_tiles_x):
             tiles_column = []
             for y in range(num_tiles_y):
-                tile = self._getTile(x, y, z, self.tilesCache)
+                tile = self._getTile(x, y, z, self._projectedTilesCache)
                 tiles_column.append(tile)
             tiles.append(tiles_column)
 
@@ -891,7 +891,7 @@ class Stream(object):
             # The tile was not cached. Read it, and insert it on the cache
             tile = self.raw.getTile(x, y, z)
 
-        self.tilesCache[tile_key] = tile
+        self._projectedTilesCache[tile_key] = tile
         return tile
 
     def _processTile(self, tile):
@@ -907,8 +907,8 @@ class Stream(object):
         curr_mpp = self.mpp.value
         curr_rect = self.rect.value
         # store the previous cache to use in this iteration
-        previous_cache = self.tilesCache
-        self.tilesCache = {}
+        previous_cache = self._projectedTilesCache
+        self._projectedTilesCache = {}
         while True:
             tiles = []
             for x in range(x1, x2 + 1):
