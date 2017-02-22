@@ -2324,15 +2324,25 @@ class StaticStreamsTestCase(unittest.TestCase):
 
         FILENAME = u"test" + tiff.EXTENSIONS[0]
         POS = (5.0, 7.0)
-        size = (3000, 2000, 3)
         dtype = numpy.uint8
         md = {
             model.MD_DIMS: 'YXC',
             model.MD_POS: POS,
             model.MD_PIXEL_SIZE: (1e-6, 1e-6),
         }
-        arr_shape = (2000, 3000, 3)
-        arr = numpy.array(range(size[0] * size[1] * size[2])).reshape(arr_shape).astype(dtype)
+        num_cols = 3000
+        num_rows = 2000
+        arr_shape = (num_rows, num_cols, 3)
+        arr = numpy.zeros(arr_shape, dtype=dtype)
+
+        line = numpy.linspace(0, 255, num_cols, dtype=dtype)
+        column = numpy.linspace(0, 255, num_rows, dtype=dtype)
+
+        # each line has values from 0 to 255, linearly distributed
+        arr[:, :, 0] = numpy.tile(line, (num_rows, 1))
+        # each row has values from 0 to 255, linearly distributed
+        arr[:, :, 1] = numpy.tile(column, (num_cols, 1)).transpose()
+
         data = model.DataArray(arr, metadata=md)
 
         # export
@@ -2362,6 +2372,14 @@ class StaticStreamsTestCase(unittest.TestCase):
         self.assertEqual(4, len(read_tiles))
         self.assertEqual(len(ss.image.value), 2)
         self.assertEqual(len(ss.image.value[0]), 1)
+        # top-left pixel of the left tile
+        numpy.testing.assert_array_equal([0, 0, 0], ss.image.value[0][0][0, 0, :])
+        # top-right pixel of the left tile
+        numpy.testing.assert_array_equal([173, 0, 0], ss.image.value[0][0][0, 255, :])
+        # bottom-left pixel of the left tile
+        numpy.testing.assert_array_equal([0, 255, 0], ss.image.value[0][0][249, 0, :])
+        # bottom-right pixel of the right tile
+        numpy.testing.assert_array_equal([254, 255, 0], ss.image.value[1][0][249, 117, :])
 
         # really small rect on the center, the tile is in the cache
         ss.rect.value = (POS[0], POS[1], POS[0] + 0.00001, POS[1] + 0.00001)
@@ -2372,6 +2390,12 @@ class StaticStreamsTestCase(unittest.TestCase):
         self.assertEqual(4, len(read_tiles))
         self.assertEqual(len(ss.image.value), 1)
         self.assertEqual(len(ss.image.value[0]), 1)
+        # top-left pixel of the only tile
+        numpy.testing.assert_array_equal([0, 0, 0], ss.image.value[0][0][0, 0, :])
+        # top-right pixel of the only tile
+        numpy.testing.assert_array_equal([173, 0, 0], ss.image.value[0][0][0, 255, :])
+        # bottom-left pixel of the only tile
+        numpy.testing.assert_array_equal([0, 255, 0], ss.image.value[0][0][249, 0, :])
 
         ss.mpp.value = 1e-6 # minimum zoom level
 
@@ -2381,6 +2405,14 @@ class StaticStreamsTestCase(unittest.TestCase):
         self.assertEqual(5, len(read_tiles))
         self.assertEqual(len(ss.image.value), 1)
         self.assertEqual(len(ss.image.value[0]), 1)
+        # top-left pixel of the only tile
+        numpy.testing.assert_array_equal([108, 97, 0], ss.image.value[0][0][0, 0, :])
+        # top-right pixel of the only tile
+        numpy.testing.assert_array_equal([130, 97, 0], ss.image.value[0][0][0, 255, :])
+        # bottom-left pixel of the only tile
+        numpy.testing.assert_array_equal([108, 130, 0], ss.image.value[0][0][255, 0, :])
+        # bottom-right pixel of the only tile
+        numpy.testing.assert_array_equal([130, 130, 0], ss.image.value[0][0][255, 255, :])
 
         # changing .rect and .mpp simultaneously
         ss.rect.value = full_image_rect # full image
@@ -2409,6 +2441,14 @@ class StaticStreamsTestCase(unittest.TestCase):
         self.assertEqual(13, len(read_tiles))
         self.assertEqual(len(ss.image.value), 3)
         self.assertEqual(len(ss.image.value[0]), 2)
+        # top-left pixel of a center tile
+        numpy.testing.assert_array_equal([87, 0, 0], ss.image.value[1][0][0, 0, :])
+        # top-right pixel of a center tile
+        numpy.testing.assert_array_equal([173, 0, 0], ss.image.value[1][0][0, 255, :])
+        # bottom-left pixel of a center tile
+        numpy.testing.assert_array_equal([87, 130, 0], ss.image.value[1][0][255, 0, :])
+        # bottom pixel of a center tile
+        numpy.testing.assert_array_equal([173, 130, 0], ss.image.value[1][0][255, 255, :])
 
         delta = [d / 8 for d in dfr]
         # this rect is 1/8 the size of the full image, in the center of the image
@@ -2425,6 +2465,14 @@ class StaticStreamsTestCase(unittest.TestCase):
         self.assertEqual(17, len(read_tiles))
         self.assertEqual(len(ss.image.value), 2)
         self.assertEqual(len(ss.image.value[0]), 2)
+        # top-left pixel of the top-left tile
+        numpy.testing.assert_array_equal([108, 97, 0], ss.image.value[0][0][0, 0, :])
+        # top-right pixel of top-left tile
+        numpy.testing.assert_array_equal([130, 97, 0], ss.image.value[0][0][0, 255, :])
+        # bottom-left pixel of top-left tile
+        numpy.testing.assert_array_equal([108, 130, 0], ss.image.value[0][0][255, 0, :])
+        # bottom pixel of top-left tile
+        numpy.testing.assert_array_equal([130, 130, 0], ss.image.value[0][0][255, 255, :])
 
         del ss
         os.remove(FILENAME)
