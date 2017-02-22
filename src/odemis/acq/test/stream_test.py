@@ -2312,6 +2312,88 @@ class StaticStreamsTestCase(unittest.TestCase):
         del ss
         os.remove(FILENAME)
 
+    def test_rgb_tiled_stream_zoom(self):
+        read_tiles = []
+        def getTileMock(self, x, y, zoom):
+            tile_desc = "(%d, %d), z: %d" % (x, y, zoom)
+            read_tiles.append(tile_desc)
+            return tiff.DataArrayShadowTIFF._getTileOld(self, x, y, zoom)
+
+        tiff.DataArrayShadowTIFF._getTileOld = tiff.DataArrayShadowTIFF._getTile
+        tiff.DataArrayShadowTIFF._getTile = getTileMock
+
+        FILENAME = u"test" + tiff.EXTENSIONS[0]
+        POS = (5.0, 7.0)
+        size = (3000, 2000, 3)
+        dtype = numpy.uint8
+        md = {
+            model.MD_DIMS: 'YXC',
+            model.MD_POS: POS,
+            model.MD_PIXEL_SIZE: (1e-6, 1e-6),
+        }
+        arr_shape = (2000, 3000, 3)
+        arr = numpy.array(range(size[0] * size[1] * size[2])).reshape(arr_shape).astype(dtype)
+        data = model.DataArray(arr, metadata=md)
+
+        # export
+        tiff.export(FILENAME, data, pyramid=True)
+
+        acd = tiff.open_data(FILENAME)
+        ss = stream.RGBStream("test", acd.content[0])
+        time.sleep(0.2)
+
+        # the maxzoom image has 2 tiles. So far 4 was read: 2 on the constructor, for
+        # _updateHistogram and _updateDRange. And 2 for _updateImage, because .rect
+        # and .mpp are initialized to the maxzoom image
+        self.assertEqual(4, len(read_tiles))
+
+        full_image_rect = (POS[0] - 0.0015, POS[1] - 0.001, POS[0] + 0.0015, POS[1] + 0.001)
+
+        # change both .rect and .mpp at the same time, to the same values
+        # that are set on Stream constructor
+        ss.rect.value = full_image_rect # full image
+        ss.mpp.value = 8e-6 # maximum zoom level
+
+        # Wait a little bit to make sure the image has been generated
+        time.sleep(0.2)
+        # no tiles are read from the disk
+        self.assertEqual(4, len(read_tiles))
+        self.assertEqual(len(ss.image.value), 2)
+        self.assertEqual(len(ss.image.value[0]), 1)
+
+        # really small rect on the center, the tile is in the cache
+        ss.rect.value = (POS[0], POS[1], POS[0] + 0.00001, POS[1] + 0.00001)
+
+        # Wait a little bit to make sure the image has been generated
+        time.sleep(0.2)
+        # no tiles are read from the disk
+        self.assertEqual(4, len(read_tiles))
+        self.assertEqual(len(ss.image.value), 1)
+        self.assertEqual(len(ss.image.value[0]), 1)
+
+        ss.mpp.value = 1e-6 # minimum zoom level
+
+        # Wait a little bit to make sure the image has been generated
+        time.sleep(0.5)
+        # only one tile is read
+        self.assertEqual(5, len(read_tiles))
+        self.assertEqual(len(ss.image.value), 1)
+        self.assertEqual(len(ss.image.value[0]), 1)
+
+        # changing .rect and .mpp simultaneously
+        ss.rect.value = full_image_rect # full image
+        ss.mpp.value = 8e-6 # maximum zoom level
+
+        # Wait a little bit to make sure the image has been generated
+        time.sleep(0.5)
+        # Only 2 tiles read from disk. It means that the loop inside _updateImage,
+        # triggered by the change on .rect was immediately stopped when .mpp changed
+        self.assertEqual(7, len(read_tiles))
+        self.assertEqual(len(ss.image.value), 2)
+        self.assertEqual(len(ss.image.value[0]), 1)
+
+        del ss
+        os.remove(FILENAME)
 
 if __name__ == "__main__":
     unittest.main()
