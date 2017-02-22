@@ -1529,7 +1529,7 @@ class AnalysisTab(Tab):
             
         # Update the acquisition date to the newest image present (so that if
         # several acquisitions share one old image, the date is still different)
-        acq_dates = [md.metadata[model.MD_ACQ_DATE] for md in md_list if model.MD_ACQ_DATE in md]
+        acq_dates = [md[model.MD_ACQ_DATE] for md in md_list if model.MD_ACQ_DATE in md]
         if acq_dates:
             fi.metadata[model.MD_ACQ_DATE] = max(acq_dates)
         self.tab_data_model.acq_fileinfo.value = fi

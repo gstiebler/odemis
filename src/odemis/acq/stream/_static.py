@@ -68,7 +68,7 @@ class StaticStream(Stream):
             else:
                 # If raw does not have maxzoom,
                 # StaticStream should behave as when raw is a DataArray
-                raw = raw.getData()
+                raw = [raw.getData()]
         else:
             raise ValueError("'raw' must be a list of DataArray or a DataArrayShadow")
 

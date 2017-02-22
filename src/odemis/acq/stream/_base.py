@@ -153,9 +153,10 @@ class Stream(object):
         # side.
         self.auto_bc_outliers = model.FloatContinuous(100 / 256, range=(0, 40))
 
-        if self.raw:
+        if self.raw is not None:
             if isinstance(self.raw, list):
-                imageForHistogramAndDRange = self.raw[0]
+                if len(self.raw) > 0:
+                    imageForHistogramAndDRange = self.raw[0]
             else:
                 imageForHistogramAndDRange = self._getMergedRawImage(self.raw.maxzoom)
         else:

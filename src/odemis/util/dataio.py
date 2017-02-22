@@ -152,7 +152,7 @@ def data_to_static_streams(data):
 
         if isinstance(d, model.DataArrayShadow) and \
                 (issubclass(klass, stream.Static2DStream) or issubclass(klass, stream.RGBStream)):
-            stream_instance = klass(name, acd, i)
+            stream_instance = klass(name, acd.content[i])
         else:
             stream_instance = klass(name, d)
 
