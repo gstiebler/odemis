@@ -848,44 +848,12 @@ class Stream(object):
             int(rect[3] / ps[1] + img_shape[1] / 2),
         )
 
-    def getMergedImage(self):
-        """
-        Returns the merged image based on .mpp and .rect
-        return (DataArray): The merged image
-        """
-        z = self._zFromMpp()
-        return self._getMergedImage(z)
-
-    def _getMergedImage(self, z):
-        """
-        Returns the merged image based on z and .rect
-        z (int): Zoom level index
-        return (DataArray): The merged image
-        """
-        # calculates the size of the merged image
-        width_zoomed = self.raw.shape[1] / (2 ** z)
-        height_zoomed = self.raw.shape[0] / (2 ** z)
-        # calculates the number of tiles on both axes
-        num_tiles_x = int(math.ceil(width_zoomed / self.raw.tile_shape[1]))
-        num_tiles_y = int(math.ceil(height_zoomed/ self.raw.tile_shape[0]))
-
-        tiles = []
-        for x in range(num_tiles_x):
-            tiles_column = []
-            for y in range(num_tiles_y):
-                tile = self._getProjectedTile(x, y, z, self._projectedTilesCache)
-                tiles_column.append(tile)
-            tiles.append(tiles_column)
-
-        return img.mergeTiles(tiles)
-
     def _getMergedRawImage(self, z):
         """
         Returns the merged image based on z and .rect, using the raw tiles (not projected)
         z (int): Zoom level index
         return (DataArray): The merged image
         """
-        # TODO remove duplicate code from _getMergedImage
         # calculates the size of the merged image
         width_zoomed = self.raw.shape[1] / (2 ** z)
         height_zoomed = self.raw.shape[0] / (2 ** z)

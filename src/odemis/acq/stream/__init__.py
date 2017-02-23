@@ -236,7 +236,7 @@ class StreamTree(object):
                         # a tuple of tuple of tiles
                         # TODO This is a "hack" in order to temporarily properly already
                         # display the pyramidal streams before the GUI classes are changed
-                        im = s.getMergedImage()
+                        im = util.img.mergeTiles(s.image.value)
                     if im is not None:
                         images.append(im)
 
