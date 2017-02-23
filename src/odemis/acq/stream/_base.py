@@ -885,6 +885,8 @@ class Stream(object):
         # if the tile has been already cached, read it from the cache
         if tile_key in previous_cache:
             tile = previous_cache[tile_key]
+        elif tile_key in self._projectedTilesCache:
+            tile = self._projectedTilesCache[tile_key]
         else:
             # The tile was not cached. Read it, and insert it on the cache
             tile = self.raw.getTile(x, y, z)
@@ -918,32 +920,31 @@ class Stream(object):
         # store the previous cache to use in this iteration
         previous_cache = self._projectedTilesCache
         self._projectedTilesCache = {}
-        while True:
+        # Execute at least once. If mpp and rect changed in
+        # the last execution of the loops, execute again
+        mpp_rect_changed = True
+        while mpp_rect_changed:
             tiles = []
+            mpp_rect_changed = False
             for x in range(x1, x2 + 1):
                 tiles_column = []
-                mpp_rect_changed = False
-                for y in range(y1, y2 + 1):
-                    # check if .mpp or .rect changed in the middle of the process.
-                    # it is common to happen when .rect and .mpp are changed simultaneously
-                    if curr_mpp != self.mpp.value or curr_rect != self.rect.value:
-                        curr_mpp = self.mpp.value
-                        curr_rect = self.rect.value
-                        mpp_rect_changed = True
-                        break
+                # check if .mpp or .rect changed in the middle of the process.
+                # it is common to happen when .rect and .mpp are changed simultaneously
+                if curr_mpp != self.mpp.value or curr_rect != self.rect.value:
+                    curr_mpp = self.mpp.value
+                    curr_rect = self.rect.value
+                    # the two lines below avoids that lots of old tiles
+                    # stays in self._projectTilesCache
+                    previous_cache.update(self._projectTilesCache)
+                    self._projectTilesCache
+                    mpp_rect_changed = True
+                    break
 
+                for y in range(y1, y2 + 1):
                     tile = self._getProjectedTile(x, y, z, previous_cache)
                     tiles_column.append(tile)
 
-                if mpp_rect_changed:
-                    break
-
                 tiles.append(tuple(tiles_column))
-
-            # if mpp and rect did not changed in the last execution of the loops,
-            # break the while loop
-            if not mpp_rect_changed:
-                break
 
         return tuple(tiles)
 
