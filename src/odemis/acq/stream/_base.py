@@ -153,14 +153,19 @@ class Stream(object):
         # side.
         self.auto_bc_outliers = model.FloatContinuous(100 / 256, range=(0, 40))
 
-        drange_raw = None
-        if self.raw is not None:
-            if isinstance(self.raw, list):
-                if len(self.raw) > 0:
-                    drange_raw = self.raw[0]
-            else:
-                # if the image is pyramidal, use the smaller image
-                drange_raw = self._getMergedRawImage(self.raw.maxzoom)
+        # drange_raw is the smaller (less zoomed) image of an pyramidal image. It is used
+        # instead of the full image because it would be too slow or even impossible to read
+        # the full data from the image to the memory. It is also not the tiles from the tiled
+        # image, so the code for pyramidal and non-pyramidal images
+        # that reads drange_raw is the same.
+        # The drawback of not using the full image, is that some of the pixels are lost, so
+        # maybe the max/min of the smaller image is different from the min/max of the full image.
+        # And the histogram of both images will probably be a bit different also.
+        if isinstance(self.raw, model.DataArrayShadow):
+            # if the image is pyramidal, use the smaller image
+            drange_raw = self._getMergedRawImage(self.raw.maxzoom)
+        else:
+            drange_raw = None
 
         # Used if auto_bc is False
         # min/max ratio of the whole intensity level which are mapped to
