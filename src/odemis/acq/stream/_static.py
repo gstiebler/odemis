@@ -63,7 +63,7 @@ class StaticStream(Stream):
                 # sets the mpp as the X axis of the pixel size of the full image
                 self.mpp = model.FloatVA(default_mpp, setter=self._mpp_setter)
 
-                full_rect = Stream._fullRect(raw)
+                full_rect = img._getBoundingBox(raw)
                 self.rect = model.VigilantAttribute(full_rect, setter=self._rect_setter)
             else:
                 # If raw does not have maxzoom,
@@ -87,7 +87,7 @@ class StaticStream(Stream):
         return ps[0] * 2 ** exp
 
     def _rect_setter(self, rect):
-        full_rect = StaticStream._fullRect(self.raw)
+        full_rect = img._getBoundingBox(self.raw)
         if not (full_rect[0] <= rect[0] <= full_rect[2] or
                 full_rect[0] <= rect[2] <= full_rect[2] or
                 full_rect[1] <= rect[1] <= full_rect[3] or

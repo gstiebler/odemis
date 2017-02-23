@@ -653,3 +653,30 @@ def mergeTiles(tiles):
     result.metadata[model.MD_POS] = pos
 
     return result
+
+def _getBoundingBox(content):
+    """
+    Compute the physical bounding-box of the given DataArray(Shadow)
+    content (DataArray(Shadow)): The data of the image
+    return (tuple(ltbr)): left,top,bottom,right positions in world coordinates
+    """
+    md = content.metadata
+    # get the pixel size of the full image
+    # TODO check if an exception must be raised here
+    ps = md.get(model.MD_PIXEL_SIZE, (1e-6, 1e-6))
+
+    dims = md.get(model.MD_DIMS, "CTZYX"[-content.ndim::])
+    img_shape = (content.shape[dims.index('X')], content.shape[dims.index('Y')])
+    # half shape on world coordinates
+    half_shape_wc = (
+        img_shape[0] * ps[0] / 2,
+        img_shape[1] * ps[1] / 2,
+    )
+    md_pos = md.get(model.MD_POS, (0.0, 0.0))
+    rect = (
+        md_pos[0] - half_shape_wc[0],
+        md_pos[1] - half_shape_wc[1],
+        md_pos[0] + half_shape_wc[0],
+        md_pos[1] + half_shape_wc[1],
+    )
+    return rect
