@@ -231,9 +231,11 @@ class StreamTree(object):
                     # if .raw is a list of DataArray, .image is a complete image
                     if isinstance(s.raw, list):
                         im = s.image.value
-                    else: 
+                    else:
                         # .raw is an instance of DataArrayShadow, so .image is
                         # a tuple of tuple of tiles
+                        # TODO This is a "hack" in order to temporarily properly already
+                        # display the pyramidal streams before the GUI classes are changed
                         im = s.getMergedImage()
                     if im is not None:
                         images.append(im)

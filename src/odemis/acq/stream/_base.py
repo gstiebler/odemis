@@ -153,14 +153,14 @@ class Stream(object):
         # side.
         self.auto_bc_outliers = model.FloatContinuous(100 / 256, range=(0, 40))
 
-        imageForHistogramAndDRange = None
+        drange_raw = None
         if self.raw is not None:
             if isinstance(self.raw, list):
                 if len(self.raw) > 0:
-                    imageForHistogramAndDRange = self.raw[0]
+                    drange_raw = self.raw[0]
             else:
                 # if the image is pyramidal, use the smaller image
-                imageForHistogramAndDRange = self._getMergedRawImage(self.raw.maxzoom)
+                drange_raw = self._getMergedRawImage(self.raw.maxzoom)
 
         # Used if auto_bc is False
         # min/max ratio of the whole intensity level which are mapped to
@@ -172,7 +172,7 @@ class Stream(object):
         # Make it so that the value gets clipped when its range is updated and
         # the value is outside of it.
         self.intensityRange.clip_on_range = True
-        self._updateDRange(imageForHistogramAndDRange)
+        self._updateDRange(drange_raw)
 
         # Histogram of the current image _or_ slightly older image.
         # Note it's an ndarray. Use .tolist() to get a python list.
@@ -194,7 +194,7 @@ class Stream(object):
         # if there is already some data, update image with it
         # TODO: have this done by the child class, if needed.
         if self.raw:
-            self._updateHistogram(imageForHistogramAndDRange)
+            self._updateHistogram(drange_raw)
             if isinstance(self.raw, list):
                 raw = self.raw[0]
             else:
