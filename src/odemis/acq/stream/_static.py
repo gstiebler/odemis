@@ -46,7 +46,7 @@ class StaticStream(Stream):
     def __init__(self, name, raw):
         """
         Note: parameters are different from the base class.
-        raw (list of DataArray or DataArrayShadow): The data to display.
+        raw (DataArray, DataArrayShadow or list of DataArray): The data to display.
         """
         if isinstance(raw, model.DataArray):
             raw = [raw]
@@ -105,14 +105,16 @@ class RGBStream(StaticStream):
     def __init__(self, name, raw):
         """
         Note: parameters are different from the base class.
-        raw (DataArray or DataArrayShadow): The data to display.
+        raw (DataArray, DataArrayShadow or list of DataArray): The data to display.
         """
         # Check it's 2D
-        # TODO check if the checks below should still be done
-        '''
-        if not (len(image.shape) == 3 and image.shape[2] in [3, 4]):
-            raise ValueError("Data must be RGB(A)")
-        '''
+        if isinstance(raw, model.DataArray) or isinstance(raw, model.DataArrayShadow):
+            if not (len(raw.shape) == 3 and raw.shape[2] in [3, 4]):
+                raise ValueError("Data must be RGB(A)")
+        elif isinstance(raw, list):
+            for r in raw:
+                if not (len(r.shape) == 3 and r.shape[2] in [3, 4]):
+                    raise ValueError("Data must be RGB(A)")
         super(RGBStream, self).__init__(name, raw)
 
     def _projectTile(self, tile):
