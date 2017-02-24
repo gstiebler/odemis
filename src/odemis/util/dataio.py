@@ -51,9 +51,6 @@ def data_to_static_streams(data):
 
     # Add each data as a stream of the correct type
     for d in data:
-        if isinstance(d, tuple):
-            d, acd, i = d
-
         acqtype = d.metadata.get(model.MD_ACQ_TYPE)
         # Hack for not displaying Anchor region data
         # TODO: store and use acquisition type with MD_ACQ_TYPE?
@@ -150,12 +147,7 @@ def data_to_static_streams(data):
                                 name, d.shape)
                 d = d[-2, -1]
 
-        if isinstance(d, model.DataArrayShadow) and \
-                (issubclass(klass, stream.Static2DStream) or issubclass(klass, stream.RGBStream)):
-            stream_instance = klass(name, acd.content[i])
-        else:
-            stream_instance = klass(name, d)
-
+        stream_instance = klass(name, d)
         result_streams.append(stream_instance)
 
     # Add one global AR stream
@@ -211,7 +203,7 @@ def open_acquisition(filename, fmt=None):
     try:
         if hasattr(converter, 'open_data'):
             acd = converter.open_data(filename)
-            data = [(c, acd, i) for i, c in enumerate(acd.content)]
+            data = acd.content
         else:
             data = converter.read_data(filename)
     except Exception:
