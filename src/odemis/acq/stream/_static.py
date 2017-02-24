@@ -76,10 +76,10 @@ class StaticStream(Stream):
         super(StaticStream, self).__init__(name, None, None, None, raw=raw)
 
     def _set_mpp(self, mpp):
-        md = self.raw.metadata
+        md = self._das.metadata
         ps = md[model.MD_PIXEL_SIZE]
         exp = math.log(mpp / ps[0], 2.0)
-        if not 0 <= exp <= self.raw.maxzoom:
+        if not 0 <= exp <= self._das.maxzoom:
             raise ValueError("mpp out of bounds")
 
         self._shouldUpdateImage()
@@ -122,7 +122,7 @@ class RGBStream(StaticStream):
     def _updateImage(self):
         # Just pass the RGB data on
 
-        if not self.raw:
+        if not self.raw and isinstance(self.raw, list):
             return
 
         # TODO: use original image as raw, to allow changing the B/C/tint
@@ -135,8 +135,14 @@ class RGBStream(StaticStream):
                 rgbim.metadata = self._find_metadata(rgbim.metadata)
                 rgbim.metadata[model.MD_DIMS] = "YXC" # RGB format
                 self.image.value = rgbim
+            elif isinstance(self.raw, tuple):
+                # .raw is an instance of DataArrayShadow, so .image is
+                # a tuple of tuple of tiles
+                (raw_tiles, projected_tiles) = self._getTilesFromSelectedArea()
+                self.image.value = projected_tiles
+                self.raw = raw_tiles
             else:
-                self.image.value = self._getTilesFromSelectedArea()
+                raise AttributeError(".raw must be a list of DA/DAS or a tuple of tuple of DA")
 
         except Exception:
             logging.exception("Updating %s image", self.__class__.__name__)
