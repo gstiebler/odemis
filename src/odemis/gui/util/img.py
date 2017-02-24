@@ -1555,7 +1555,7 @@ def _get_stream_legend_text(s):
     # merging without decreasing the intensity.
     if isinstance(s.raw, list):
         md = s.raw[0].metadata
-    elif isinstance(s.raw, model.AcquisitionData):
+    elif isinstance(s.raw, (DataArray, DataArrayShadow)):
         md = s.raw.content[0].metadata
     else:
         ValueError("s.raw must be a list of DataArrayu or an AcquisitionData")

@@ -35,7 +35,7 @@ def data_to_static_streams(data):
     """ Split the given data into static streams
 
     Args:
-        data: (list of DataArrays) Data to be split
+        data: (list of DataArrays or DataArrayShadows) Data to be split
 
     Returns:
         (list) A list of Stream instances
@@ -195,6 +195,14 @@ def _split_planes(data):
     return das
 
 def open_acquisition(filename, fmt=None):
+    """
+    Opens the data acording to the type of file, and returns the openend data. 
+    If it's a pyramidal image, do not fetch the whole data from the image. If the image
+    is not pyramidal, it reads the entire image and returns it
+    filename (string): Name of the file where the image is
+    fmt (string): The format of the file
+    return (list of DataArrays or DataArrayShadows): The opened acquisition source
+    """
     if fmt:
         converter = dataio.get_converter(fmt)
     else:
