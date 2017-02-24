@@ -2354,12 +2354,12 @@ class StaticStreamsTestCase(unittest.TestCase):
 
         acd = tiff.open_data(FILENAME)
         ss = stream.RGBStream("test", acd.content[0])
-        time.sleep(0.2)
+        time.sleep(0.5)
 
         # the maxzoom image has 2 tiles. So far 4 was read: 2 on the constructor, for
         # _updateHistogram and _updateDRange. And 2 for _updateImage, because .rect
         # and .mpp are initialized to the maxzoom image
-        self.assertEqual(4, len(read_tiles))
+        self.assertEqual(2, len(read_tiles))
 
         # delta full rect
         dfr = [ -0.0015, -0.001, 0.0015, 0.001]

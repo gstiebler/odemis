@@ -202,7 +202,7 @@ class Stream(object):
 
         # if there is already some data, update image with it
         # TODO: have this done by the child class, if needed.
-        if self.raw:
+        if self.raw or isinstance(self.raw, tuple):
             self._updateHistogram(drange_raw)
             if isinstance(self.raw, list):
                 raw = self.raw[0]
@@ -985,7 +985,7 @@ class Stream(object):
         """ Recomputes the image with all the raw data available
         """
         logging.debug("Updating image")
-        if not self.raw:
+        if not self.raw and isinstance(self.raw, list):
             return
 
         try:
@@ -1036,7 +1036,7 @@ class Stream(object):
         # Compute histogram and compact version
         if data is None:
             if isinstance(self.raw, tuple):
-                data = self._getMergedRawImage(self.raw.maxzoom)
+                data = self._getMergedRawImage(self._das.maxzoom)
             elif not self.raw or not isinstance(self.raw, list):
                 return
 
@@ -1063,7 +1063,7 @@ class Stream(object):
         #     logging.debug("Receive raw %g s after acquisition",
         #                   time.time() - data.metadata[model.MD_ACQ_DATE])
 
-        if not self.raw:
+        if not self.raw and isinstance(self.raw, list):
             self.raw.append(data)
         else:
             if isinstance(self.raw, list):
