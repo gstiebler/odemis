@@ -1624,8 +1624,7 @@ def get_ordered_images(streams, raw=False):
             if isinstance(s.raw, list):
                 data_raw = s.raw[0]
             else:
-                # TODO check the line below
-                data_raw = s._getMergedRawImage(0)
+                data_raw = img.mergeTiles(s.raw)
 
             # Pretend to be RGB for the drawing by cairo
             if numpy.can_cast(im_min_type, min_type(data_raw)):
@@ -1919,7 +1918,7 @@ def _adapt_rgb_to_raw(imrgb, stream, dtype):
     if isinstance(stream.raw, list):
         data_raw = stream.raw[0]
     else:
-        data_raw = stream._getMergedRawImage(0)
+        data_raw = img.mergeTiles(stream.raw)
     if isinstance(stream, acqstream.OpticalStream):
         blkval = data_raw.metadata.get(model.MD_BASELINE, 0)
     else:
