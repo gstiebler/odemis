@@ -33,6 +33,10 @@ import time
 import weakref
 
 
+
+import traceback
+
+
 # Contains the base of the streams. Can be imported from other stream modules.
 # to identify a ROI which must still be defined by the user
 UNDEFINED_ROI = (0, 0, 0, 0)
@@ -856,11 +860,16 @@ class Stream(object):
         dims = md.get(model.MD_DIMS, "CTZYX"[-self._das.ndim::])
         img_shape = (self._das.shape[dims.index('X')], self._das.shape[dims.index('Y')])
 
+        # Converts rect from physical to pixel coordinates.
+        # The received rect is relative to the center of the image, but pixel coordinates
+        # are relative to the top-left corner. So it also needs to sum half image.
+        # The -1 are necessary on the right and bottom sides, as the coordinates of a pixel
+        # are -1 relative to the side of the pixel
         return (
-            int(rect[0] / ps[0] + img_shape[0] / 2),
-            int(rect[1] / ps[1] + img_shape[1] / 2),
-            int(rect[2] / ps[0] + img_shape[0] / 2),
-            int(rect[3] / ps[1] + img_shape[1] / 2),
+            int(round(rect[0] / ps[0] + img_shape[0] / 2)),
+            int(round(rect[1] / ps[1] + img_shape[1] / 2)),
+            int(round(rect[2] / ps[0] + img_shape[0] / 2)) - 1,
+            int(round(rect[3] / ps[1] + img_shape[1] / 2)) - 1,
         )
 
     def _getMergedRawImage(self, z):
