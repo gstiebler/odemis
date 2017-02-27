@@ -598,61 +598,73 @@ def mergeTiles(tiles):
     tiles (tuple of tuple of DataArray): Tiles to be merged
     return (DataArray): Merge of all the tiles
     """
+    first_tile = tiles[0][0]
+    ft_md = first_tile.metadata
 
-    def get_corner_pos(tile, cm):
-        md = tile.metadata
-        dims = md.get(model.MD_DIMS, "CTZYX"[-tile.ndim::])
-        tile_shape = [tile.shape[dims.index('X')], tile.shape[dims.index('Y')]]
-        corner_dist_to_center_pixels = numpy.array([cm[0] * tile_shape[0]/2, cm[1] * tile_shape[1]/2])
-        corner_dist_to_center_pixels = numpy.matrix(corner_dist_to_center_pixels).getT()
-        tmat = get_img_transformation_matrix(tiles[0][0].metadata)
-        rel_centerw = tmat * corner_dist_to_center_pixels
-        rel_centerw = numpy.ravel(rel_centerw)
-        centerw = tile.metadata[model.MD_POS]
-        return [rel_centerw[0] + centerw[0], rel_centerw[1] + centerw[1]]
-
-
+    # calculates the height of the image, summing the heights of the tiles of the first column
     height = 0
     for tile in tiles[0]:
         height += tile.shape[0]
 
+    # calculates the width of the image, summing the width of the tiles of the first row
     width = 0
     for tiles_column in tiles:
         width += tiles_column[0].shape[1]
 
     result_shape = (height, width)
     # TODO must work when the channel dimension is not the last
-    if len(tiles[0][0].shape) == 3:
-        result_shape = result_shape + (tiles[0][0].shape[2],)
+    if len(first_tile.shape) == 3:
+        result_shape = result_shape + (first_tile.shape[2],)
 
-    result = numpy.empty(result_shape, dtype=tiles[0][0].dtype)
-    result = model.DataArray(result, tiles[0][0].metadata.copy())
+    result = numpy.empty(result_shape, dtype=first_tile.dtype)
+    result = model.DataArray(result, ft_md.copy())
 
     width_sum = 0
+    # copy the tiles to the result image
     for tiles_column in tiles:
         tile_width = tiles_column[0].shape[1]
         height_sum = 0
         for tile in tiles_column:
             tile_height = tile.shape[0]
-            result[height_sum:(height_sum + tile_height), width_sum:(width_sum + tile_width)] = \
-                tile
+            bottom = height_sum + tile_height
+            right = width_sum + tile_width
+            result[height_sum:bottom, width_sum:right] = tile
             height_sum += tile_height
 
         width_sum += tile_width
 
-    num_rows = len(tiles)
-    num_cols = len(tiles[0])
-
-    # top-left corner of the top-left tile
-    first_tile_pos = get_corner_pos(tiles[0][0], [-1, -1])
-
-    last_tile = tiles[num_rows - 1][num_cols - 1]
-    # bottom-right corner of the bottom-right tile
-    last_tile_pos = get_corner_pos(last_tile, [1, 1])
-
-    # calculate the medium point between first_tile_pos and last_tile_pos
-    pos = tuple((ftp + ltp) / 2 for ftp, ltp in zip(first_tile_pos, last_tile_pos))
-    result.metadata[model.MD_POS] = pos
+    # The section below calculates the center of the result image
+    # It is based on the formula for calculating the position of a pixel in world coordinates:
+    # CT = CI + TMAT * DC
+    # where:
+    #   CT: center of the tile in pixel coordinates
+    #   CI: center of the image in world coordinates
+    #   DC: delta of the centers in pixel coordinates
+    #   TMAT: transformation matrix
+    # From the formula above, comes the following formula:
+    # CI = CT - TMAT * DC,
+    # which is used below
+    dims = ft_md.get(model.MD_DIMS, "CTZYX"[-first_tile.ndim::])
+    ft_shape = [first_tile.shape[dims.index('X')], first_tile.shape[dims.index('Y')]]
+    # center of the tile in pixel coordinates
+    center_tile_pixel = [d / 2 for d in ft_shape]
+    # center of the image in pixel coordinates
+    center_image_pixel = [d / 2 for d in result_shape[::-1]]
+    # distance between the center of the tile and the center of the image, in pixel coordinates
+    dist_centers_tile_pixels = [ct - ci for ct, ci in zip(center_tile_pixel, center_image_pixel)]
+    # converts the centers distance, so this variable can be multiplied by the transformation matrix
+    dist_centers_tile_pixels = numpy.matrix(dist_centers_tile_pixels).getT()
+    # transformation matrix
+    tmat = get_img_transformation_matrix(first_tile.metadata)
+    # distance of the centers converted to world coordinates
+    dist_centers_w = tmat * dist_centers_tile_pixels
+    # convert the variable from a numpy.matrix to a numpy.array
+    dist_centers_w = numpy.ravel(dist_centers_w)
+    # center of the tile in world coordinates
+    center_tile_w = first_tile.metadata[model.MD_POS]
+    # center of the image in world coordinates
+    image_pos = center_tile_w - dist_centers_w
+    result.metadata[model.MD_POS] = tuple(image_pos)
 
     return result
 
