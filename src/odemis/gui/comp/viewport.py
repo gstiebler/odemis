@@ -317,7 +317,12 @@ class MicroscopeViewport(ViewPort):
         mpps = set()
         for im in self._microscope_view.stream_tree.getImages():
             try:
-                mpps.add(im.metadata[model.MD_PIXEL_SIZE][0])
+                if isinstance(im, tuple): # im is a tuple of tuple of tiles
+                    first_tile = im[0][0]
+                    md = first_tile.metadata
+                else:
+                    md = im.metadata
+                mpps.add(md[model.MD_PIXEL_SIZE][0])
             except KeyError:
                 pass
 
