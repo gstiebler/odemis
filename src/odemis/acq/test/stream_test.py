@@ -1795,6 +1795,13 @@ class StaticStreamsTestCase(unittest.TestCase):
     Test static streams, which don't need any backend running
     """
 
+    def tearDown(self):
+        # clean up
+        try:
+            os.remove(FILENAME)
+        except Exception:
+            pass
+
     def test_fluo(self):
         """Test StaticFluoStream"""
         md = {
@@ -2186,9 +2193,6 @@ class StaticStreamsTestCase(unittest.TestCase):
         self.assertEqual(len(ss.image.value), 2)
         self.assertEqual(len(ss.image.value[0]), 1)
 
-        del ss
-        os.remove(FILENAME)
-
     def test_rgb_tiled_stream(self):
         FILENAME = u"test" + tiff.EXTENSIONS[0]
         POS = (5.0, 7.0)
@@ -2235,9 +2239,6 @@ class StaticStreamsTestCase(unittest.TestCase):
         time.sleep(0.5)
         self.assertEqual(len(ss.image.value), 2)
         self.assertEqual(len(ss.image.value[0]), 1)
-
-        del ss
-        os.remove(FILENAME)
 
     def test_rgb_tiled_stream_pan(self):
         read_tiles = []
@@ -2312,9 +2313,6 @@ class StaticStreamsTestCase(unittest.TestCase):
 
         # get the old function back to the class
         tiff.DataArrayShadowTIFF._getTile = tiff.DataArrayShadowTIFF._getTileOld
-
-        del ss
-        os.remove(FILENAME)
 
     def test_rgb_tiled_stream_zoom(self):
         read_tiles = []
@@ -2504,9 +2502,6 @@ class StaticStreamsTestCase(unittest.TestCase):
 
         # get the old function back to the class
         tiff.DataArrayShadowTIFF._getTile = tiff.DataArrayShadowTIFF._getTileOld
-
-        del ss
-        os.remove(FILENAME)
 
 if __name__ == "__main__":
     unittest.main()
