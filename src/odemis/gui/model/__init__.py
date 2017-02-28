@@ -908,7 +908,6 @@ class StreamView(View):
         # current density (meter per pixel, ~ scale/zoom level)
         # 1µm/px => ~large view of the sample (view width ~= 1000 px)
         self.mpp = FloatContinuous(1e-6, range=(10e-12, 200e-6), unit="m/px")
-        self.mpp.subscribe(self._onMpp)
         # self.mpp.debug = True
 
         # How much one image is displayed on the other one. Value used by
@@ -930,16 +929,13 @@ class StreamView(View):
         self.interpolate_content = model.BooleanVA(False)
 
     def _onFovBuffer(self, fov):
-        self._updateStreamsViewParams()
+        self._updateStreamsRect()
 
     def _onViewPos(self, view_pos):
-        self._updateStreamsViewParams()
+        self._updateStreamsRect()
 
-    def _onMpp(self, mpp):
-        self._updateStreamsViewParams()
-
-    def _updateStreamsViewParams(self):
-        ''' Updates .rect and .mpp members of all streams based on the field of view of the buffer
+    def _updateStreamsRect(self):
+        ''' Updates the .rect member of all streams based on the field of view of the buffer
         '''
         half_fov = (self.fov_buffer.value[0] / 2, self.fov_buffer.value[1] / 2)
         view_rect = (
@@ -952,7 +948,6 @@ class StreamView(View):
         for stream in streams:
             if hasattr(stream, 'rect'): # the stream is probably pyramidal
                 stream.rect.value = stream.rect.clip(view_rect)
-                stream.mpp.value = stream.mpp.clip(self.mpp.value)
 
 
     def has_stage(self):

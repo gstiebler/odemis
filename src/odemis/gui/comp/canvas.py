@@ -146,7 +146,6 @@ from odemis.gui.util import call_in_wx_main
 from odemis.gui.util.img import add_alpha_byte, apply_rotation, apply_shear, apply_flip, get_sub_img
 from odemis.util import intersect
 from odemis.gui.util.conversion import wxcol_to_frgb
-from odemis import model
 import os
 import sys
 import wx
@@ -851,7 +850,8 @@ class BitmapCanvas(BufferedCanvas):
 
                     for tile_col in im:
                         for tile in tile_col:
-                            tile.metadata['dc_center'] = tile.metadata.get(model.MD_POS, w_pos)
+                            # TODO replace the string by the constant MD_POS
+                            tile.metadata['dc_center'] = tile.metadata.get("Centre position", w_pos)
                             tile.metadata['dc_scale'] = scale
                             tile.metadata['dc_rotation'] = rotation
                             tile.metadata['dc_shear'] = shear
@@ -995,24 +995,6 @@ class BitmapCanvas(BufferedCanvas):
     def _draw_tiles(self, ctx, tiles, p_im_center, opacity=1.0,
                     im_scale=(1.0, 1.0), rotation=None, shear=None, flip=None,
                     blend_mode=BLEND_DEFAULT, interpolate_data=False):
-
-        """ Draw the given tiles to the Cairo context. It is very similar to _draw_image,
-        but this function draw a tuple of tuple of tiles instead of a full image.
-
-        The buffer is considered to have it's 0,0 origin at the top left
-
-        :param ctx: (cairo.Context) Cario context to draw on
-        :param tiles: (tuple of tuple of DataArray) Tiles to draw
-        :param w_im_center: (2-tuple float)
-        :param opacity: (float) [0..1] => [transparent..opaque]
-        :param im_scale: (float, float)
-        :param rotation: (float) Clock-wise rotation around the image center in radians
-        :param shear: (float) Horizontal shearing of the image data (around it's center)
-        :param flip: (wx.HORIZONTAL | wx.VERTICAL) If and how to flip the image
-        :param blend_mode: (int) Graphical blending type used for transparency
-        :param interpolate_data: (boolean) Apply interpolation if True
-
-        """
         first_tile = tiles[0][0]
         ftmd = first_tile.metadata
 

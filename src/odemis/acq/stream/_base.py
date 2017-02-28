@@ -212,9 +212,6 @@ class Stream(object):
                 raw = self.raw
             self._onNewData(None, raw)
 
-        # When True, the projected tiles cache should be invalidated
-        self._projectedTilesInvalid = True            
-
     # No __del__: subscription should be automatically stopped when the object
     # disappears, and the user should stop the update first anyway.
 
@@ -915,25 +912,21 @@ class Stream(object):
             last execution of _updateImage
         return (tuple(DataArray, DataArray)): raw tile and projected tile
         """
-        # the key of the tile on the cache
-        tile_key = "%d-%d-%d" % (x, y, z)
+        irange = self._getDisplayIRange()
+        # the key of the tile on the cache. It includes tint and irange,
+        # so when these values change, the tile is recomputed
+        tile_key = "%d-%d-%d-%s-%s" % (x, y, z, self.tint.value, irange)
 
-        # if the raw tile has been already cached, read it from the cache
-        if tile_key in prev_raw_cache:
+        # if the tile has been already cached, read it from the cache
+        if tile_key in prev_proj_cache:
+            proj_tile = prev_proj_cache[tile_key]
             raw_tile = prev_raw_cache[tile_key]
-        elif tile_key in self._rawTilesCache:
+        elif tile_key in self._projectedTilesCache:
+            proj_tile = self._projectedTilesCache[tile_key]
             raw_tile = self._rawTilesCache[tile_key]
         else:
             # The tile was not cached, so it must be read from the file
             raw_tile = self._das.getTile(x, y, z)
-
-        # if the projected tile has been already cached, read it from the cache
-        if tile_key in prev_proj_cache:
-            proj_tile = prev_proj_cache[tile_key]
-        elif tile_key in self._projectedTilesCache:
-            proj_tile = self._projectedTilesCache[tile_key]
-        else:
-            # The tile was not cached, so it must be projected again
             proj_tile = self._projectTile(raw_tile)
 
         # cache raw and projected tiles
@@ -1001,13 +994,6 @@ class Stream(object):
                             # but using the cache from the last execution
                             raise NeedRecomputeException()
 
-                        # the projected tiles cache is invalid
-                        if self._projectedTilesInvalid:
-                            self._projectedTilesCache = {}
-                            prev_proj_cache = {}
-                            self._projectedTilesInvalid = False
-                            raise NeedRecomputeException()
-
                         raw_tile, proj_tile = \
                                 self._getTile(x, y, z, prev_raw_cache, prev_proj_cache)
                         rt_column.append(raw_tile)
@@ -1068,8 +1054,6 @@ class Stream(object):
         # If auto_bc is active, it updates intensities (from _updateImage()),
         # so no need to refresh image again.
         if not self.auto_bc.value:
-            # set projected tiles cache as invalid
-            self._projectedTilesInvalid = True
             self._shouldUpdateImage()
 
     def _updateHistogram(self, data=None):
@@ -1115,18 +1099,14 @@ class Stream(object):
         self._shouldUpdateImage()
 
     def getBoundingBox(self):
-        ''' Get the bounding box. I
-        return (tuple of floats(l,t,r,b)): Tuple with the bounding box
-        Raises:
-            ValueError: If the .image member is not set
+        ''' Get the bounding box
+        return (tuple of floats(t,l,b,r)): Tuple with the bounding box
         '''
         if hasattr(self, 'rect'):
             rng = self.rect.range
             return (rng[0][0], rng[0][1], rng[1][0], rng[1][1])
         else:
             md = self.image.value.metadata
-            if self.image.value is None:
-                raise ValueError("Stream's image not defined")
             shape = self.image.value.shape
             im_scale = md[model.MD_PIXEL_SIZE]
             w, h = shape[1] * im_scale[0], shape[0] * im_scale[1]

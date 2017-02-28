@@ -354,7 +354,11 @@ class MicroscopeViewport(ViewPort):
     def _on_view_mpp(self, mpp):
         self.microscope_view.fov.value = self.get_fov_from_mpp()
         self.microscope_view.fov_buffer.value = self.get_buffer_fov_from_mpp()
-        self.microscope_view.mpp.value = mpp
+        streams = self.microscope_view.getStreams()
+        # updates .mpp of the streams
+        for stream in streams:
+            if hasattr(stream, 'mpp'):
+                stream.mpp.value = stream.mpp.clip(mpp)
         if self.bottom_legend:
             self.bottom_legend.scale_win.SetMPP(mpp)
             self.UpdateHFWLabel()
@@ -551,6 +555,7 @@ class MicroscopeViewport(ViewPort):
         Return the field of view of the canvas
         :return: (None or float,float) Field width and height in meters
         """
+        # TODO acess this variable in another way
         return self._get_fov_from_mpp(self.canvas.buffer_size)
 
     def set_mpp_from_fov(self, fov):

@@ -125,9 +125,6 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
         # Simple image caching dictionary {obj_id: rgb image}
         self.images_cache = {}
 
-        # tiles cache {tile_id: rgb tile image}
-        self.tiles_cache = {}
-
     # Ability manipulation
 
     def disable_zoom(self):
@@ -425,48 +422,25 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
         # add the images in order
         ims = []
         im_cache = {}
-        tiles_cache = {}
         for rgbim, blend_mode, name, stream in images:
+            # Get converted RGBA image from cache, or create it and cache it
+            # On large images it costs 100 ms (per image and per canvas)
+            im_id = id(rgbim)
+            if im_id in self.images_cache:
+                rgba_im = self.images_cache[im_id]
+            else:
+                rgba_im = format_rgba_darray(rgbim)
+            im_cache[im_id] = rgba_im
+
+            keepalpha = False
             if isinstance(rgbim, tuple): # tuple of tuple of tiles
                 if len(rgbim) == 0 or len(rgbim[0]) == 0:
                     continue
-                first_tile = rgbim[0][0]
-                md = first_tile.metadata
-                new_array = []
-                for tile_column in rgbim:
-                    new_array_col = []
-                    for tile in tile_column:
-                        tile_id = id(tile)
-                        if tile_id in self.tiles_cache:
-                            rgba_tile = self.tiles_cache[tile_id]
-                        else:
-                            rgba_tile = format_rgba_darray(tile)
-                        tiles_cache[tile_id] = rgba_tile
-                        new_array_col.append(rgba_tile)
-                        rgba_tile.metadata = md
-                    new_array.append(tuple(new_array_col))
-                # creates a 2D tuple with the converted tiles
-                rgba_im = tuple(new_array)
-
-                # Replace the old cache, so the obsolete RGBA tiles can be garbage collected
-                self.tiles_cache = tiles_cache
-
+                md = rgbim[0][0].metadata
                 bbox = stream.getBoundingBox()
                 t, l, b, r = bbox
                 pos = ((l + r) / 2, (b + t) / 2)
             else:
-                # Get converted RGBA image from cache, or create it and cache it
-                # On large images it costs 100 ms (per image and per canvas)
-                im_id = id(rgbim)
-                if im_id in self.images_cache:
-                    rgba_im = self.images_cache[im_id]
-                else:
-                    rgba_im = format_rgba_darray(rgbim)
-                im_cache[im_id] = rgba_im
-                
-                # Replace the old cache, so the obsolete RGBA images can be garbage collected
-                self.images_cache = im_cache
-
                 md = rgbim.metadata
                 pos = md[model.MD_POS]
             scale = md[model.MD_PIXEL_SIZE]
@@ -474,8 +448,10 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
             shear = md.get(model.MD_SHEAR, 0)
             flip = md.get(model.MD_FLIP, 0)
 
-            keepalpha = False
             ims.append((rgba_im, pos, scale, keepalpha, rot, shear, flip, blend_mode, name))
+
+        # Replace the old cache, so the obsolete RGBA images can be garbage collected
+        self.images_cache = im_cache
 
         # TODO: Canvas needs to accept the NDArray (+ specific attributes recorded separately).
         self.set_images(ims)
@@ -634,12 +610,7 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
             # Check for every image
             for im in self.microscope_view.stream_tree.getImages():
                 try:
-                    if isinstance(im, tuple):
-                        # gets the metadata of the first tile
-                        md = im[0][0].metadata
-                    else:
-                        md = im.metadata
-                    im_mpp = md[model.MD_PIXEL_SIZE][0]
+                    im_mpp = im.metadata[model.MD_PIXEL_SIZE][0]
                     # did we just passed the image mpp (=zoom zero)?
                     if ((prev_mpp < im_mpp < mpp or prev_mpp > im_mpp > mpp) and
                             abs(prev_mpp - im_mpp) > 1e-15):  # for float error
@@ -1576,6 +1547,9 @@ class AngularResolvedCanvas(canvas.DraggableCanvas):
         """ Adapt the scale and (optionally) center to fit to the current content
 
         """
+
+        # TODO: take into account the dragging. For now we skip it (is unlikely to happen anyway)
+
         # TODO check if it's possible to remove duplicate code from the other fit_to_content
 
         # Find bounding box of all the content
@@ -1598,6 +1572,7 @@ class AngularResolvedCanvas(canvas.DraggableCanvas):
         if bbox[0] is None:
             return  # no image => nothing to do
 
+        # TODO: check sign of Y
         # compute mpp so that the bbox fits exactly the visible part
         w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]  # m
         if w == 0 or h == 0:

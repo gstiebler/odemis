@@ -79,6 +79,21 @@ def format_rgba_darray(im_darray, alpha=None):
       set in the '4th' byte and used to scale the other RGB values within the array.
     return (DataArray or tuple of tuple of DataArray): The return type is the same of im_darray
     """
+    # if im_darray contains tiles, call format_rgba_darray each tile independently,
+    # and return a tuple of tuple with the processed tiles
+    if isinstance(im_darray, tuple):
+        new_array = []
+        for tuple_col in im_darray:
+            new_array_col = []
+            for tile in tuple_col:
+                md = tile.metadata
+                tile = format_rgba_darray(tile, alpha)
+                tile.metadata = md
+                new_array_col.append(tile)
+
+            new_array.append(tuple(new_array_col))
+        return tuple(new_array)
+
     if im_darray.shape[-1] == 3:
         h, w, _ = im_darray.shape
         rgba_shape = (h, w, 4)
