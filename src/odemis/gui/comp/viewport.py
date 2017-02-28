@@ -350,6 +350,9 @@ class MicroscopeViewport(ViewPort):
 
     @call_in_wx_main
     def _on_view_mpp(self, mpp):
+        streams = self.microscope_view.getStreams()
+        for stream in streams:
+            stream.mpp.value = mpp
         if self.bottom_legend:
             self.bottom_legend.scale_win.SetMPP(mpp)
             self.UpdateHFWLabel()
