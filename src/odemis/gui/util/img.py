@@ -84,7 +84,9 @@ def format_rgba_darray(im_darray, alpha=None):
         for tuple_col in im_darray:
             new_array_col = []
             for tile in tuple_col:
+                md = tile.metadata
                 tile = format_rgba_darray(tile, alpha)
+                tile.metadata = md
                 new_array_col.append(tile)
 
             new_array.append(tuple(new_array_col))

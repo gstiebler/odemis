@@ -975,28 +975,57 @@ class BitmapCanvas(BufferedCanvas):
                     interpolate_data=interpolate_data
                 )
 
-            if not images or last_image.metadata['blend_mode'] == BLEND_SCREEN:
-                merge_ratio = 1.0
-            else:
-                merge_ratio = self.merge_ratio
+            if isinstance(last_image, tuple):
+                first_tile = last_image[0][0]
+                if not images or first_tile.metadata['blend_mode'] == BLEND_SCREEN:
+                    merge_ratio = 1.0
+                else:
+                    merge_ratio = self.merge_ratio
 
-            # print "Drawing last %s %s %s %s merge: %s" % (id(last_image),
-            #                                               last_image.shape,
-            #                                               last_image.metadata['blend_mode'],
-            #                                               last_image.metadata['name'],
-            #                                               merge_ratio)
-            self._draw_image(
-                ctx,
-                last_image,
-                last_image.metadata['dc_center'],
-                merge_ratio,
-                im_scale=last_image.metadata['dc_scale'],
-                rotation=last_image.metadata['dc_rotation'],
-                shear=last_image.metadata['dc_shear'],
-                flip=last_image.metadata['dc_flip'],
-                blend_mode=last_image.metadata['blend_mode'],
-                interpolate_data=interpolate_data
-            )
+                # print "Drawing last %s %s %s %s merge: %s" % (id(last_image),
+                #                                               last_image.shape,
+                #                                               last_image.metadata['blend_mode'],
+                #                                               last_image.metadata['name'],
+                #                                               merge_ratio)
+                for tile_col in last_image:
+                    for tile in tile_col:
+                        tmd = tile.metadata
+                        logging.debug("draw tile center %s", str(tmd['dc_center']))
+                        self._draw_image(
+                            ctx,
+                            tile,
+                            tmd['dc_center'],
+                            merge_ratio,
+                            im_scale=tmd['dc_scale'],
+                            rotation=tmd['dc_rotation'],
+                            shear=tmd['dc_shear'],
+                            flip=tmd['dc_flip'],
+                            blend_mode=tmd['blend_mode'],
+                            interpolate_data=interpolate_data
+                        )
+            else:
+                if not images or last_image.metadata['blend_mode'] == BLEND_SCREEN:
+                    merge_ratio = 1.0
+                else:
+                    merge_ratio = self.merge_ratio
+
+                # print "Drawing last %s %s %s %s merge: %s" % (id(last_image),
+                #                                               last_image.shape,
+                #                                               last_image.metadata['blend_mode'],
+                #                                               last_image.metadata['name'],
+                #                                               merge_ratio)
+                self._draw_image(
+                    ctx,
+                    last_image,
+                    last_image.metadata['dc_center'],
+                    merge_ratio,
+                    im_scale=last_image.metadata['dc_scale'],
+                    rotation=last_image.metadata['dc_rotation'],
+                    shear=last_image.metadata['dc_shear'],
+                    flip=last_image.metadata['dc_flip'],
+                    blend_mode=last_image.metadata['blend_mode'],
+                    interpolate_data=interpolate_data
+                )
 
     def _draw_image(self, ctx, im_data, p_im_center, opacity=1.0,
                     im_scale=(1.0, 1.0), rotation=None, shear=None, flip=None,
@@ -1629,9 +1658,17 @@ class DraggableCanvas(BitmapCanvas):
         for im in self.images:
             if im is None:
                 continue
-            im_scale = im.metadata['dc_scale']
-            w, h = im.shape[1] * im_scale[0], im.shape[0] * im_scale[1]
-            c = im.metadata['dc_center']
+            if isinstance(im, tuple):
+                first_tile = im[0][0]
+                md = first_tile.metadata
+                # TODO get the shape of the entire image
+                shape = first_tile.shape
+            else:
+                md = im.metadata
+                shape = im.shape
+            im_scale = md['dc_scale']
+            w, h = shape[1] * im_scale[0], shape[0] * im_scale[1]
+            c = md['dc_center']
             bbox_im = [c[0] - w / 2, c[1] - h / 2, c[0] + w / 2, c[1] + h / 2]
             if bbox[0] is None:
                 bbox = bbox_im
