@@ -441,10 +441,11 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
             keepalpha = False
             if isinstance(rgbim, tuple):
                 md = rgbim[0][0].metadata
+                pos = (0.0, 0.0) # TODO calculate it
             else:
                 md = rgbim.metadata
+                pos = md[model.MD_POS]
             scale = md[model.MD_PIXEL_SIZE]
-            pos = md[model.MD_POS] # TODO not good if the image is tiled
             rot = md.get(model.MD_ROTATION, 0)
             shear = md.get(model.MD_SHEAR, 0)
             flip = md.get(model.MD_FLIP, 0)

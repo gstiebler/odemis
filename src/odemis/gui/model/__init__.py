@@ -880,6 +880,9 @@ class StreamView(View):
 
         self.fov_hw = fov_hw
 
+        self.fov = model.TupleContinuous((0.0, 0.0), range=((0.0, 0.0), (1e9, 1e9)))
+        self.fov.subscribe(self._updateStreamFoV)
+
         # Will be created on the first time it's needed
         self._focus_thread = {}  # Focuser -> thread
         self._focus_queue = {}  # Focuser -> Queue.Queue() of float (relative distance)
@@ -897,12 +900,14 @@ class StreamView(View):
             view_pos_init = (0, 0)
 
         self.view_pos = model.ListVA(view_pos_init, unit="m")
+        self.view_pos.subscribe(self._updateStreamFoV)
 
         self._fstage_move = InstantaneousFuture() # latest future representing a move request
 
         # current density (meter per pixel, ~ scale/zoom level)
         # 1µm/px => ~large view of the sample (view width ~= 1000 px)
         self.mpp = FloatContinuous(1e-6, range=(10e-12, 200e-6), unit="m/px")
+        self.mpp.subscribe(self._updateStreamFoV)
         # self.mpp.debug = True
 
         # How much one image is displayed on the other one. Value used by
@@ -922,6 +927,9 @@ class StreamView(View):
         # TODO: list of annotations to display
         self.show_crosshair = model.BooleanVA(True)
         self.interpolate_content = model.BooleanVA(False)
+
+    def _updateStreamFoV(self, *args, **kwargs):
+        logging.debug("_updateStreamFoV %s %s", str(*args), str(**kwargs))
 
     def has_stage(self):
         return self._stage is not None

@@ -959,6 +959,7 @@ class Stream(object):
         mpp_rect_changed = True
         while mpp_rect_changed:
             z = self._zFromMpp()
+            logging.debug("z: %d, mpp: %f", z, self.mpp.value)
             rect = self._rectWorldToPixel(self.rect.value)
             # convert the rect coords to tile indexes
             rect = [l / (2 ** z) for l in rect]
@@ -1022,6 +1023,8 @@ class Stream(object):
                 raw_tiles, projected_tiles = self._getTilesFromSelectedArea()
                 self.image.value = projected_tiles
                 self.raw = raw_tiles
+                logging.debug("_updateImage len tiles: %s", str(len(raw_tiles)))
+                logging.debug("_updateImage len tiles[0]: %s", str(len(raw_tiles[0])))
             else:
                 raise AttributeError(".raw must be a list of DA/DAS or a tuple of tuple of DA")
 
