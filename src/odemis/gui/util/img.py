@@ -1629,12 +1629,8 @@ def get_ordered_images(streams, raw=False):
         # merging without decreasing the intensity.
         if not raw:
             data = s.image.value
-            if isinstance(data, tuple): # 2D tuple = tiles
-                data = img.mergeTiles(data)
         else:
             data_raw = s.raw[0]
-            if isinstance(data_raw, tuple): # 2D tuple = tiles
-                data_raw = img.mergeTiles(data_raw)
 
             # Pretend to be RGB for the drawing by cairo
             if numpy.can_cast(im_min_type, min_type(data_raw)):
@@ -1925,10 +1921,8 @@ def _adapt_rgb_to_raw(imrgb, stream, dtype):
     return (ndarray Y,X)
     """
 
-    if isinstance(stream.raw, list):
-        data_raw = stream.raw[0]
-    else:
-        data_raw = img.mergeTiles(stream.raw)
+
+    data_raw = stream.raw[0]
     if isinstance(stream, acqstream.OpticalStream):
         blkval = data_raw.metadata.get(model.MD_BASELINE, 0)
     else:
