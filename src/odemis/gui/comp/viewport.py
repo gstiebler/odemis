@@ -350,9 +350,11 @@ class MicroscopeViewport(ViewPort):
 
     @call_in_wx_main
     def _on_view_mpp(self, mpp):
+        logging.debug("_on_view_mpp: %s", str(mpp))
         streams = self.microscope_view.getStreams()
         for stream in streams:
-            stream.mpp.value = mpp
+            if hasattr(stream, 'mpp'):
+                stream.mpp.value = stream.mpp.clip(mpp)
         if self.bottom_legend:
             self.bottom_legend.scale_win.SetMPP(mpp)
             self.UpdateHFWLabel()
@@ -434,6 +436,7 @@ class MicroscopeViewport(ViewPort):
         evt.Skip()
 
     def OnSize(self, evt):
+        logging.debug("OnSize: %s", str(evt))
         # Note: no need to update fov_hw, as when the canvas is resized, it
         # updates the mpp in a way to ensure the fov_hw stays _constant_
         self.UpdateHFWLabel()
@@ -463,6 +466,7 @@ class MicroscopeViewport(ViewPort):
         # * _and_ if it's displayed on screen (so we don't interfere with
         #   viewports in other tabs that are not currently displayed).
         # This way, we prevent mpp/fov setting loops.
+        logging.debug("_on_hw_fov_change: %s", str(hfov))
         if not self.self_set_fov:
             # Vertical FoV is proportional to the horizontal one, based on the shape
             shape = self.microscope_view.fov_hw.shape
@@ -479,6 +483,7 @@ class MicroscopeViewport(ViewPort):
 
         The canvas calculates the new hfw value.
         """
+        logging.debug("_on_em_view_mpp_change: %s", str(mpp))
         # Only change the FoV of the hardware if:
         # * this Viewport was *not* responsible for setting the mpp
         #   (by calling `self.set_mpp_from_fov`)

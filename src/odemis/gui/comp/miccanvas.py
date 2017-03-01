@@ -382,10 +382,7 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
             if not hasattr(s, "image") or s.image.value is None:
                 continue
 
-            if isinstance(s.raw, list):
-                image = s.image.value
-            else:
-                image = mergeTiles(s.image.value)
+            image = s.image.value
 
             # FluoStreams are merged using the "Screen" method that handles colour
             # merging without decreasing the intensity.
@@ -397,12 +394,22 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
                 images_std.append((image, BLEND_DEFAULT, s.name.value))
 
         # Sort by size, so that the biggest picture is first drawn (no opacity)
-        def get_area(d):
+        def get_area_full_image(d):
             return numpy.prod(d[0].shape[0:2]) * d[0].metadata[model.MD_PIXEL_SIZE][0]
 
-        images_opt.sort(key=get_area, reverse=True)
-        images_spc.sort(key=get_area, reverse=True)
-        images_std.sort(key=get_area, reverse=True)
+        def get_area_tile(d):
+            first_tile = d[0][0][0]
+            return numpy.prod(first_tile.shape[0:2]) * first_tile.metadata[model.MD_PIXEL_SIZE][0]
+
+        # TODO check if streams[0] represents all the images
+        if len(streams) > 0 and isinstance(streams[0].image.value, tuple):
+            get_area_fn = get_area_tile
+        else:
+            get_area_fn = get_area_full_image
+
+        images_opt.sort(key=get_area_fn, reverse=True)
+        images_spc.sort(key=get_area_fn, reverse=True)
+        images_std.sort(key=get_area_fn, reverse=True)
 
         # Reset the first image to be drawn to the default blend operator to be
         # drawn full opacity (only useful if the background is not full black)
@@ -432,11 +439,15 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
             im_cache[im_id] = rgba_im
 
             keepalpha = False
-            scale = rgbim.metadata[model.MD_PIXEL_SIZE]
-            pos = rgbim.metadata[model.MD_POS]
-            rot = rgbim.metadata.get(model.MD_ROTATION, 0)
-            shear = rgbim.metadata.get(model.MD_SHEAR, 0)
-            flip = rgbim.metadata.get(model.MD_FLIP, 0)
+            if isinstance(rgbim, tuple):
+                md = rgbim[0][0].metadata
+            else:
+                md = rgbim.metadata
+            scale = md[model.MD_PIXEL_SIZE]
+            pos = md[model.MD_POS] # TODO not good if the image is tiled
+            rot = md.get(model.MD_ROTATION, 0)
+            shear = md.get(model.MD_SHEAR, 0)
+            flip = md.get(model.MD_FLIP, 0)
 
             ims.append((rgba_im, pos, scale, keepalpha, rot, shear, flip, blend_mode, name))
 
@@ -496,6 +507,7 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
         When the view position is updated: recenter the view
         phys_pos (tuple of 2 float): X/Y in physical coordinates (m)
         """
+        logging.debug("_onViewPos: %s", str(phys_pos))
         # skip ourselves, to avoid asking the stage to move to (almost) the same position
         super(DblMicroscopeCanvas, self).recenter_buffer(phys_pos)
 

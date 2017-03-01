@@ -79,6 +79,16 @@ def format_rgba_darray(im_darray, alpha=None):
       set in the '4th' byte and used to scale the other RGB values within the array.
 
     """
+    if isinstance(im_darray, tuple): # tiles
+        new_array = []
+        for tuple_col in im_darray:
+            new_array_col = []
+            for tile in tuple_col:
+                tile = format_rgba_darray(tile, alpha)
+                new_array_col.append(tile)
+
+            new_array.append(tuple(new_array_col))
+        return tuple(new_array)
 
     if im_darray.shape[-1] == 3:
         h, w, _ = im_darray.shape
@@ -1962,6 +1972,17 @@ def _unpack_raw_data(imrgb, dtype):
 
 
 def add_alpha_byte(im_darray, alpha=255):
+
+    if isinstance(im_darray, tuple):
+        new_array = []
+        for tuple_col in im_darray:
+            new_array_col = []
+            for tile in tuple_col:
+                tile = add_alpha_byte(tile, alpha)
+                new_array_col.append(tile)
+
+            new_array.append(tuple(new_array_col))
+        return tuple(new_array)
 
     height, width, depth = im_darray.shape
 

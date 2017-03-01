@@ -839,21 +839,42 @@ class BitmapCanvas(BufferedCanvas):
                 if not blend_mode:
                     blend_mode = BLEND_DEFAULT
 
-                depth = im.shape[2]
+                if isinstance(im, tuple):
+                    first_tile = im[0][0]
+                    depth = first_tile.shape[2]
 
-                if depth == 3:
-                    im = add_alpha_byte(im)
-                elif depth != 4:  # Both ARGB32 and RGB24 need 4 bytes
-                    raise ValueError("Unsupported colour byte size (%s)!" % depth)
+                    if depth == 3:
+                        im = add_alpha_byte(im)
+                    elif depth != 4:  # Both ARGB32 and RGB24 need 4 bytes
+                        raise ValueError("Unsupported colour byte size (%s)!" % depth)
 
-                im.metadata['dc_center'] = w_pos
-                im.metadata['dc_scale'] = scale
-                im.metadata['dc_rotation'] = rotation
-                im.metadata['dc_shear'] = shear
-                im.metadata['dc_flip'] = flip
-                im.metadata['dc_keepalpha'] = keepalpha
-                im.metadata['blend_mode'] = blend_mode
-                im.metadata['name'] = name
+                    for tile_col in im:
+                        for tile in tile_col:
+                            # TODO replace the string by the constant MD_POS
+                            tile.metadata['dc_center'] = tile.metadata.get("Centre position", w_pos)
+                            tile.metadata['dc_scale'] = scale
+                            tile.metadata['dc_rotation'] = rotation
+                            tile.metadata['dc_shear'] = shear
+                            tile.metadata['dc_flip'] = flip
+                            tile.metadata['dc_keepalpha'] = keepalpha
+                            tile.metadata['blend_mode'] = blend_mode
+                            tile.metadata['name'] = name
+                else:
+                    depth = im.shape[2]
+
+                    if depth == 3:
+                        im = add_alpha_byte(im)
+                    elif depth != 4:  # Both ARGB32 and RGB24 need 4 bytes
+                        raise ValueError("Unsupported colour byte size (%s)!" % depth)
+
+                    im.metadata['dc_center'] = w_pos
+                    im.metadata['dc_scale'] = scale
+                    im.metadata['dc_rotation'] = rotation
+                    im.metadata['dc_shear'] = shear
+                    im.metadata['dc_flip'] = flip
+                    im.metadata['dc_keepalpha'] = keepalpha
+                    im.metadata['blend_mode'] = blend_mode
+                    im.metadata['name'] = name
 
                 images.append(im)
 
@@ -869,6 +890,7 @@ class BitmapCanvas(BufferedCanvas):
 
         """
 
+        logging.debug("draw")
         # Don't draw anything if the canvas is disabled, leave the current buffer intact.
         if not self.IsEnabled() or 0 in self.GetClientSizeTuple():
             return
@@ -1005,6 +1027,7 @@ class BitmapCanvas(BufferedCanvas):
         b_im_rect = self._calc_img_buffer_rect(im_data, im_scale, p_im_center)
         # logging.debug("Image on buffer %s", b_im_rect)
 
+        logging.debug("_draw_image p_img_center: %s, b_im_rect: %s", str(p_im_center), str(b_im_rect))
         # To small to see, so no need to draw
         if b_im_rect[2] < 1 or b_im_rect[3] < 1:
             # TODO: compute the mean, and display one pixel with it
@@ -1335,6 +1358,11 @@ class DraggableCanvas(BitmapCanvas):
             # self.drag_shift is the delta we want to apply
             offset = (-self.drag_shift[0] / self.scale,
                       self.drag_shift[1] / self.scale)
+
+            logging.debug("on_left_up: %s %s %s %s", str(self.p_buffer_center),
+                str(offset),
+                str(self.drag_shift),
+                str(self.scale))
             self.recenter_buffer((self.p_buffer_center[0] + offset[0],
                                   self.p_buffer_center[1] + offset[1]))
 
@@ -1412,6 +1440,7 @@ class DraggableCanvas(BitmapCanvas):
 
         if CAN_DRAG in self.abilities and self._ldragging:
             v_pos = evt.GetPositionTuple()
+            logging.debug("on_motion: %s", str(v_pos))
             drag_shift = (v_pos[0] - self.drag_init_pos[0],
                           v_pos[1] - self.drag_init_pos[1])
 
