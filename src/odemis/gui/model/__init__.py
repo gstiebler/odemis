@@ -900,14 +900,13 @@ class StreamView(View):
             view_pos_init = (0, 0)
 
         self.view_pos = model.ListVA(view_pos_init, unit="m")
-        self.view_pos.subscribe(self._updateStreamFoV)
+        self.view_pos.subscribe(self._onViewPos)
 
         self._fstage_move = InstantaneousFuture() # latest future representing a move request
 
         # current density (meter per pixel, ~ scale/zoom level)
         # 1µm/px => ~large view of the sample (view width ~= 1000 px)
         self.mpp = FloatContinuous(1e-6, range=(10e-12, 200e-6), unit="m/px")
-        self.mpp.subscribe(self._updateStreamFoV)
         # self.mpp.debug = True
 
         # How much one image is displayed on the other one. Value used by
@@ -928,8 +927,25 @@ class StreamView(View):
         self.show_crosshair = model.BooleanVA(True)
         self.interpolate_content = model.BooleanVA(False)
 
-    def _updateStreamFoV(self, *args, **kwargs):
-        logging.debug("_updateStreamFoV %s %s", str(*args), str(**kwargs))
+    def _updateStreamFoV(self, fov):
+        self._updateStreamsRect()
+
+    def _onViewPos(self, view_pos):
+        self._updateStreamsRect()
+
+    def _updateStreamsRect(self):
+        half_fov = (self.fov.value[0] / 2, self.fov.value[1] / 2)
+        view_rect = (
+            self.view_pos.value[0] - half_fov[0],
+            self.view_pos.value[1] - half_fov[1],
+            self.view_pos.value[0] + half_fov[0],
+            self.view_pos.value[1] + half_fov[1],
+        )
+        streams = self.getStreams()
+        for stream in streams:
+            if hasattr(stream, 'rect'):
+                stream.rect.value = stream.rect.clip(view_rect)
+        logging.debug("_setStreamsRect %s %s", str(self.fov.value), str(view_rect))
 
     def has_stage(self):
         return self._stage is not None

@@ -1056,7 +1056,6 @@ class BitmapCanvas(BufferedCanvas):
         b_im_rect = self._calc_img_buffer_rect(im_data, im_scale, p_im_center)
         # logging.debug("Image on buffer %s", b_im_rect)
 
-        logging.debug("_draw_image p_img_center: %s, b_im_rect: %s", str(p_im_center), str(b_im_rect))
         # To small to see, so no need to draw
         if b_im_rect[2] < 1 or b_im_rect[3] < 1:
             # TODO: compute the mean, and display one pixel with it
