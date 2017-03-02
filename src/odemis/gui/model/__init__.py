@@ -941,11 +941,15 @@ class StreamView(View):
             self.view_pos.value[0] + half_fov[0],
             self.view_pos.value[1] + half_fov[1],
         )
+        logging.debug("_updateStreamsRect view_pos: %s", self.view_pos.value)
+        logging.debug("_updateStreamsRect fov: %s", str(self.fov.value))
+        logging.debug("_updateStreamsRect view_rect: %s", str(view_rect))
         streams = self.getStreams()
         for stream in streams:
             if hasattr(stream, 'rect'):
                 stream.rect.value = stream.rect.clip(view_rect)
-        logging.debug("_setStreamsRect %s %s", str(self.fov.value), str(view_rect))
+                logging.debug("_updateStreamsRect stream.rect.value: %s", str(stream.rect.value))
+
 
     def has_stage(self):
         return self._stage is not None

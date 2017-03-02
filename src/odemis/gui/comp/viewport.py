@@ -318,6 +318,8 @@ class MicroscopeViewport(ViewPort):
         for im in self._microscope_view.stream_tree.getImages():
             try:
                 if isinstance(im, tuple): # im is a tuple of tuple of tiles
+                    if len(im) == 0:
+                        return
                     first_tile = im[0][0]
                     md = first_tile.metadata
                 else:

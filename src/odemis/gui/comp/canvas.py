@@ -890,7 +890,6 @@ class BitmapCanvas(BufferedCanvas):
 
         """
 
-        logging.debug("draw")
         # Don't draw anything if the canvas is disabled, leave the current buffer intact.
         if not self.IsEnabled() or 0 in self.GetClientSizeTuple():
             return
@@ -987,6 +986,7 @@ class BitmapCanvas(BufferedCanvas):
                 #                                               last_image.metadata['blend_mode'],
                 #                                               last_image.metadata['name'],
                 #                                               merge_ratio)
+                logging.debug("start drawing tiles")
                 for tile_col in last_image:
                     for tile in tile_col:
                         tmd = tile.metadata
