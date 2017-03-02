@@ -398,8 +398,11 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
             return numpy.prod(d[0].shape[0:2]) * d[0].metadata[model.MD_PIXEL_SIZE][0]
 
         def get_area_tile(d):
-            first_tile = d[0][0][0]
-            return numpy.prod(first_tile.shape[0:2]) * first_tile.metadata[model.MD_PIXEL_SIZE][0]
+            try:
+                first_tile = d[0][0][0]
+                return numpy.prod(first_tile.shape[0:2]) * first_tile.metadata[model.MD_PIXEL_SIZE][0]
+            except:
+                pass
 
         # TODO check if streams[0] represents all the images
         if len(streams) > 0 and isinstance(streams[0].image.value, tuple):
@@ -548,7 +551,7 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
             # recenter only if there is no stage attached
             recenter = not self.microscope_view.has_stage()
 
-        super(DblMicroscopeCanvas, self).fit_to_content(recenter=recenter)
+        self.fit_to_content(recenter=recenter)
 
         # this will indirectly call _on_view_mpp(), but not have any additional effect
         if self.microscope_view:
@@ -943,6 +946,73 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
             self._last_frame_update = now
         else:
             super(DblMicroscopeCanvas, self).draw(interpolate_data=interpolate_data)
+
+
+    # TODO: just return best scale and center? And let the caller do what it wants?
+    # It would allow to decide how to redraw depending if it's on size event or more high level.
+    def fit_to_content(self, recenter=False):
+        """ Adapt the scale and (optionally) center to fit to the current content
+
+        :param recenter: (boolean) If True, also recenter the view.
+
+        """
+
+        # TODO: take into account the dragging. For now we skip it (is unlikely to happen anyway)
+
+        # Find bounding box of all the content
+        bbox = [None, None, None, None]  # ltrb in m
+        streams = self.microscope_view.getStreams()
+        for stream in streams:
+            if hasattr(stream, 'rect'):
+                rng = stream.rect.range
+                logging.debug("rng %f %f", rng[0][0], rng[1][1])
+                if bbox[0] is None:
+                    bbox = (rng[0][0], rng[0][1], rng[1][0], rng[1][1])
+                else:
+                    bbox = (min(bbox[0], rng[0][0]), min(bbox[1], rng[0][1]),
+                            max(bbox[2], rng[1][0]), max(bbox[3], rng[1][1]))
+            else:
+                md = stream.image.value.metadata
+                shape = stream.image.value.shape
+                im_scale = md[model.MD_PIXEL_SIZE]
+                w, h = shape[1] * im_scale[0], shape[0] * im_scale[1]
+                c = md[model.MD_POS]
+                bbox_im = [c[0] - w / 2, c[1] - h / 2, c[0] + w / 2, c[1] + h / 2]
+                if bbox[0] is None:
+                    bbox = bbox_im
+                else:
+                    bbox = (min(bbox[0], bbox_im[0]), min(bbox[1], bbox_im[1]),
+                            max(bbox[2], bbox_im[2]), max(bbox[3], bbox_im[3]))
+
+        if bbox[0] is None:
+            return  # no image => nothing to do
+
+        # if no recenter, increase bbox so that its center is the current center
+        if not recenter:
+            c = self.requested_phys_pos  # think ahead, use the next center pos
+            hw = max(abs(c[0] - bbox[0]), abs(c[0] - bbox[2]))
+            hh = max(abs(c[1] - bbox[1]), abs(c[1] - bbox[3]))
+            bbox = [c[0] - hw, c[1] - hh, c[0] + hw, c[1] + hh]
+
+        # TODO: check sign of Y
+        # compute mpp so that the bbox fits exactly the visible part
+        w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]  # m
+        if w == 0 or h == 0:
+            logging.warning("Weird image size of %fx%f m", w, h)
+            return  # no image
+        cs = self.ClientSize
+        cw = max(1, cs[0])  # px
+        ch = max(1, cs[1])  # px
+        self.scale = min(ch / h, cw / w)  # pick the dimension which is shortest
+
+        # TODO: avoid aliasing when possible by picking a round number for the
+        # zoom level (for the "main" image) if it's ±10% of the target size
+
+        if recenter:
+            c = (bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2
+            self.requested_phys_pos = c  # As recenter_buffer but without request_drawing_update
+
+        wx.CallAfter(self.request_drawing_update)
 
 
 class OverviewCanvas(DblMicroscopeCanvas):
