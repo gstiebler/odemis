@@ -987,22 +987,127 @@ class BitmapCanvas(BufferedCanvas):
                 #                                               last_image.metadata['name'],
                 #                                               merge_ratio)
                 logging.debug("start drawing tiles")
+
+
+
+
+
+
+                first_tile = last_image[0][0]
+                ftmd = first_tile.metadata
+                # Fully transparent image does not need to be drawn
+                if merge_ratio < 1e-8:
+                    logging.debug("Skipping draw: image fully transparent")
+                    return
+
+                im_scale = ftmd['dc_scale']
+                # Determine the rectangle the image would occupy in the buffer
+                b_im_rect = self._calc_img_buffer_rect(first_tile.shape[:2], im_scale, ftmd['dc_center'])
+                # TODO use this line
+                # b_im_rect = self._calc_img_buffer_rect(im_data.shape[:2], im_scale, p_im_center)
+                # logging.debug("Image on buffer %s", b_im_rect)
+
+                # To small to see, so no need to draw
+                if b_im_rect[2] < 1 or b_im_rect[3] < 1:
+                    # TODO: compute the mean, and display one pixel with it
+                    logging.debug("Skipping draw: too small")
+                    return
+
+                # Get the intersection with the actual buffer
+                buffer_rect = (0, 0) + self._bmp_buffer_size
+
+                intersection = intersect(buffer_rect, b_im_rect)
+
+                # No intersection means nothing to draw
+                if not intersection:
+                    logging.debug("Skipping draw: no intersection with buffer")
+                    return
+
+                # logging.debug("Intersection (%s, %s, %s, %s)", *intersection)
+                # Cache the current transformation matrix
+                ctx.save()
+                # Combine the image scale and the buffer scale
+
+                # apply transformations if needed
+                apply_rotation(ctx, ftmd['dc_rotation'], b_im_rect)
+                apply_shear(ctx, ftmd['dc_shear'], b_im_rect)
+                apply_flip(ctx, ftmd['dc_flip'], b_im_rect)
+
+                scale_x, scale_y = im_scale
+                total_scale = total_scale_x, total_scale_y = (scale_x * self.scale, scale_y * self.scale)
+
+                # in case of small floating errors
+                if abs(total_scale_x - 1) < 1e-8 or abs(total_scale_y - 1) < 1e-8:
+                    total_scale = (1.0, 1.0)
+
+                # Render the image data to the context
+
+                if ftmd.get('dc_keepalpha', True):
+                    im_format = cairo.FORMAT_ARGB32
+                else:
+                    im_format = cairo.FORMAT_RGB24
+
+
+
+
                 for tile_col in last_image:
                     for tile in tile_col:
                         tmd = tile.metadata
                         logging.debug("draw tile center %s", str(tmd['dc_center']))
-                        self._draw_image(
-                            ctx,
-                            tile,
-                            tmd['dc_center'],
-                            merge_ratio,
-                            im_scale=tmd['dc_scale'],
-                            rotation=tmd['dc_rotation'],
-                            shear=tmd['dc_shear'],
-                            flip=tmd['dc_flip'],
-                            blend_mode=tmd['blend_mode'],
-                            interpolate_data=interpolate_data
-                        )
+
+
+                        ctx.save()
+
+
+                        height, width, _ = tile.shape
+                        # logging.debug("Image data shape is %s", im_data.shape)
+
+                        # Note: Stride calculation is done automatically when no stride parameter is provided.
+                        stride = cairo.ImageSurface.format_stride_for_width(im_format, width)
+                        # In Cairo a surface is a target that it can render to. Here we're going to use it as the
+                        #  source for a pattern
+                        imgsurface = cairo.ImageSurface.create_for_data(tile, im_format, width, height, stride)
+
+                        # In Cairo a pattern is the 'paint' that it uses to draw
+                        surfpat = cairo.SurfacePattern(imgsurface)
+
+                        if interpolate_data:
+                            # Since cairo v1.14, FILTER_BEST is different from BILINEAR.
+                            # Downscaling and upscaling < 2x is nice, but above that, it just
+                            # makes the pixels big (and antialiased)
+                            if total_scale_x > 2:
+                                surfpat.set_filter(cairo.FILTER_BILINEAR)
+                            else:
+                                surfpat.set_filter(cairo.FILTER_BEST)
+                        else:
+                            surfpat.set_filter(cairo.FILTER_NEAREST)  # FAST
+
+                        b_im_rect = self._calc_img_buffer_rect(tile.shape[:2], im_scale, tmd['dc_center'])
+                        x, y, _, _ = b_im_rect
+
+                        # Translate to the top left position of the image data
+                        ctx.translate(x, y)
+                        logging.debug("tile translate %f %f", x, y)
+
+                        # Apply total scale
+                        ctx.scale(total_scale_x, total_scale_y)
+
+                        # Debug print statement
+                        # print ctx.get_matrix(), im_data.shape
+
+                        ctx.set_source(surfpat)
+                        ctx.set_operator(tmd['blend_mode'])
+
+                        if merge_ratio < 1.0:
+                            ctx.paint_with_alpha(merge_ratio)
+                        else:
+                            ctx.paint()
+
+                        ctx.restore()
+
+                
+                # Restore the cached transformation matrix
+                ctx.restore()
             else:
                 if not images or last_image.metadata['blend_mode'] == BLEND_SCREEN:
                     merge_ratio = 1.0
@@ -1134,6 +1239,7 @@ class BitmapCanvas(BufferedCanvas):
 
         # Translate to the top left position of the image data
         ctx.translate(x, y)
+        logging.debug("tile translate %f %f", x, y)
 
         # Apply total scale
         ctx.scale(total_scale_x, total_scale_y)
