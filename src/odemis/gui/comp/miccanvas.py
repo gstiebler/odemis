@@ -1572,19 +1572,15 @@ class AngularResolvedCanvas(canvas.DraggableCanvas):
 
         # TODO: take into account the dragging. For now we skip it (is unlikely to happen anyway)
 
+        # TODO check if it's possible to remove duplicate code from the other fit_to_content
+
         # Find bounding box of all the content
         bbox = [None, None, None, None]  # ltrb in m
         for im in self.images:
             if im is None:
                 continue
-            if isinstance(im, tuple):
-                first_tile = im[0][0]
-                md = first_tile.metadata
-                # TODO get the shape of the entire image
-                shape = first_tile.shape
-            else:
-                md = im.metadata
-                shape = im.shape
+            md = im.metadata
+            shape = im.shape
             im_scale = md['dc_scale']
             w, h = shape[1] * im_scale[0], shape[0] * im_scale[1]
             c = md['dc_center']
