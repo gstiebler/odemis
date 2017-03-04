@@ -934,15 +934,14 @@ class StreamView(View):
         self._updateStreamsRect()
 
     def _updateStreamsRect(self):
-        half_fov = (self.fov.value[0] / 2, self.fov.value[1] / 2)
+        fov_buffer = (self.fov.value[0] * 1.5, self.fov.value[1] * 1.5)
+        half_fov = (fov_buffer[0] / 2, fov_buffer[1] / 2)
         view_rect = (
             self.view_pos.value[0] - half_fov[0],
             self.view_pos.value[1] - half_fov[1],
             self.view_pos.value[0] + half_fov[0],
             self.view_pos.value[1] + half_fov[1],
         )
-        logging.debug("_updateStreamsRect view_pos: %s", self.view_pos.value)
-        logging.debug("_updateStreamsRect fov: %s", str(self.fov.value))
         logging.debug("_updateStreamsRect view_rect: %s", str(view_rect))
         streams = self.getStreams()
         for stream in streams:
