@@ -1053,7 +1053,7 @@ class BitmapCanvas(BufferedCanvas):
             return
 
         # Determine the rectangle the image would occupy in the buffer
-        b_im_rect = self._calc_img_buffer_rect(im_data, im_scale, p_im_center)
+        b_im_rect = self._calc_img_buffer_rect(im_data.shape[:2], im_scale, p_im_center)
         # logging.debug("Image on buffer %s", b_im_rect)
 
         # To small to see, so no need to draw
@@ -1152,12 +1152,12 @@ class BitmapCanvas(BufferedCanvas):
         # Restore the cached transformation matrix
         ctx.restore()
 
-    def _calc_img_buffer_rect(self, im_data, im_scale, p_im_center):
+    def _calc_img_buffer_rect(self, im_shape, im_scale, p_im_center):
         """ Compute the rectangle containing the image in buffer coordinates
 
         The (top, left) value are relative to the 0,0 top left of the buffer.
 
-        :param im_data: (DataArray) image data
+        :param im_shape: (int, int) x and y shape of the image
         :param im_scale: (float, float) The x and y scales of the image
         :param p_im_center: (float, float) The center of the image in physical coordinates
 
@@ -1171,7 +1171,7 @@ class BitmapCanvas(BufferedCanvas):
         # * the scale of the buffer (dependent on how much the user zoomed in)
 
         # Scale the image
-        im_h, im_w = im_data.shape[:2]
+        im_h, im_w = im_shape
         scale_x, scale_y = im_scale
         scaled_im_size = (im_w * scale_x, im_h * scale_y)
 
