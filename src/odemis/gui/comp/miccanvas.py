@@ -1513,7 +1513,7 @@ class AngularResolvedCanvas(canvas.DraggableCanvas):
 
     def on_size(self, evt):
         """ Called when the canvas is resized """
-        self.fit_to_content(recenter=True)
+        self.fit_to_content()
         super(AngularResolvedCanvas, self).on_size(evt)
 
     def setView(self, microscope_view, tab_data):
@@ -1553,7 +1553,7 @@ class AngularResolvedCanvas(canvas.DraggableCanvas):
 
     def _onViewImageUpdate(self, t):
         self._convert_streams_to_images()
-        self.fit_to_content(recenter=True)
+        self.fit_to_content()
         wx.CallAfter(self.request_drawing_update)
 
     def update_drawing(self):
@@ -1563,10 +1563,8 @@ class AngularResolvedCanvas(canvas.DraggableCanvas):
 
     # TODO: just return best scale and center? And let the caller do what it wants?
     # It would allow to decide how to redraw depending if it's on size event or more high level.
-    def fit_to_content(self, recenter=False):
+    def fit_to_content(self):
         """ Adapt the scale and (optionally) center to fit to the current content
-
-        :param recenter: (boolean) If True, also recenter the view.
 
         """
 
@@ -1594,13 +1592,6 @@ class AngularResolvedCanvas(canvas.DraggableCanvas):
         if bbox[0] is None:
             return  # no image => nothing to do
 
-        # if no recenter, increase bbox so that its center is the current center
-        if not recenter:
-            c = self.requested_phys_pos  # think ahead, use the next center pos
-            hw = max(abs(c[0] - bbox[0]), abs(c[0] - bbox[2]))
-            hh = max(abs(c[1] - bbox[1]), abs(c[1] - bbox[3]))
-            bbox = [c[0] - hw, c[1] - hh, c[0] + hw, c[1] + hh]
-
         # TODO: check sign of Y
         # compute mpp so that the bbox fits exactly the visible part
         w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]  # m
@@ -1614,10 +1605,8 @@ class AngularResolvedCanvas(canvas.DraggableCanvas):
 
         # TODO: avoid aliasing when possible by picking a round number for the
         # zoom level (for the "main" image) if it's ±10% of the target size
-
-        if recenter:
-            c = (bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2
-            self.requested_phys_pos = c  # As recenter_buffer but without request_drawing_update
+        c = (bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2
+        self.requested_phys_pos = c  # As recenter_buffer but without request_drawing_update
 
         wx.CallAfter(self.request_drawing_update)
 
