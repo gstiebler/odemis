@@ -428,6 +428,84 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
             self.assertTrue(all(isinstance(v, (int, float)) for v in vp))
             self.assertEqual(view_point, vp)
 
+    def test_pyramidal(self):
+        """
+        Draws a view with two streams, one with a red pixel with a low density
+         and one with a blue pixel at a high density.
+        """
+        mpp = 0.00001
+        self.view.mpp.value = mpp
+        self.assertEqual(mpp, self.view.mpp.value)
+        self.view.show_crosshair.value = False
+
+        # add images
+        im1 = model.DataArray(numpy.zeros((11, 11, 3), dtype="uint8"))
+        px1_cent = (5, 5)
+        # Red pixel at center, (5,5)
+        im1[px1_cent] = [255, 0, 0]
+        im1.metadata[model.MD_PIXEL_SIZE] = (mpp * 10, mpp * 10)
+        im1.metadata[model.MD_POS] = (0, 0)
+        im1.metadata[model.MD_DIMS] = "YXC"
+        stream1 = RGBStream("s1", im1)
+
+        im2 = model.DataArray(numpy.zeros((201, 201, 3), dtype="uint8"))
+        px2_cent = tuple((s - 1) // 2 for s in im2.shape[:2])
+        # Blue pixel at center (100,100)
+        im2[px2_cent] = [0, 0, 255]
+        # 200, 200 => outside of the im1
+        # (+0.5, -0.5) to make it really in the center of the pixel
+        im2.metadata[model.MD_PIXEL_SIZE] = (mpp, mpp)
+        im2.metadata[model.MD_POS] = (200.5 * mpp, 199.5 * mpp)
+        im2.metadata[model.MD_DIMS] = "YXC"
+        stream2 = RGBStream("s2", im2)
+
+        self.view.addStream(stream1)
+        self.view.addStream(stream2)
+
+        # reset the mpp of the view, as it's automatically set to the first  image
+        test.gui_loop(0.5)
+        self.view.mpp.value = mpp
+
+        shift = (63, 63)
+        self.canvas.shift_view(shift)
+
+        # merge the images
+        ratio = 0.5
+        self.view.merge_ratio.value = ratio
+        # self.assertEqual(ratio, self.view.merge_ratio.value)
+
+        test.gui_loop(0.5)
+        # it's supposed to update in less than 0.5s
+        test.gui_loop(0.5)
+
+        # copy the buffer into a nice image here
+        result_im = get_image_from_buffer(self.canvas)
+
+        # for i in range(result_im.GetWidth()):
+        #     for j in range(result_im.GetHeight()):
+        #         px = get_rgb(result_im, i, j)
+        #         if px != (0, 0, 0):
+        #             print px, i, j
+
+        px1 = get_rgb(result_im, result_im.Width // 2 + shift[0], result_im.Height // 2 + shift[1])
+        self.assertEqual(px1, (128, 0, 0))  # Ratio is at 0.5, so 255 becomes 128
+
+        px2 = get_rgb(result_im,
+                      result_im.Width // 2 + 200 + shift[0],
+                      result_im.Height // 2 - 200 + shift[1])
+        self.assertEqual(px2, (0, 0, 255))
+
+        # remove first picture
+        self.view.removeStream(stream1)
+        test.gui_loop()
+        test.gui_loop(0.5)
+
+        result_im = get_image_from_buffer(self.canvas)
+        px2 = get_rgb(result_im,
+                      result_im.Width // 2 + 200 + shift[0],
+                      result_im.Height // 2 - 200 + shift[1])
+        self.assertEqual(px2, (0, 0, 255))
+
 
 if __name__ == "__main__":
     unittest.main()
