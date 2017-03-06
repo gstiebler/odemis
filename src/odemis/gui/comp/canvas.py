@@ -1002,6 +1002,7 @@ class BitmapCanvas(BufferedCanvas):
 
                 im_scale = ftmd['dc_scale']
                 # Determine the rectangle the image would occupy in the buffer
+                # TODO pass the shape of the whole image
                 b_im_rect = self._calc_img_buffer_rect(first_tile.shape[:2], im_scale, ftmd['dc_center'])
                 # TODO use this line
                 # b_im_rect = self._calc_img_buffer_rect(im_data.shape[:2], im_scale, p_im_center)
@@ -1048,9 +1049,10 @@ class BitmapCanvas(BufferedCanvas):
                     im_format = cairo.FORMAT_RGB24
 
 
-
-
+                base_x, base_y, _, _ = b_im_rect
+                offset_x = 0
                 for tile_col in last_image:
+                    offset_y = 0
                     for tile in tile_col:
                         tmd = tile.metadata
                         logging.debug("draw tile center %s", str(tmd['dc_center']))
@@ -1074,7 +1076,7 @@ class BitmapCanvas(BufferedCanvas):
                         if interpolate_data:
                             # Since cairo v1.14, FILTER_BEST is different from BILINEAR.
                             # Downscaling and upscaling < 2x is nice, but above that, it just
-                            # makes the pixels big (and antialiased)
+                            # makes the pixels big (and antialiased)    
                             if total_scale_x > 2:
                                 surfpat.set_filter(cairo.FILTER_BILINEAR)
                             else:
@@ -1082,12 +1084,13 @@ class BitmapCanvas(BufferedCanvas):
                         else:
                             surfpat.set_filter(cairo.FILTER_NEAREST)  # FAST
 
-                        b_im_rect = self._calc_img_buffer_rect(tile.shape[:2], im_scale, tmd['dc_center'])
-                        x, y, _, _ = b_im_rect
 
                         # Translate to the top left position of the image data
+                        x = base_x + offset_x * total_scale_x
+                        y = base_y + offset_y * total_scale_y
                         ctx.translate(x, y)
                         logging.debug("tile translate %f %f", x, y)
+                        offset_y += tile.shape[0]
 
                         # Apply total scale
                         ctx.scale(total_scale_x, total_scale_y)
@@ -1104,6 +1107,8 @@ class BitmapCanvas(BufferedCanvas):
                         #    ctx.paint()
 
                         ctx.restore()
+                    
+                    offset_x += tile_col[0].shape[1]
 
                 
                 # Restore the cached transformation matrix
@@ -1239,10 +1244,11 @@ class BitmapCanvas(BufferedCanvas):
 
         # Translate to the top left position of the image data
         ctx.translate(x, y)
-        logging.debug("tile translate %f %f", x, y)
+        logging.debug("translate %f %f", x, y)
 
         # Apply total scale
         ctx.scale(total_scale_x, total_scale_y)
+        logging.debug("scale %f %f", total_scale_x, total_scale_y)
 
         # Debug print statement
         # print ctx.get_matrix(), im_data.shape
