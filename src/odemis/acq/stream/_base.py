@@ -867,6 +867,8 @@ class Stream(object):
         # are relative to the top-left corner. So it also needs to sum half image.
         # The -1 are necessary on the right and bottom sides, as the coordinates of a pixel
         # are -1 relative to the side of the pixel
+        # The '-' before ps[1] is necessary due to the fact that 
+        # Y in pixel coordinates grows down, and Y in physical coordinates grows up
         return (
             int(round(rect[0] / ps[0] + img_shape[0] / 2)),
             int(round(rect[1] / (-ps[1]) + img_shape[1] / 2)),
