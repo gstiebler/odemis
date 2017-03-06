@@ -1098,10 +1098,10 @@ class BitmapCanvas(BufferedCanvas):
                         ctx.set_source(surfpat)
                         ctx.set_operator(tmd['blend_mode'])
 
-                        if merge_ratio < 1.0:
-                            ctx.paint_with_alpha(merge_ratio)
-                        else:
-                            ctx.paint()
+                        #if merge_ratio < 1.0:
+                        ctx.paint_with_alpha(merge_ratio)
+                        #else:
+                        #    ctx.paint()
 
                         ctx.restore()
 
