@@ -443,6 +443,8 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
 
             keepalpha = False
             if isinstance(rgbim, tuple):
+                if len(rgbim) == 0 or len(rgbim[0]) == 0:
+                    continue
                 md = rgbim[0][0].metadata
                 pos = (0.0, 0.0) # TODO calculate it
             else:

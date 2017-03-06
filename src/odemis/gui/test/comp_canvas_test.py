@@ -27,6 +27,7 @@ import numpy
 from odemis import model
 from odemis.gui import test
 from odemis.gui.comp.canvas import BufferedCanvas
+from odemis.dataio import tiff
 import unittest
 import wx
 
@@ -438,15 +439,24 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
         self.assertEqual(mpp, self.view.mpp.value)
         self.view.show_crosshair.value = False
 
-        # add images
-        im1 = model.DataArray(numpy.zeros((11, 11, 3), dtype="uint8"))
-        px1_cent = (5, 5)
-        # Red pixel at center, (5,5)
-        im1[px1_cent] = [255, 0, 0]
-        im1.metadata[model.MD_PIXEL_SIZE] = (mpp * 10, mpp * 10)
-        im1.metadata[model.MD_POS] = (0, 0)
-        im1.metadata[model.MD_DIMS] = "YXC"
-        stream1 = RGBStream("s1", im1)
+        FILENAME = u"test" + tiff.EXTENSIONS[0]
+        w = 300
+        h = 200
+        size = (w, h, 3)
+        dtype = numpy.uint8
+        md = {
+            model.MD_DIMS: 'YXC',
+            model.MD_POS: (0, 0),
+            model.MD_PIXEL_SIZE: (mpp * 10, mpp * 10),
+        }
+        arr = numpy.array(range(size[0] * size[1] * size[2])).reshape((h, w, 3)).astype(dtype)
+        data = model.DataArray(arr, metadata=md)
+
+        # export
+        tiff.export(FILENAME, data, pyramid=True)
+
+        acd = tiff.open_data(FILENAME)
+        stream1 = RGBStream("test", acd.content[0])
 
         im2 = model.DataArray(numpy.zeros((201, 201, 3), dtype="uint8"))
         px2_cent = tuple((s - 1) // 2 for s in im2.shape[:2])

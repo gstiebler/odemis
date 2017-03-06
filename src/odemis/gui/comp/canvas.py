@@ -951,27 +951,30 @@ class BitmapCanvas(BufferedCanvas):
             last_image = images.pop()
             # For every image, except the last
             for i, im in enumerate(images):
-                # print "Drawing %s %s %s %s merge: %s" % (id(im),
-                #                                          im.shape,
-                #                                          im.metadata['blend_mode'],
-                #                                          im.metadata['name'],
-                #                                          1.0)
-                if im.metadata['blend_mode'] == BLEND_SCREEN:
-                    merge_ratio = 1.0
+                if isinstance(im, tuple):
+                    self._draw_tiles(images, ctx, im, interpolate_data)
                 else:
-                    merge_ratio = 1 - i / n
+                    # print "Drawing %s %s %s %s merge: %s" % (id(im),
+                    #                                          im.shape,
+                    #                                          im.metadata['blend_mode'],
+                    #                                          im.metadata['name'],
+                    #                                          1.0)
+                    if im.metadata['blend_mode'] == BLEND_SCREEN:
+                        merge_ratio = 1.0
+                    else:
+                        merge_ratio = 1 - i / n
 
-                self._draw_image(
-                    ctx,
-                    im,
-                    im.metadata['dc_center'],
-                    merge_ratio,
-                    im_scale=im.metadata['dc_scale'],
-                    rotation=im.metadata['dc_rotation'],
-                    shear=im.metadata['dc_shear'],
-                    flip=im.metadata['dc_flip'],
-                    blend_mode=im.metadata['blend_mode'],
-                    interpolate_data=interpolate_data
+                    self._draw_image(
+                        ctx,
+                        im,
+                        im.metadata['dc_center'],
+                        merge_ratio,
+                        im_scale=im.metadata['dc_scale'],
+                        rotation=im.metadata['dc_rotation'],
+                        shear=im.metadata['dc_shear'],
+                        flip=im.metadata['dc_flip'],
+                        blend_mode=im.metadata['blend_mode'],
+                        interpolate_data=interpolate_data
                 )
 
             if isinstance(last_image, tuple):
