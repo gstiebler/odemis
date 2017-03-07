@@ -961,13 +961,10 @@ class Stream(object):
         mpp_rect_changed = True
         while mpp_rect_changed:
             z = self._zFromMpp()
-            logging.debug("z: %d, mpp: %f, rect: %s", z, self.mpp.value, str(self.rect.value))
             rect = self._rectWorldToPixel(self.rect.value)
-            logging.debug("Converted rect: %s", str(rect))
             # convert the rect coords to tile indexes
             rect = [l / (2 ** z) for l in rect]
             rect = [int(math.floor(l / self._das.tile_shape[0])) for l in rect]
-            logging.debug("Rect tiles: %s", str(rect))
             x1, y1, x2, y2 = rect
             curr_mpp = self.mpp.value
             curr_rect = self.rect.value
