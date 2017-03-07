@@ -559,7 +559,7 @@ class MicroscopeViewport(ViewPort):
         :return: (None or float,float) Field width and height in meters
         """
         # TODO acess this variable in another way
-        return self._get_fov_from_mpp(self.canvas._bmp_buffer_size)
+        return self._get_fov_from_mpp(self.canvas.buffer_size)
 
     def set_mpp_from_fov(self, fov):
         """
