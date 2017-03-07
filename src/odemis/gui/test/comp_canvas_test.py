@@ -144,7 +144,6 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
         #         if px != (0, 0, 0):
         #             print px, i, j
 
-        result_im.SaveFile('/home/gstiebler/Projetos/Delmic/tmp.bmp', wx.BITMAP_TYPE_BMP)
         px1 = get_rgb(result_im, result_im.Width // 2 + shift[0], result_im.Height // 2 + shift[1])
         self.assertEqual(px1, (128, 0, 0))  # Ratio is at 0.5, so 255 becomes 128
 
@@ -433,8 +432,8 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
 
     def test_pyramidal(self):
         """
-        Draws a view with two streams, one with a red pixel with a low density
-         and one with a blue pixel at a high density.
+        Draws a view with two streams, one pyramidal stream square completely green,
+        and the other is a red square with a blue square in the center
         """
         mpp = 0.00001
         self.view.mpp.value = mpp

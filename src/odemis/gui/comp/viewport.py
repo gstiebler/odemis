@@ -352,11 +352,10 @@ class MicroscopeViewport(ViewPort):
 
     @call_in_wx_main
     def _on_view_mpp(self, mpp):
-        logging.debug("_on_view_mpp: %s", str(mpp))
-
         self.microscope_view.fov.value = self.get_fov_from_mpp()
         self.microscope_view.fov_buffer.value = self.get_buffer_fov_from_mpp()
         streams = self.microscope_view.getStreams()
+        # updates .mpp of the streams
         for stream in streams:
             if hasattr(stream, 'mpp'):
                 stream.mpp.value = stream.mpp.clip(mpp)
@@ -474,7 +473,6 @@ class MicroscopeViewport(ViewPort):
         # * _and_ if it's displayed on screen (so we don't interfere with
         #   viewports in other tabs that are not currently displayed).
         # This way, we prevent mpp/fov setting loops.
-        logging.debug("_on_hw_fov_change: %s", str(hfov))
         if not self.self_set_fov:
             # Vertical FoV is proportional to the horizontal one, based on the shape
             shape = self.microscope_view.fov_hw.shape
@@ -491,8 +489,6 @@ class MicroscopeViewport(ViewPort):
 
         The canvas calculates the new hfw value.
         """
-        logging.debug("_on_em_view_mpp_change: %s", str(mpp))
-
         fov = self.get_fov_from_mpp()
         self.microscope_view.fov.value = fov
         self.microscope_view.fov_buffer.value = self.get_buffer_fov_from_mpp()
@@ -532,6 +528,7 @@ class MicroscopeViewport(ViewPort):
     def _get_fov_from_mpp(self, view_size_px):
         """
         Return the field of view of the canvas
+        view_size_px (float, float): View size in pixels
         :return: (None or float,float) Field width and height in meters
         """
         # Trick: we actually return the smallest of the FoV dimensions, so

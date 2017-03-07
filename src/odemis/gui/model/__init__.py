@@ -882,7 +882,7 @@ class StreamView(View):
 
         self.fov = model.TupleContinuous((0.0, 0.0), range=((0.0, 0.0), (1e9, 1e9)))
         self.fov_buffer = model.TupleContinuous((0.0, 0.0), range=((0.0, 0.0), (1e9, 1e9)))
-        self.fov_buffer.subscribe(self._updateStreamBufferFoV)
+        self.fov_buffer.subscribe(self._onFovBuffer)
 
         # Will be created on the first time it's needed
         self._focus_thread = {}  # Focuser -> thread
@@ -928,13 +928,15 @@ class StreamView(View):
         self.show_crosshair = model.BooleanVA(True)
         self.interpolate_content = model.BooleanVA(False)
 
-    def _updateStreamBufferFoV(self, fov):
+    def _onFovBuffer(self, fov):
         self._updateStreamsRect()
 
     def _onViewPos(self, view_pos):
         self._updateStreamsRect()
 
     def _updateStreamsRect(self):
+        ''' Updates the .rect member of all streams based on the field of view of the buffer
+        '''
         half_fov = (self.fov_buffer.value[0] / 2, self.fov_buffer.value[1] / 2)
         view_rect = (
             self.view_pos.value[0] - half_fov[0],
@@ -942,12 +944,10 @@ class StreamView(View):
             self.view_pos.value[0] + half_fov[0],
             self.view_pos.value[1] - half_fov[1],
         )
-        logging.debug("_updateStreamsRect view_rect: %s", str(view_rect))
         streams = self.getStreams()
         for stream in streams:
-            if hasattr(stream, 'rect'):
+            if hasattr(stream, 'rect'): # the stream is probably pyramidal
                 stream.rect.value = stream.rect.clip(view_rect)
-                logging.debug("_updateStreamsRect stream.rect.value: %s", str(stream.rect.value))
 
 
     def has_stage(self):

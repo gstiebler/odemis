@@ -74,12 +74,14 @@ TINT_SIZE = 0.0155
 # TODO: rename to *_bgra_*
 def format_rgba_darray(im_darray, alpha=None):
     """ Reshape the given numpy.ndarray from RGB to BGRA format
-
+    im_darray (DataArray or tuple of tuple of DataArray): input image
     alpha (0 <= int <= 255 or None): If an alpha value is provided it will be
       set in the '4th' byte and used to scale the other RGB values within the array.
-
+    return (DataArray or tuple of tuple of DataArray): The return type is the same of im_darray
     """
-    if isinstance(im_darray, tuple): # tiles
+    # if im_darray contains tiles, call format_rgba_darray each tile independently,
+    # and return a tuple of tuple with the processed tiles
+    if isinstance(im_darray, tuple):
         new_array = []
         for tuple_col in im_darray:
             new_array_col = []
@@ -1968,7 +1970,7 @@ def _unpack_raw_data(imrgb, dtype):
 
 
 def add_alpha_byte(im_darray, alpha=255):
-
+    # if im_darray is a tuple of tuple of tiles, return a tuple of tuple of processed tiles
     if isinstance(im_darray, tuple):
         new_array = []
         for tuple_col in im_darray:
