@@ -948,7 +948,6 @@ class BitmapCanvas(BufferedCanvas):
 
         if images:
             n = len(images)
-            # For every image, except the last
             for i, im in enumerate(images):
                 if isinstance(im, tuple):
                     first_tile = im[0][0]
@@ -1005,11 +1004,7 @@ class BitmapCanvas(BufferedCanvas):
             return
 
         # Determine the rectangle the image would occupy in the buffer
-        # TODO pass the shape of the whole image
         b_im_rect = self._calc_img_buffer_rect(first_tile.shape[:2], im_scale, p_im_center)
-        # TODO use this line
-        # b_im_rect = self._calc_img_buffer_rect(im_data.shape[:2], im_scale, p_im_center)
-        # logging.debug("Image on buffer %s", b_im_rect)
 
         # To small to see, so no need to draw
         if b_im_rect[2] < 1 or b_im_rect[3] < 1:

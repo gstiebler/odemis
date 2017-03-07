@@ -33,6 +33,7 @@ import wx
 
 from odemis.acq.stream import RGBStream
 import odemis.gui.comp.miccanvas as miccanvas
+import time
 
 
 # logging.getLogger().setLevel(logging.DEBUG)
@@ -143,6 +144,7 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
         #         if px != (0, 0, 0):
         #             print px, i, j
 
+        result_im.SaveFile('/home/gstiebler/Projetos/Delmic/tmp.bmp', wx.BITMAP_TYPE_BMP)
         px1 = get_rgb(result_im, result_im.Width // 2 + shift[0], result_im.Height // 2 + shift[1])
         self.assertEqual(px1, (128, 0, 0))  # Ratio is at 0.5, so 255 becomes 128
 
@@ -445,11 +447,12 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
         size = (w, h, 3)
         dtype = numpy.uint8
         md = {
-            model.MD_DIMS: 'YXC',
-            model.MD_POS: (0, 0),
-            model.MD_PIXEL_SIZE: (mpp * 10, mpp * 10),
+            model.MD_PIXEL_SIZE: (mpp, mpp),
+            model.MD_POS: (0.0, 0.0),
+            model.MD_DIMS: 'YXC'
         }
         arr = numpy.array(range(size[0] * size[1] * size[2])).reshape((h, w, 3)).astype(dtype)
+        arr[:, :] = [0, 255, 0]
         data = model.DataArray(arr, metadata=md)
 
         # export
@@ -459,9 +462,8 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
         stream1 = RGBStream("test", acd.content[0])
 
         im2 = model.DataArray(numpy.zeros((201, 201, 3), dtype="uint8"))
-        px2_cent = tuple((s - 1) // 2 for s in im2.shape[:2])
-        # Blue pixel at center (100,100)
-        im2[px2_cent] = [0, 0, 255]
+        # Blue square at center
+        im2[90:110, 90:110] = [0, 0, 255]
         # 200, 200 => outside of the im1
         # (+0.5, -0.5) to make it really in the center of the pixel
         im2.metadata[model.MD_PIXEL_SIZE] = (mpp, mpp)
@@ -470,10 +472,15 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
         stream2 = RGBStream("s2", im2)
 
         self.view.addStream(stream1)
+        time.sleep(0.5)
         self.view.addStream(stream2)
 
         # reset the mpp of the view, as it's automatically set to the first  image
-        test.gui_loop(0.5)
+        test.gui_loop(3)
+
+        result_im = get_image_from_buffer(self.canvas)
+        result_im.SaveFile('/home/gstiebler/Projetos/Delmic/tmp1.bmp', wx.BITMAP_TYPE_BMP)
+
         self.view.mpp.value = mpp
 
         shift = (63, 63)
@@ -488,14 +495,11 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
         # it's supposed to update in less than 0.5s
         test.gui_loop(0.5)
 
+        result_im = get_image_from_buffer(self.canvas)
+        result_im.SaveFile('/home/gstiebler/Projetos/Delmic/tmp2.bmp', wx.BITMAP_TYPE_BMP)
+
         # copy the buffer into a nice image here
         result_im = get_image_from_buffer(self.canvas)
-
-        # for i in range(result_im.GetWidth()):
-        #     for j in range(result_im.GetHeight()):
-        #         px = get_rgb(result_im, i, j)
-        #         if px != (0, 0, 0):
-        #             print px, i, j
 
         px1 = get_rgb(result_im, result_im.Width // 2 + shift[0], result_im.Height // 2 + shift[1])
         self.assertEqual(px1, (128, 0, 0))  # Ratio is at 0.5, so 255 becomes 128
@@ -511,6 +515,7 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
         test.gui_loop(0.5)
 
         result_im = get_image_from_buffer(self.canvas)
+        result_im.SaveFile('/home/gstiebler/Projetos/Delmic/tmp3.bmp', wx.BITMAP_TYPE_BMP)
         px2 = get_rgb(result_im,
                       result_im.Width // 2 + 200 + shift[0],
                       result_im.Height // 2 - 200 + shift[1])
