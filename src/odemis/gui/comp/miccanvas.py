@@ -394,25 +394,18 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
                 images_std.append((image, BLEND_DEFAULT, s.name.value))
 
         # Sort by size, so that the biggest picture is first drawn (no opacity)
-        def get_area_full_image(d):
-            return numpy.prod(d[0].shape[0:2]) * d[0].metadata[model.MD_PIXEL_SIZE][0]
+        def get_area(d):
+            image = d[0]
+            if isinstance(image, tuple): # if image is a tuple of tuple of tiles
+                first_tile = image[0][0]
+                md = first_tile.metadata
+                return numpy.prod(first_tile.shape[0:2]) * md[model.MD_PIXEL_SIZE][0]
+            else:
+                return numpy.prod(d[0].shape[0:2]) * d[0].metadata[model.MD_PIXEL_SIZE][0]
 
-        def get_area_tile(d):
-            try:
-                first_tile = d[0][0][0]
-                return numpy.prod(first_tile.shape[0:2]) * first_tile.metadata[model.MD_PIXEL_SIZE][0]
-            except:
-                pass
-
-        # TODO check if streams[0] represents all the images
-        if len(streams) > 0 and isinstance(streams[0].image.value, tuple):
-            get_area_fn = get_area_tile
-        else:
-            get_area_fn = get_area_full_image
-
-        images_opt.sort(key=get_area_fn, reverse=True)
-        images_spc.sort(key=get_area_fn, reverse=True)
-        images_std.sort(key=get_area_fn, reverse=True)
+        images_opt.sort(key=get_area, reverse=True)
+        images_spc.sort(key=get_area, reverse=True)
+        images_std.sort(key=get_area, reverse=True)
 
         # Reset the first image to be drawn to the default blend operator to be
         # drawn full opacity (only useful if the background is not full black)
