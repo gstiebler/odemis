@@ -954,54 +954,31 @@ class BitmapCanvas(BufferedCanvas):
                 if isinstance(im, tuple):
                     self._draw_tiles(images, ctx, im, interpolate_data)
                 else:
-                    # print "Drawing %s %s %s %s merge: %s" % (id(im),
-                    #                                          im.shape,
-                    #                                          im.metadata['blend_mode'],
-                    #                                          im.metadata['name'],
-                    #                                          1.0)
                     if im.metadata['blend_mode'] == BLEND_SCREEN:
                         merge_ratio = 1.0
+                    elif i == n - 1: # last image
+                        if n == 1:
+                            merge_ratio = 1.0
+                        else:
+                            merge_ratio = self.merge_ratio
                     else:
                         merge_ratio = 1 - i / n
 
-                    self._draw_image(
-                        ctx,
-                        im,
-                        im.metadata['dc_center'],
-                        merge_ratio,
-                        im_scale=im.metadata['dc_scale'],
-                        rotation=im.metadata['dc_rotation'],
-                        shear=im.metadata['dc_shear'],
-                        flip=im.metadata['dc_flip'],
-                        blend_mode=im.metadata['blend_mode'],
-                        interpolate_data=interpolate_data
-                )
-
-            if isinstance(last_image, tuple):
-                self._draw_tiles(images, ctx, last_image, interpolate_data)
-            else:
-                if not images or last_image.metadata['blend_mode'] == BLEND_SCREEN:
-                    merge_ratio = 1.0
-                else:
-                    merge_ratio = self.merge_ratio
-
-                # print "Drawing last %s %s %s %s merge: %s" % (id(last_image),
-                #                                               last_image.shape,
-                #                                               last_image.metadata['blend_mode'],
-                #                                               last_image.metadata['name'],
-                #                                               merge_ratio)
-                self._draw_image(
-                    ctx,
-                    last_image,
-                    last_image.metadata['dc_center'],
-                    merge_ratio,
-                    im_scale=last_image.metadata['dc_scale'],
-                    rotation=last_image.metadata['dc_rotation'],
-                    shear=last_image.metadata['dc_shear'],
-                    flip=last_image.metadata['dc_flip'],
-                    blend_mode=last_image.metadata['blend_mode'],
-                    interpolate_data=interpolate_data
-                )
+                    if isinstance(last_image, tuple):
+                        self._draw_tiles(images, ctx, last_image, interpolate_data)
+                    else:
+                        self._draw_image(
+                            ctx,
+                            im,
+                            im.metadata['dc_center'],
+                            merge_ratio,
+                            im_scale=im.metadata['dc_scale'],
+                            rotation=im.metadata['dc_rotation'],
+                            shear=im.metadata['dc_shear'],
+                            flip=im.metadata['dc_flip'],
+                            blend_mode=im.metadata['blend_mode'],
+                            interpolate_data=interpolate_data
+                        )
 
     def _draw_tiles(self, images, ctx, tiles, interpolate_data=False):
         first_tile = tiles[0][0]
