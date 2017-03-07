@@ -1063,11 +1063,10 @@ class BitmapCanvas(BufferedCanvas):
             cairo_filter = cairo.FILTER_NEAREST  # FAST
 
         for tile_col in tiles:
+            # save the transformation matrix to return to the top of the column
             ctx.save()
             for tile in tile_col:
-                tmd = tile.metadata
-                logging.debug("draw tile center %s", str(tmd['dc_center']))
-
+                tmd = tile.metadataprint()
                 height, width, _ = tile.shape
                 # logging.debug("Image data shape is %s", im_data.shape)
 
@@ -1088,6 +1087,7 @@ class BitmapCanvas(BufferedCanvas):
 
                 ctx.translate(0, height)
 
+            # restore the transformation matrix to the top of the column
             ctx.restore()
 
             offset_x = tile_col[0].shape[1]
