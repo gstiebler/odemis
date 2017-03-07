@@ -1067,16 +1067,17 @@ class BitmapCanvas(BufferedCanvas):
             im_format = cairo.FORMAT_RGB24
 
 
+
         base_x, base_y, _, _ = b_im_rect
-        offset_x = 0
+        ctx.translate(base_x, base_y)
+        # Apply total scale
+        ctx.scale(total_scale_x, total_scale_y)
+
         for tile_col in tiles:
-            offset_y = 0
+            ctx.save()
             for tile in tile_col:
                 tmd = tile.metadata
                 logging.debug("draw tile center %s", str(tmd['dc_center']))
-
-
-                ctx.save()
 
 
                 height, width, _ = tile.shape
@@ -1102,17 +1103,6 @@ class BitmapCanvas(BufferedCanvas):
                 else:
                     surfpat.set_filter(cairo.FILTER_NEAREST)  # FAST
 
-
-                # Translate to the top left position of the image data
-                x = base_x + offset_x * total_scale_x
-                y = base_y + offset_y * total_scale_y
-                ctx.translate(x, y)
-                logging.debug("tile translate %f %f", x, y)
-                offset_y += tile.shape[0]
-
-                # Apply total scale
-                ctx.scale(total_scale_x, total_scale_y)
-
                 # Debug print statement
                 # print ctx.get_matrix(), im_data.shape
 
@@ -1124,9 +1114,15 @@ class BitmapCanvas(BufferedCanvas):
                 #else:
                 #    ctx.paint()
 
-                ctx.restore()
-            
-            offset_x += tile_col[0].shape[1]
+                # Translate to the top left position of the image data
+                # logging.debug("tile translate %f %f", x, y)
+                offset_y = tile.shape[0]
+                ctx.translate(0, offset_y)
+
+            ctx.restore()
+
+            offset_x = tile_col[0].shape[1]
+            ctx.translate(offset_x, 0)
 
         
         # Restore the cached transformation matrix
