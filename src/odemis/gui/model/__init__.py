@@ -881,7 +881,8 @@ class StreamView(View):
         self.fov_hw = fov_hw
 
         self.fov = model.TupleContinuous((0.0, 0.0), range=((0.0, 0.0), (1e9, 1e9)))
-        self.fov.subscribe(self._updateStreamFoV)
+        self.fov_buffer = model.TupleContinuous((0.0, 0.0), range=((0.0, 0.0), (1e9, 1e9)))
+        self.fov_buffer.subscribe(self._updateStreamBufferFoV)
 
         # Will be created on the first time it's needed
         self._focus_thread = {}  # Focuser -> thread
@@ -927,15 +928,14 @@ class StreamView(View):
         self.show_crosshair = model.BooleanVA(True)
         self.interpolate_content = model.BooleanVA(False)
 
-    def _updateStreamFoV(self, fov):
+    def _updateStreamBufferFoV(self, fov):
         self._updateStreamsRect()
 
     def _onViewPos(self, view_pos):
         self._updateStreamsRect()
 
     def _updateStreamsRect(self):
-        fov_buffer = (self.fov.value[0] * 1.5, self.fov.value[1] * 1.5)
-        half_fov = (fov_buffer[0] / 2, fov_buffer[1] / 2)
+        half_fov = (self.fov_buffer.value[0] / 2, self.fov_buffer.value[1] / 2)
         view_rect = (
             self.view_pos.value[0] - half_fov[0],
             self.view_pos.value[1] + half_fov[1],

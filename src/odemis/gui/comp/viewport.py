@@ -355,6 +355,7 @@ class MicroscopeViewport(ViewPort):
         logging.debug("_on_view_mpp: %s", str(mpp))
 
         self.microscope_view.fov.value = self.get_fov_from_mpp()
+        self.microscope_view.fov_buffer.value = self.get_buffer_fov_from_mpp()
         streams = self.microscope_view.getStreams()
         for stream in streams:
             if hasattr(stream, 'mpp'):
@@ -446,6 +447,7 @@ class MicroscopeViewport(ViewPort):
         fov = self.get_fov_from_mpp()
         if fov is not None and self.microscope_view is not None:
             self.microscope_view.fov.value = fov
+            self.microscope_view.fov_buffer.value = self.get_buffer_fov_from_mpp()
         evt.Skip()  # processed also by the parent
 
     def OnSliderIconClick(self, evt):
@@ -493,6 +495,7 @@ class MicroscopeViewport(ViewPort):
 
         fov = self.get_fov_from_mpp()
         self.microscope_view.fov.value = fov
+        self.microscope_view.fov_buffer.value = self.get_buffer_fov_from_mpp()
 
         # Only change the FoV of the hardware if:
         # * this Viewport was *not* responsible for setting the mpp
@@ -526,14 +529,13 @@ class MicroscopeViewport(ViewPort):
         else:
             self.self_set_mpp = False
 
-    def get_fov_from_mpp(self):
+    def _get_fov_from_mpp(self, view_size_px):
         """
         Return the field of view of the canvas
         :return: (None or float,float) Field width and height in meters
         """
         # Trick: we actually return the smallest of the FoV dimensions, so
         # that we are sure the microscope image will fit fully (if it's square)
-        view_size_px = self.canvas.ClientSize
 
         if self.microscope_view and all(v > 0 for v in view_size_px):
             mpp = self.microscope_view.mpp.value
@@ -543,6 +545,21 @@ class MicroscopeViewport(ViewPort):
             return fov
 
         return None
+
+    def get_fov_from_mpp(self):
+        """
+        Return the field of view of the canvas
+        :return: (None or float,float) Field width and height in meters
+        """
+        return self._get_fov_from_mpp(self.canvas.ClientSize)
+
+    def get_buffer_fov_from_mpp(self):
+        """
+        Return the field of view of the canvas
+        :return: (None or float,float) Field width and height in meters
+        """
+        # TODO acess this variable in another way
+        return self._get_fov_from_mpp(self.canvas._bmp_buffer_size)
 
     def set_mpp_from_fov(self, fov):
         """
