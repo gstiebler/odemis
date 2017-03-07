@@ -397,13 +397,12 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
         def get_area(d):
             image = d[0]
             if isinstance(image, tuple): # if image is a tuple of tuple of tiles
+                # TODO fix the shape. It will get the shape of the first tile
                 if len(image) == 0 or len(image[0]) == 0:
                     return -1
-                first_tile = image[0][0]
-                md = first_tile.metadata
-                return numpy.prod(first_tile.shape[0:2]) * md[model.MD_PIXEL_SIZE][0]
-            else:
-                return numpy.prod(d[0].shape[0:2]) * d[0].metadata[model.MD_PIXEL_SIZE][0]
+                image = image[0][0]
+
+            return numpy.prod(image.shape[0:2]) * image.metadata[model.MD_PIXEL_SIZE][0]
 
         images_opt.sort(key=get_area, reverse=True)
         images_spc.sort(key=get_area, reverse=True)
@@ -437,7 +436,7 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
             im_cache[im_id] = rgba_im
 
             keepalpha = False
-            if isinstance(rgbim, tuple):
+            if isinstance(rgbim, tuple): # tuple of tuple of tiles
                 if len(rgbim) == 0 or len(rgbim[0]) == 0:
                     continue
                 md = rgbim[0][0].metadata
