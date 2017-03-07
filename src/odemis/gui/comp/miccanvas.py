@@ -507,7 +507,6 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
         When the view position is updated: recenter the view
         phys_pos (tuple of 2 float): X/Y in physical coordinates (m)
         """
-        logging.debug("_onViewPos: %s", str(phys_pos))
         # skip ourselves, to avoid asking the stage to move to (almost) the same position
         super(DblMicroscopeCanvas, self).recenter_buffer(phys_pos)
 
@@ -961,7 +960,6 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
         for stream in streams:
             if hasattr(stream, 'rect'):
                 rng = stream.rect.range
-                logging.debug("rng %f %f", rng[0][0], rng[1][1])
                 if bbox[0] is None:
                     bbox = (rng[0][0], rng[0][1], rng[1][0], rng[1][1])
                 else:

@@ -1203,11 +1203,9 @@ class BitmapCanvas(BufferedCanvas):
 
         # Translate to the top left position of the image data
         ctx.translate(x, y)
-        logging.debug("translate %f %f", x, y)
 
         # Apply total scale
         ctx.scale(total_scale_x, total_scale_y)
-        logging.debug("scale %f %f", total_scale_x, total_scale_y)
 
         # Debug print statement
         # print ctx.get_matrix(), im_data.shape
@@ -1457,11 +1455,6 @@ class DraggableCanvas(BitmapCanvas):
             # self.drag_shift is the delta we want to apply
             offset = (-self.drag_shift[0] / self.scale,
                       self.drag_shift[1] / self.scale)
-
-            logging.debug("on_left_up: %s %s %s %s", str(self.p_buffer_center),
-                str(offset),
-                str(self.drag_shift),
-                str(self.scale))
             self.recenter_buffer((self.p_buffer_center[0] + offset[0],
                                   self.p_buffer_center[1] + offset[1]))
 
@@ -1539,7 +1532,6 @@ class DraggableCanvas(BitmapCanvas):
 
         if CAN_DRAG in self.abilities and self._ldragging:
             v_pos = evt.GetPositionTuple()
-            logging.debug("on_motion: %s", str(v_pos))
             drag_shift = (v_pos[0] - self.drag_init_pos[0],
                           v_pos[1] - self.drag_init_pos[1])
 
