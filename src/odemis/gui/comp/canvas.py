@@ -948,57 +948,65 @@ class BitmapCanvas(BufferedCanvas):
 
         if images:
             n = len(images)
-            last_image = images.pop()
             # For every image, except the last
             for i, im in enumerate(images):
                 if isinstance(im, tuple):
-                    self._draw_tiles(images, ctx, im, interpolate_data)
+                    first_tile = im[0][0]
+                    md = first_tile.metadata
                 else:
-                    if im.metadata['blend_mode'] == BLEND_SCREEN:
+                    md = im.metadata
+
+                if md['blend_mode'] == BLEND_SCREEN:
+                    merge_ratio = 1.0
+                elif i == n - 1: # last image
+                    if n == 1:
                         merge_ratio = 1.0
-                    elif i == n - 1: # last image
-                        if n == 1:
-                            merge_ratio = 1.0
-                        else:
-                            merge_ratio = self.merge_ratio
                     else:
-                        merge_ratio = 1 - i / n
+                        merge_ratio = self.merge_ratio
+                else:
+                    merge_ratio = 1 - i / n
 
-                    if isinstance(last_image, tuple):
-                        self._draw_tiles(images, ctx, last_image, interpolate_data)
-                    else:
-                        self._draw_image(
-                            ctx,
-                            im,
-                            im.metadata['dc_center'],
-                            merge_ratio,
-                            im_scale=im.metadata['dc_scale'],
-                            rotation=im.metadata['dc_rotation'],
-                            shear=im.metadata['dc_shear'],
-                            flip=im.metadata['dc_flip'],
-                            blend_mode=im.metadata['blend_mode'],
-                            interpolate_data=interpolate_data
-                        )
+                if isinstance(im, tuple):
+                    self._draw_tiles(
+                        ctx,
+                        im,
+                        md['dc_center'],
+                        merge_ratio,
+                        im_scale=md['dc_scale'],
+                        rotation=md['dc_rotation'],
+                        shear=md['dc_shear'],
+                        flip=md['dc_flip'],
+                        blend_mode=md['blend_mode'],
+                        interpolate_data=interpolate_data
+                    )
+                else:
+                    self._draw_image(
+                        ctx,
+                        im,
+                        im.metadata['dc_center'],
+                        merge_ratio,
+                        im_scale=im.metadata['dc_scale'],
+                        rotation=im.metadata['dc_rotation'],
+                        shear=im.metadata['dc_shear'],
+                        flip=im.metadata['dc_flip'],
+                        blend_mode=im.metadata['blend_mode'],
+                        interpolate_data=interpolate_data
+                    )
 
-    def _draw_tiles(self, images, ctx, tiles, interpolate_data=False):
+    def _draw_tiles(self, ctx, tiles, p_im_center, opacity=1.0,
+                    im_scale=(1.0, 1.0), rotation=None, shear=None, flip=None,
+                    blend_mode=BLEND_DEFAULT, interpolate_data=False):
         first_tile = tiles[0][0]
-        if not images or first_tile.metadata['blend_mode'] == BLEND_SCREEN:
-            merge_ratio = 1.0
-        else:
-            merge_ratio = self.merge_ratio
-
-        logging.debug("start drawing tiles")
-
         ftmd = first_tile.metadata
+
         # Fully transparent image does not need to be drawn
-        if merge_ratio < 1e-8:
+        if opacity < 1e-8:
             logging.debug("Skipping draw: image fully transparent")
             return
 
-        im_scale = ftmd['dc_scale']
         # Determine the rectangle the image would occupy in the buffer
         # TODO pass the shape of the whole image
-        b_im_rect = self._calc_img_buffer_rect(first_tile.shape[:2], im_scale, ftmd['dc_center'])
+        b_im_rect = self._calc_img_buffer_rect(first_tile.shape[:2], im_scale, p_im_center)
         # TODO use this line
         # b_im_rect = self._calc_img_buffer_rect(im_data.shape[:2], im_scale, p_im_center)
         # logging.debug("Image on buffer %s", b_im_rect)
@@ -1025,9 +1033,9 @@ class BitmapCanvas(BufferedCanvas):
         # Combine the image scale and the buffer scale
 
         # apply transformations if needed
-        apply_rotation(ctx, ftmd['dc_rotation'], b_im_rect)
-        apply_shear(ctx, ftmd['dc_shear'], b_im_rect)
-        apply_flip(ctx, ftmd['dc_flip'], b_im_rect)
+        apply_rotation(ctx, rotation, b_im_rect)
+        apply_shear(ctx, shear, b_im_rect)
+        apply_flip(ctx, flip, b_im_rect)
 
         scale_x, scale_y = im_scale
         total_scale = total_scale_x, total_scale_y = (scale_x * self.scale, scale_y * self.scale)
@@ -1043,19 +1051,27 @@ class BitmapCanvas(BufferedCanvas):
         else:
             im_format = cairo.FORMAT_RGB24
 
-
-
         base_x, base_y, _, _ = b_im_rect
         ctx.translate(base_x, base_y)
         # Apply total scale
         ctx.scale(total_scale_x, total_scale_y)
+
+        if interpolate_data:
+            # Since cairo v1.14, FILTER_BEST is different from BILINEAR.
+            # Downscaling and upscaling < 2x is nice, but above that, it just
+            # makes the pixels big (and antialiased)    
+            if total_scale_x > 2:
+                cairo_filter = cairo.FILTER_BILINEAR
+            else:
+                cairo_filter = cairo.FILTER_BEST
+        else:
+            cairo_filter = cairo.FILTER_NEAREST  # FAST
 
         for tile_col in tiles:
             ctx.save()
             for tile in tile_col:
                 tmd = tile.metadata
                 logging.debug("draw tile center %s", str(tmd['dc_center']))
-
 
                 height, width, _ = tile.shape
                 # logging.debug("Image data shape is %s", im_data.shape)
@@ -1069,39 +1085,19 @@ class BitmapCanvas(BufferedCanvas):
                 # In Cairo a pattern is the 'paint' that it uses to draw
                 surfpat = cairo.SurfacePattern(imgsurface)
 
-                if interpolate_data:
-                    # Since cairo v1.14, FILTER_BEST is different from BILINEAR.
-                    # Downscaling and upscaling < 2x is nice, but above that, it just
-                    # makes the pixels big (and antialiased)    
-                    if total_scale_x > 2:
-                        surfpat.set_filter(cairo.FILTER_BILINEAR)
-                    else:
-                        surfpat.set_filter(cairo.FILTER_BEST)
-                else:
-                    surfpat.set_filter(cairo.FILTER_NEAREST)  # FAST
-
-                # Debug print statement
-                # print ctx.get_matrix(), im_data.shape
-
+                surfpat.set_filter(cairo_filter)
                 ctx.set_source(surfpat)
-                ctx.set_operator(tmd['blend_mode'])
+                ctx.set_operator(blend_mode)
 
-                #if merge_ratio < 1.0:
-                ctx.paint_with_alpha(merge_ratio)
-                #else:
-                #    ctx.paint()
+                ctx.paint_with_alpha(opacity)
 
-                # Translate to the top left position of the image data
-                # logging.debug("tile translate %f %f", x, y)
-                offset_y = tile.shape[0]
-                ctx.translate(0, offset_y)
+                ctx.translate(0, height)
 
             ctx.restore()
 
             offset_x = tile_col[0].shape[1]
             ctx.translate(offset_x, 0)
 
-        
         # Restore the cached transformation matrix
         ctx.restore()
 
