@@ -387,22 +387,19 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
             # FluoStreams are merged using the "Screen" method that handles colour
             # merging without decreasing the intensity.
             if isinstance(s, stream.OpticalStream):
-                images_opt.append((image, BLEND_SCREEN, s.name.value))
+                images_opt.append((image, BLEND_SCREEN, s.name.value, s))
             elif isinstance(s, (stream.SpectrumStream, stream.CLStream)):
-                images_spc.append((image, BLEND_DEFAULT, s.name.value))
+                images_spc.append((image, BLEND_DEFAULT, s.name.value, s))
             else:
-                images_std.append((image, BLEND_DEFAULT, s.name.value))
+                images_std.append((image, BLEND_DEFAULT, s.name.value, s))
 
         # Sort by size, so that the biggest picture is first drawn (no opacity)
         def get_area(d):
-            image = d[0]
-            if isinstance(image, tuple): # if image is a tuple of tuple of tiles
-                # TODO fix the shape. It will get the shape of the first tile
-                if len(image) == 0 or len(image[0]) == 0:
-                    return -1
-                image = image[0][0]
-
-            return numpy.prod(image.shape[0:2]) * image.metadata[model.MD_PIXEL_SIZE][0]
+            stream = d[3]
+            bbox = self.getStreamBoundingBox(stream)
+            width = bbox[2] - bbox[0]
+            height = bbox[3] - bbox[1]
+            return width * height
 
         images_opt.sort(key=get_area, reverse=True)
         images_spc.sort(key=get_area, reverse=True)
@@ -425,7 +422,7 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
         # add the images in order
         ims = []
         im_cache = {}
-        for rgbim, blend_mode, name in images:
+        for rgbim, blend_mode, name, _ in images:
             # Get converted RGBA image from cache, or create it and cache it
             # On large images it costs 100 ms (per image and per canvas)
             im_id = id(rgbim)
