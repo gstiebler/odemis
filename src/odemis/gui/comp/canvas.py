@@ -1022,11 +1022,8 @@ class BitmapCanvas(BufferedCanvas):
             logging.debug("Skipping draw: no intersection with buffer")
             return
 
-        # logging.debug("Intersection (%s, %s, %s, %s)", *intersection)
         # Cache the current transformation matrix
         ctx.save()
-        # Combine the image scale and the buffer scale
-
         # apply transformations if needed
         apply_rotation(ctx, rotation, b_im_rect)
         apply_shear(ctx, shear, b_im_rect)
@@ -1039,14 +1036,13 @@ class BitmapCanvas(BufferedCanvas):
         if abs(total_scale_x - 1) < 1e-8 or abs(total_scale_y - 1) < 1e-8:
             total_scale = (1.0, 1.0)
 
-        # Render the image data to the context
-
         if ftmd.get('dc_keepalpha', True):
             im_format = cairo.FORMAT_ARGB32
         else:
             im_format = cairo.FORMAT_RGB24
 
         base_x, base_y, _, _ = b_im_rect
+        #translate the the first tile
         ctx.translate(base_x, base_y)
         # Apply total scale
         ctx.scale(total_scale_x, total_scale_y)
@@ -1068,7 +1064,6 @@ class BitmapCanvas(BufferedCanvas):
             for tile in tile_col:
                 tmd = tile.metadata
                 height, width, _ = tile.shape
-                # logging.debug("Image data shape is %s", im_data.shape)
 
                 # Note: Stride calculation is done automatically when no stride parameter is provided.
                 stride = cairo.ImageSurface.format_stride_for_width(im_format, width)
@@ -1083,6 +1078,8 @@ class BitmapCanvas(BufferedCanvas):
                 ctx.set_source(surfpat)
                 ctx.set_operator(blend_mode)
 
+                # always has alpha, so the tiles are not drawn over each other when
+                # the image is tiled
                 ctx.paint_with_alpha(opacity)
 
                 ctx.translate(0, height)
