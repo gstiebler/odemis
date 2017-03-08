@@ -644,6 +644,9 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
         result_im = get_image_from_buffer(self.canvas)
         #result_im.SaveFile('/home/gstiebler/Projetos/Delmic/tmp4.bmp', wx.BITMAP_TYPE_BMP)
         self.canvas.fit_view_to_content(recenter=True)
+        # only .mpp changes, but the image keeps centered
+        self.assertAlmostEqual(5.403e-06, self.view.mpp.value)
+        numpy.testing.assert_almost_equal(init_pos, self.view.view_pos.value)
         test.gui_loop(0.5)
 
         result_im = get_image_from_buffer(self.canvas)
