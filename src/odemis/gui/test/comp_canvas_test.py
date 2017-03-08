@@ -544,6 +544,7 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
         #init_pos = (0.0, 0.0)
 
         FILENAME = u"test" + tiff.EXTENSIONS[0]
+        # 1 row of 2 tiles
         w = 512
         h = 250
         size = (w, h, 3)
@@ -578,10 +579,8 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
         stream2 = RGBStream("s2", im2)
 
         self.view.addStream(stream1)
-        test.gui_loop(0.1)
         self.view.addStream(stream2)
         self.view.fov_buffer.value = (1.0, 1.0)
-        self.view.mpp.value = mpp * 1.1
 
         # reset the mpp of the view, as it's automatically set to the first  image
         test.gui_loop(0.5)
@@ -605,8 +604,6 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
         self.view.merge_ratio.value = ratio
         self.assertEqual(ratio, self.view.merge_ratio.value)
 
-        test.gui_loop(0.5)
-        # it's supposed to update in less than 0.5s
         test.gui_loop(0.5)
 
         result_im = get_image_from_buffer(self.canvas)
@@ -662,6 +659,67 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
 
         self.canvas.fit_to_content()
 
+    def test_pyramidal_3x2(self):
+        """
+        Draws a view with two streams, one pyramidal stream square completely green,
+        and the other is a red square with a blue square in the center
+        """
+        mpp = 0.00001
+        self.view.mpp.value = mpp
+        self.assertEqual(mpp, self.view.mpp.value)
+        self.view.show_crosshair.value = False
+
+        init_pos = (1.0, 2.0)
+
+        FILENAME = u"test" + tiff.EXTENSIONS[0]
+        # 1 row of 2 tiles
+        w = 600
+        h = 300
+        size = (w, h, 3)
+        dtype = numpy.uint8
+        md = {
+            model.MD_PIXEL_SIZE: (mpp, mpp),
+            model.MD_POS: init_pos,
+            model.MD_DIMS: 'YXC'
+        }
+        arr = model.DataArray(numpy.zeros((h, w, 3), dtype="uint8"))
+        # make it all green
+        arr[:, :] = [0, 255, 0]
+        data = model.DataArray(arr, metadata=md)
+
+        # export
+        tiff.export(FILENAME, data, pyramid=True)
+
+        acd = tiff.open_data(FILENAME)
+        stream1 = RGBStream("test", acd.content[0])
+
+        im2 = model.DataArray(numpy.zeros((800, 800, 3), dtype="uint8"))
+        # red background
+        im2[:, :] = [255, 0, 0]
+        # Blue square at center
+        im2[390:410, 390:410] = [0, 0, 255]
+
+        im2.metadata[model.MD_PIXEL_SIZE] = (mpp, mpp)
+        im2.metadata[model.MD_POS] = init_pos
+        im2.metadata[model.MD_DIMS] = "YXC"
+        stream2 = RGBStream("s2", im2)
+
+        self.view.addStream(stream1)
+        self.view.addStream(stream2)
+        self.view.fov_buffer.value = (1.0, 1.0)
+        self.view.mpp.value = mpp
+
+        # reset the mpp of the view, as it's automatically set to the first  image
+        test.gui_loop(0.5)
+
+        result_im = get_image_from_buffer(self.canvas)
+        result_im.SaveFile('/home/gstiebler/Projetos/Delmic/big.bmp', wx.BITMAP_TYPE_BMP)
+        px2 = get_rgb(result_im, result_im.Width // 2, result_im.Height // 2)
+        # center pixel, 1/3 green, 2/3 blue. The red image is the largest image
+        self.assertEqual(px2, (0, 76, 179))
+        px2 = get_rgb(result_im, result_im.Width // 2 - 30, result_im.Height // 2 - 30)
+        # background of the images, 1/3 green, 2/3 red
+        self.assertEqual(px2, (179, 76, 0))
 
 if __name__ == "__main__":
     unittest.main()
