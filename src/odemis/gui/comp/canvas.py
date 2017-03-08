@@ -1066,7 +1066,7 @@ class BitmapCanvas(BufferedCanvas):
             # save the transformation matrix to return to the top of the column
             ctx.save()
             for tile in tile_col:
-                tmd = tile.metadataprint()
+                tmd = tile.metadata
                 height, width, _ = tile.shape
                 # logging.debug("Image data shape is %s", im_data.shape)
 
