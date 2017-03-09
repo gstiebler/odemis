@@ -1095,3 +1095,18 @@ class Stream(object):
                 self.raw[0] = data
 
         self._shouldUpdateImage()
+
+    def getBoundingBox(self):
+        ''' Get the bounding box
+        return (tuple of floats(t,l,b,r)): Tuple with the bounding box
+        '''
+        if hasattr(self, 'rect'):
+            rng = self.rect.range
+            return (rng[0][0], rng[0][1], rng[1][0], rng[1][1])
+        else:
+            md = self.image.value.metadata
+            shape = self.image.value.shape
+            im_scale = md[model.MD_PIXEL_SIZE]
+            w, h = shape[1] * im_scale[0], shape[0] * im_scale[1]
+            c = md[model.MD_POS]
+            return [c[0] - w / 2, c[1] - h / 2, c[0] + w / 2, c[1] + h / 2]

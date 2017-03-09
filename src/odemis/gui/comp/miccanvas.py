@@ -396,7 +396,7 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
         # Sort by size, so that the biggest picture is first drawn (no opacity)
         def get_area(d):
             stream = d[3]
-            bbox = self.getStreamBoundingBox(stream)
+            bbox = stream.getBoundingBox()
             width = bbox[2] - bbox[0]
             height = bbox[3] - bbox[1]
             return width * height
@@ -422,7 +422,7 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
         # add the images in order
         ims = []
         im_cache = {}
-        for rgbim, blend_mode, name, _ in images:
+        for rgbim, blend_mode, name, stream in images:
             # Get converted RGBA image from cache, or create it and cache it
             # On large images it costs 100 ms (per image and per canvas)
             im_id = id(rgbim)
@@ -437,7 +437,9 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
                 if len(rgbim) == 0 or len(rgbim[0]) == 0:
                     continue
                 md = rgbim[0][0].metadata
-                pos = (0.0, 0.0) # TODO calculate it
+                bbox = stream.getBoundingBox()
+                t, l, b, r = bbox
+                pos = ((l + r) / 2, (b + t) / 2)
             else:
                 md = rgbim.metadata
                 pos = md[model.MD_POS]
@@ -955,7 +957,7 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
         bbox = [None, None, None, None]  # ltrb in m
         streams = self.microscope_view.getStreams()
         for stream in streams:
-            s_bbox = self.getStreamBoundingBox(stream)
+            s_bbox = stream.getBoundingBox()
             if bbox[0] is None:
                 bbox = s_bbox
             else:
@@ -991,22 +993,6 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
             self.requested_phys_pos = c  # As recenter_buffer but without request_drawing_update
 
         wx.CallAfter(self.request_drawing_update)
-
-    def getStreamBoundingBox(self, stream):
-        ''' Get the bounding box of a stream
-        stream (Stream): Stream
-        return (tuple of floats(t,l,b,r)): Tuple with the bounding box
-        '''
-        if hasattr(stream, 'rect'):
-            rng = stream.rect.range
-            return (rng[0][0], rng[0][1], rng[1][0], rng[1][1])
-        else:
-            md = stream.image.value.metadata
-            shape = stream.image.value.shape
-            im_scale = md[model.MD_PIXEL_SIZE]
-            w, h = shape[1] * im_scale[0], shape[0] * im_scale[1]
-            c = md[model.MD_POS]
-            return [c[0] - w / 2, c[1] - h / 2, c[0] + w / 2, c[1] + h / 2]
 
 
 class OverviewCanvas(DblMicroscopeCanvas):
