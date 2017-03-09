@@ -524,51 +524,27 @@ def set_images(im_args):
             if not blend_mode:
                 blend_mode = BLEND_DEFAULT
 
-                if isinstance(im, tuple):
-                    first_tile = im[0][0]
+            try:
+                depth = im.shape[2]
 
-                    try:
-                        depth = first_tile.shape[2]
+                if depth == 3:
+                    im = add_alpha_byte(im)
+                elif depth != 4:  # Both ARGB32 and RGB24 need 4 bytes
+                    raise ValueError("Unsupported colour byte size (%s)!" % depth)
+            except IndexError:
+                # Handle grayscale images pretending they are rgb
+                pass
 
-                        if depth == 3:
-                            im = add_alpha_byte(im)
-                        elif depth != 4:  # Both ARGB32 and RGB24 need 4 bytes
-                            raise ValueError("Unsupported colour byte size (%s)!" % depth)
-                    except IndexError:
-                        # Handle grayscale images pretending they are rgb
-                        pass
-
-                    for tile_col in im:
-                        for tile in tile_col:
-                            # TODO replace the string by the constant MD_POS
-                            tile.metadata['dc_center'] = tile.metadata.get("Centre position", w_pos)
-                            tile.metadata['dc_scale'] = scale
-                            tile.metadata['dc_rotation'] = rotation
-                            tile.metadata['dc_shear'] = shear
-                            tile.metadata['dc_flip'] = flip
-                            tile.metadata['dc_keepalpha'] = keepalpha
-                            tile.metadata['blend_mode'] = blend_mode
-                            tile.metadata['name'] = name
-                else:
-                    try:
-                        depth = im.shape[2]
-
-                        if depth == 3:
-                            im = add_alpha_byte(im)
-                        elif depth != 4:  # Both ARGB32 and RGB24 need 4 bytes
-                            raise ValueError("Unsupported colour byte size (%s)!" % depth)
-                    except IndexError:
-                        # Handle grayscale images pretending they are rgb
-                        pass
-
-                    im.metadata['dc_center'] = w_pos
-                    im.metadata['dc_scale'] = scale
-                    im.metadata['dc_rotation'] = rotation
-                    im.metadata['dc_shear'] = shear
-                    im.metadata['dc_flip'] = flip
-                    im.metadata['dc_keepalpha'] = keepalpha
-                    im.metadata['blend_mode'] = blend_mode
-                    im.metadata['name'] = name
+            im.metadata['dc_center'] = p_pos
+            im.metadata['dc_scale'] = scale
+            im.metadata['dc_rotation'] = rotation
+            im.metadata['dc_shear'] = shear
+            im.metadata['dc_flip'] = flip
+            im.metadata['dc_keepalpha'] = keepalpha
+            im.metadata['blend_mode'] = blend_mode
+            im.metadata['name'] = name
+            im.metadata['date'] = date
+            im.metadata['stream'] = stream
 
             images.append(im)
 
@@ -1655,8 +1631,12 @@ def get_ordered_images(streams, raw=False):
         # merging without decreasing the intensity.
         if not raw:
             data = s.image.value
+            if isinstance(data, tuple): # 2D tuple = tiles
+                data = img.mergeTiles(data)
         else:
             data_raw = s.raw[0]
+            if isinstance(data_raw, tuple): # 2D tuple = tiles
+                data_raw = img.mergeTiles(data_raw)
 
             # Pretend to be RGB for the drawing by cairo
             if numpy.can_cast(im_min_type, min_type(data_raw)):
@@ -1684,11 +1664,7 @@ def get_ordered_images(streams, raw=False):
 
     # Sort by size, so that the biggest picture is first drawn (no opacity)
     def get_area(d):
-        stream = d[2]
-        bbox = stream.getBoundingBox()
-        width = bbox[2] - bbox[0]
-        height = bbox[3] - bbox[1]
-        return width * height
+        return numpy.prod(d[0].shape[0:2]) * d[0].metadata[model.MD_PIXEL_SIZE][0]
 
     images_opt.sort(key=get_area, reverse=True)
     images_spc.sort(key=get_area, reverse=True)
@@ -1721,23 +1697,12 @@ def convert_streams_to_images(streams, raw=False):
     for rgbim, blend_mode, stream in images:
         rgba_im = format_rgba_darray(rgbim)
         keepalpha = False
-        if isinstance(rgbim, tuple): # tuple of tuple of tiles
-            if len(rgbim) == 0 or len(rgbim[0]) == 0:
-                continue
-            md = rgbim[0][0].metadata
-            bbox = stream.getBoundingBox()
-            t, l, b, r = bbox
-            pos = ((l + r) / 2, (b + t) / 2)
-        else:
-            md = rgbim.metadata
-            pos = md[model.MD_POS]
-
-
-        date = md.get(model.MD_ACQ_DATE, None)
-        scale = md[model.MD_PIXEL_SIZE]
-        rot = md.get(model.MD_ROTATION, 0)
-        shear = md.get(model.MD_SHEAR, 0)
-        flip = md.get(model.MD_FLIP, 0)
+        date = rgbim.metadata.get(model.MD_ACQ_DATE, None)
+        scale = rgbim.metadata[model.MD_PIXEL_SIZE]
+        pos = rgbim.metadata[model.MD_POS]
+        rot = rgbim.metadata.get(model.MD_ROTATION, 0)
+        shear = rgbim.metadata.get(model.MD_SHEAR, 0)
+        flip = rgbim.metadata.get(model.MD_FLIP, 0)
 
         # TODO: directly put the metadata as set_images do?
         ims.append((rgba_im, pos, scale, keepalpha, rot, shear, flip, blend_mode,
