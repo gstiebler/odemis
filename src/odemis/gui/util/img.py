@@ -1567,12 +1567,10 @@ def _get_stream_legend_text(s):
 
     # FluoStreams are merged using the "Screen" method that handles colour
     # merging without decreasing the intensity.
-    if isinstance(s.raw, list):
-        md = s.raw[0].metadata
-    elif isinstance(s.raw, (model.DataArray, model.DataArrayShadow)):
-        md = s.raw.metadata
+    if isinstance(s.raw, tuple): #s.raw has tiles
+        md = s.raw[0][0].metadata
     else:
-        ValueError("s.raw must be a list of DataArray or a DataArrayShadow")
+        md = s.raw[0].metadata
 
     try:
         if md.get(model.MD_EXP_TIME, None):
