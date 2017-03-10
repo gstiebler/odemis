@@ -1632,9 +1632,10 @@ def get_ordered_images(streams, raw=False):
             if isinstance(data, tuple): # 2D tuple = tiles
                 data = img.mergeTiles(data)
         else:
-            data_raw = s.raw[0]
-            if isinstance(data_raw, tuple): # 2D tuple = tiles
-                data_raw = img.mergeTiles(data_raw)
+            if isinstance(s.raw, tuple): # 2D tuple = tiles
+                data_raw = img.mergeTiles(s.raw)
+            else:
+                data_raw = s.raw[0]
 
             # Pretend to be RGB for the drawing by cairo
             if numpy.can_cast(im_min_type, min_type(data_raw)):
@@ -1897,7 +1898,12 @@ def images_to_export_data(streams, view_hfw, view_pos,
                                             view_hfw[0], im.metadata['date'],
                                             im.metadata['stream'], logo)
 
-            legend_as_raw = _adapt_rgb_to_raw(legend_rgb, im.metadata['stream'], im_min_type)
+            stream = im.metadata['stream']
+            if isinstance(stream.raw, tuple): # tiles
+                data_raw = img.mergeTiles(stream.raw)
+            else:
+                data_raw = stream.raw[0]
+            legend_as_raw = _adapt_rgb_to_raw(legend_rgb, data_raw, stream, im_min_type)
             new_data_to_draw = _unpack_raw_data(data_to_draw, im_min_type)
             data_with_legend = numpy.append(new_data_to_draw, legend_as_raw, axis=0)
 
@@ -1917,16 +1923,15 @@ def images_to_export_data(streams, view_hfw, view_pos,
     return data_to_export
 
 
-def _adapt_rgb_to_raw(imrgb, stream, dtype):
+def _adapt_rgb_to_raw(imrgb, data_raw, stream, dtype):
     """
     imrgb (ndarray Y,X,4): RGB image to convert to a greyscale
+    data_raw (DataArray): Raw image
     stream: corresponding stream: for the raw data
     dtype: data type of the ouptut data
     return (ndarray Y,X)
     """
 
-
-    data_raw = stream.raw[0]
     if isinstance(stream, acqstream.OpticalStream):
         blkval = data_raw.metadata.get(model.MD_BASELINE, 0)
     else:
