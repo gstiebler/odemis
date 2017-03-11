@@ -541,7 +541,6 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
         self.view.show_crosshair.value = False
 
         init_pos = (200.5 * mpp, 199.5 * mpp)
-        #init_pos = (0.0, 0.0)
 
         FILENAME = u"test" + tiff.EXTENSIONS[0]
         # 1 row of 2 tiles
@@ -563,7 +562,6 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
         tiff.export(FILENAME, data, pyramid=True)
 
         acd = tiff.open_data(FILENAME)
-        #stream1 = RGBStream("test", acd.content[0].getData())
         stream1 = RGBStream("test", acd.content[0])
 
         im2 = model.DataArray(numpy.zeros((201, 201, 3), dtype="uint8"))
@@ -571,8 +569,6 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
         im2[:, :] = [255, 0, 0]
         # Blue square at center
         im2[90:110, 90:110] = [0, 0, 255]
-        # 200, 200 => outside of the im1
-        # (+0.5, -0.5) to make it really in the center of the pixel
         im2.metadata[model.MD_PIXEL_SIZE] = (mpp, mpp)
         im2.metadata[model.MD_POS] = init_pos
         im2.metadata[model.MD_DIMS] = "YXC"
@@ -586,7 +582,6 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
         test.gui_loop(0.5)
 
         result_im = get_image_from_buffer(self.canvas)
-        #result_im.SaveFile('/home/gstiebler/Projetos/Delmic/tmp1.bmp', wx.BITMAP_TYPE_BMP)
         px2 = get_rgb(result_im, result_im.Width // 2, result_im.Height // 2)
         # center pixel, 2/3 green, 1/3 blue. The green image is the largest image
         self.assertEqual(px2, (0, 179, 76))
@@ -614,8 +609,6 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
 
         # copy the buffer into a nice image here
         result_im = get_image_from_buffer(self.canvas)
-
-        #result_im.SaveFile('/home/gstiebler/Projetos/Delmic/tmp2.bmp', wx.BITMAP_TYPE_BMP)
 
         px1 = get_rgb(result_im, result_im.Width // 2 + shift[0], result_im.Height // 2 + shift[1])
         self.assertEqual(px1, (0, 127, 128))  # Ratio is at 0.5, so 255 becomes 128
@@ -648,7 +641,6 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
 
         result_im = get_image_from_buffer(self.canvas)
 
-        #result_im.SaveFile('/home/gstiebler/Projetos/Delmic/tmp5.bmp', wx.BITMAP_TYPE_BMP)
         # center of the translated red square with blue square on the center
         # pixel must be completely blue
         px2 = get_rgb(result_im,
