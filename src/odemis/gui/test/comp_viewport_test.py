@@ -216,7 +216,7 @@ class MicroscopeViewportTestCase(test.GuiTestCase):
         # sets the size of the buffer
         self.canvas.resize_buffer((2000.0, 2000.0))
         # check the initial size of the buffer field of view
-        numpy.testing.assert_almost_equal((0.001495,  0.001025), self.view.fov_buffer.value)
+        numpy.testing.assert_almost_equal((0.001554,  0.001025), self.view.fov_buffer.value)
         self.view.mpp.value = 0.0002
         # check the new values of fov_buffer after changing .mpp
         numpy.testing.assert_almost_equal((0.4, 0.4), self.view.fov_buffer.value)

@@ -629,7 +629,7 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
         numpy.testing.assert_almost_equal([0.001375,  0.002625], self.view.view_pos.value)
         self.canvas.fit_view_to_content(recenter=True)
         test.gui_loop(0.5)
-        self.assertAlmostEqual(1.28e-05, self.view.mpp.value)
+        self.assertAlmostEqual(1.3333333e-5, self.view.mpp.value)
         # after fitting, the center of the view should be the center of the image
         numpy.testing.assert_almost_equal(init_pos, self.view.view_pos.value)
         # remove green picture
@@ -642,7 +642,7 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
         #result_im.SaveFile('/home/gstiebler/Projetos/Delmic/tmp4.bmp', wx.BITMAP_TYPE_BMP)
         self.canvas.fit_view_to_content(recenter=True)
         # only .mpp changes, but the image keeps centered
-        self.assertAlmostEqual(5.403e-06, self.view.mpp.value)
+        self.assertAlmostEqual(5.89442e-06, self.view.mpp.value)
         numpy.testing.assert_almost_equal(init_pos, self.view.view_pos.value)
         test.gui_loop(0.5)
 
