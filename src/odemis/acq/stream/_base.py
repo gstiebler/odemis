@@ -912,8 +912,10 @@ class Stream(object):
             last execution of _updateImage
         return (tuple(DataArray, DataArray)): raw tile and projected tile
         """
-        # the key of the tile on the cache
-        tile_key = "%d-%d-%d" % (x, y, z)
+        irange = self._getDisplayIRange()
+        # the key of the tile on the cache. It includes tint and irange,
+        # so when these values change, the tile is recomputed
+        tile_key = "%d-%d-%d-%s-%s" % (x, y, z, self.tint.value, irange)
 
         # if the tile has been already cached, read it from the cache
         if tile_key in prev_proj_cache:
