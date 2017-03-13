@@ -250,7 +250,7 @@ class StreamTree(object):
         return streams
 
 
-class DataProjection():
+class DataProjection(object):
 
     def __init__(self, stream):
         '''
@@ -289,10 +289,12 @@ class RGBSpatialProjection(DataProjection):
         '''
         stream (Stream): the Stream to project
         '''
-        super.__init__(self, stream)
+        super(RGBSpatialProjection, self).__init__(stream)
+        
+        self.should_update = model.BooleanVA(False)
 
-        if isinstance(stream.raw, DataArrayShadow):
-            raw = stream.raw
+        if isinstance(stream.raw, tuple):
+            raw = stream._das
             md = raw.metadata
             # TODO The code below is copied from StaticStream. Someday StaticStream will
             # not have this code anymore
