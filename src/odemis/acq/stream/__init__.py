@@ -34,6 +34,7 @@ from ._static import *
 from ._sync import *
 
 from abc import ABCMeta
+import threading
 
 
 # Generic cross-cut types
@@ -247,3 +248,78 @@ class StreamTree(object):
                 streams.append(s)
 
         return streams
+
+
+class DataProjection():
+
+    def __init__(self, stream):
+        '''
+        stream (Stream): the Stream to project
+        '''
+        self.stream = stream
+
+        # TODO: We need to reorganise everything so that the
+        # image display is done via a dataflow (in a separate thread), instead
+        # of a VA.
+        self._im_needs_recompute = threading.Event()
+        self._imthread = threading.Thread(target=self._image_thread,
+                                          args=(weakref.ref(self),),
+                                          name="Image computation")
+        self._imthread.daemon = True
+        self._imthread.start()
+
+        # DataArray or None: RGB projection of the raw data
+        self.image = model.VigilantAttribute(None)
+
+    @staticmethod
+    def _image_thread(wstream):
+        """ Called as a separate thread, and recomputes the image whenever it receives an event
+        asking for it.
+
+        Args:
+            wstream (Weakref to a Stream): the stream to follow
+
+        """
+        pass
+
+
+class RGBSpatialProjection(DataProjection):
+
+    def __init__(self, stream):
+        '''
+        stream (Stream): the Stream to project
+        '''
+        super.__init__(self, stream)
+
+        if isinstance(stream.raw, DataArrayShadow):
+            raw = stream.raw
+            md = raw.metadata
+            # TODO The code below is copied from StaticStream. Someday StaticStream will
+            # not have this code anymore
+
+            # get the pixel size of the full image
+            ps = md[model.MD_PIXEL_SIZE]
+            max_mpp = ps[0] * (2 ** raw.maxzoom)
+            # sets the mpp as the X axis of the pixel size of the full image
+            mpp_rng = (ps[0], max_mpp)
+            self.mpp = model.FloatContinuous(max_mpp, mpp_rng, setter=self._set_mpp)
+
+            full_rect = img._getBoundingBox(raw)
+            l, t, r, b = full_rect
+            rect_range = ((l, b, l, b), (r, t, r, t))
+            self.rect = model.TupleContinuous(full_rect, rect_range, setter=self._set_rect)
+
+    def _set_mpp(self, mpp):
+        self._shouldUpdateImage()
+
+        ps0 = self.mpp.range[0]
+        exp = math.log(mpp / ps0, 2)
+        exp = round(exp)
+        return ps0 * 2 ** exp
+
+    def _set_rect(self, rect):
+        self._shouldUpdateImage()
+        return rect
+
+    def _shouldUpdateImage(self):
+        self.stream._shouldUpdateImage()
