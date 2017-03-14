@@ -1547,9 +1547,6 @@ class AngularResolvedCanvas(canvas.DraggableCanvas):
         """ Adapt the scale and (optionally) center to fit to the current content
 
         """
-
-        # TODO: take into account the dragging. For now we skip it (is unlikely to happen anyway)
-
         # TODO check if it's possible to remove duplicate code from the other fit_to_content
 
         # Find bounding box of all the content
@@ -1572,7 +1569,6 @@ class AngularResolvedCanvas(canvas.DraggableCanvas):
         if bbox[0] is None:
             return  # no image => nothing to do
 
-        # TODO: check sign of Y
         # compute mpp so that the bbox fits exactly the visible part
         w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]  # m
         if w == 0 or h == 0:
