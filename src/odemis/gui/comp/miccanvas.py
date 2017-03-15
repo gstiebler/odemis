@@ -125,9 +125,6 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
         # Simple image caching dictionary {obj_id: rgb image}
         self.images_cache = {}
 
-        # tiles cache {tile_id: rgb tile image}
-        self.tiles_cache = {}
-
     # Ability manipulation
 
     def disable_zoom(self):
@@ -425,7 +422,7 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
         # add the images in order
         ims = []
         im_cache = {}
-        tiles_cache = {}
+        images_cache = {}
         for rgbim, blend_mode, name, stream in images:
             if isinstance(rgbim, tuple): # tuple of tuple of tiles
                 if len(rgbim) == 0 or len(rgbim[0]) == 0:
@@ -437,19 +434,16 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
                     new_array_col = []
                     for tile in tile_column:
                         tile_id = id(tile)
-                        if tile_id in self.tiles_cache:
-                            rgba_tile = self.tiles_cache[tile_id]
+                        if tile_id in self.images_cache:
+                            rgba_tile = self.images_cache[tile_id]
                         else:
                             rgba_tile = format_rgba_darray(tile)
-                        tiles_cache[tile_id] = rgba_tile
+                        images_cache[tile_id] = rgba_tile
                         new_array_col.append(rgba_tile)
                         rgba_tile.metadata = md
                     new_array.append(tuple(new_array_col))
                 # creates a 2D tuple with the converted tiles
                 rgba_im = tuple(new_array)
-
-                # Replace the old cache, so the obsolete RGBA tiles can be garbage collected
-                self.tiles_cache = tiles_cache
 
                 bbox = stream.getBoundingBox()
                 t, l, b, r = bbox
@@ -463,16 +457,17 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
                 else:
                     rgba_im = format_rgba_darray(rgbim)
                 im_cache[im_id] = rgba_im
-                
-                # Replace the old cache, so the obsolete RGBA images can be garbage collected
-                self.images_cache = im_cache
 
                 md = rgbim.metadata
                 pos = md[model.MD_POS]
+
             scale = md[model.MD_PIXEL_SIZE]
             rot = md.get(model.MD_ROTATION, 0)
             shear = md.get(model.MD_SHEAR, 0)
             flip = md.get(model.MD_FLIP, 0)
+
+            # Replace the old cache, so the obsolete RGBA images can be garbage collected
+            self.images_cache = im_cache
 
             keepalpha = False
             ims.append((rgba_im, pos, scale, keepalpha, rot, shear, flip, blend_mode, name))
