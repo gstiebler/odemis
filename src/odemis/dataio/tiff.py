@@ -1736,8 +1736,13 @@ def open_data(filename):
     # to do it without looking at the .filename attribute)
     # see http://pytables.github.io/cookbook/inmemory_hdf5_files.html
     filename = _ensure_fs_encoding(filename)
-    return AcquisitionDataTIFF(filename)
-    
+    acd = AcquisitionDataTIFF(filename)
+
+    for c in acd.content:
+        c.metadata[model.MD_POS] = (0.0, 0.0)
+        c.metadata[model.MD_PIXEL_SIZE] = (1e-6, 1e-6)
+
+    return acd
 
 class DataArrayShadowTIFF(DataArrayShadow):
     """
