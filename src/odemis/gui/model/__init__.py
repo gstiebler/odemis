@@ -953,7 +953,7 @@ class StreamView(View):
             if hasattr(stream, 'rect'): # the stream is probably pyramidal
                 stream.rect.value = stream.rect.clip(view_rect)
                 stream.mpp.value = stream.mpp.clip(self.mpp.value)
-
+            stream._shouldUpdateImage()
 
     def has_stage(self):
         return self._stage is not None

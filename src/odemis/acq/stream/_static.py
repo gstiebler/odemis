@@ -77,15 +77,12 @@ class StaticStream(Stream):
         super(StaticStream, self).__init__(name, None, None, None, raw=raw)
 
     def _set_mpp(self, mpp):
-        self._shouldUpdateImage()
-
         ps0 = self.mpp.range[0]
         exp = math.log(mpp / ps0, 2)
         exp = round(exp)
         return ps0 * 2 ** exp
 
     def _set_rect(self, rect):
-        self._shouldUpdateImage()
         return rect
 
 

@@ -967,8 +967,8 @@ class Stream(object):
         prev_proj_cache = self._projectedTilesCache
         # Execute at least once. If mpp and rect changed in
         # the last execution of the loops, execute again
-        mpp_rect_changed = True
-        while mpp_rect_changed:
+        need_recompute = True
+        while need_recompute:
             z = self._zFromMpp()
             rect = self._rectWorldToPixel(self.rect.value)
             # convert the rect coords to tile indexes
@@ -987,25 +987,25 @@ class Stream(object):
 
             raw_tiles = []
             projected_tiles = []
-            mpp_rect_changed = False
+            need_recompute = False
             try:
                 for x in range(x1, x2 + 1):
                     rt_column = []
                     pt_column = []
 
                     for y in range(y1, y2 + 1):
-                        # check if .mpp or .rect changed in the middle of the process.
-                        # it is common to happen when .rect and .mpp are changed simultaneously
-                        if curr_mpp != self.mpp.value or curr_rect != self.rect.value:
-                            # Raise the exception, so everything will be calculated again,
-                            # but using the cache from the last execution
-                            raise NeedRecomputeException()
-
                         # the projected tiles cache is invalid
                         if self._projectedTilesInvalid:
                             self._projectedTilesCache = {}
                             prev_proj_cache = {}
                             self._projectedTilesInvalid = False
+                            raise NeedRecomputeException()
+
+                        # check if the image changed in the middle of the process
+                        if self._im_needs_recompute.is_set():
+                            self._im_needs_recompute.clear()
+                            # Raise the exception, so everything will be calculated again,
+                            # but using the cache from the last execution
                             raise NeedRecomputeException()
 
                         raw_tile, proj_tile = \
@@ -1017,8 +1017,8 @@ class Stream(object):
                     projected_tiles.append(tuple(pt_column))
 
             except NeedRecomputeException:
-                # mpp or rect changed
-                mpp_rect_changed = True
+                # image changed
+                need_recompute = True
 
         return (tuple(raw_tiles), tuple(projected_tiles))
 
