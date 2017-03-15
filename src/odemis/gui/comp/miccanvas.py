@@ -125,6 +125,9 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
         # Simple image caching dictionary {obj_id: rgb image}
         self.images_cache = {}
 
+        # tiles cache {tile_id: rgb tile image}
+        self.tiles_cache = {}
+
     # Ability manipulation
 
     def disable_zoom(self):
@@ -422,25 +425,48 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
         # add the images in order
         ims = []
         im_cache = {}
+        tiles_cache = {}
         for rgbim, blend_mode, name, stream in images:
-            # Get converted RGBA image from cache, or create it and cache it
-            # On large images it costs 100 ms (per image and per canvas)
-            im_id = id(rgbim)
-            if im_id in self.images_cache:
-                rgba_im = self.images_cache[im_id]
-            else:
-                rgba_im = format_rgba_darray(rgbim)
-            im_cache[im_id] = rgba_im
-
-            keepalpha = False
             if isinstance(rgbim, tuple): # tuple of tuple of tiles
                 if len(rgbim) == 0 or len(rgbim[0]) == 0:
                     continue
-                md = rgbim[0][0].metadata
+                first_tile = rgbim[0][0]
+                md = first_tile.metadata
+                new_array = []
+                for tile_column in rgbim:
+                    new_array_col = []
+                    for tile in tile_column:
+                        tile_id = id(tile)
+                        if tile_id in self.tiles_cache:
+                            rgba_tile = self.tiles_cache[tile_id]
+                        else:
+                            rgba_tile = format_rgba_darray(tile)
+                        tiles_cache[tile_id] = rgba_tile
+                        new_array_col.append(rgba_tile)
+                        rgba_tile.metadata = md
+                    new_array.append(tuple(new_array_col))
+                # creates a 2D tuple with the converted tiles
+                rgba_im = tuple(new_array)
+
+                # Replace the old cache, so the obsolete RGBA tiles can be garbage collected
+                self.tiles_cache = tiles_cache
+
                 bbox = stream.getBoundingBox()
                 t, l, b, r = bbox
                 pos = ((l + r) / 2, (b + t) / 2)
             else:
+                # Get converted RGBA image from cache, or create it and cache it
+                # On large images it costs 100 ms (per image and per canvas)
+                im_id = id(rgbim)
+                if im_id in self.images_cache:
+                    rgba_im = self.images_cache[im_id]
+                else:
+                    rgba_im = format_rgba_darray(rgbim)
+                im_cache[im_id] = rgba_im
+                
+                # Replace the old cache, so the obsolete RGBA images can be garbage collected
+                self.images_cache = im_cache
+
                 md = rgbim.metadata
                 pos = md[model.MD_POS]
             scale = md[model.MD_PIXEL_SIZE]
@@ -448,10 +474,8 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
             shear = md.get(model.MD_SHEAR, 0)
             flip = md.get(model.MD_FLIP, 0)
 
+            keepalpha = False
             ims.append((rgba_im, pos, scale, keepalpha, rot, shear, flip, blend_mode, name))
-
-        # Replace the old cache, so the obsolete RGBA images can be garbage collected
-        self.images_cache = im_cache
 
         # TODO: Canvas needs to accept the NDArray (+ specific attributes recorded separately).
         self.set_images(ims)
