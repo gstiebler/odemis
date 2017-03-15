@@ -634,7 +634,12 @@ class DblMicroscopeCanvas(canvas.DraggableCanvas):
             # Check for every image
             for im in self.microscope_view.stream_tree.getImages():
                 try:
-                    im_mpp = im.metadata[model.MD_PIXEL_SIZE][0]
+                    if isinstance(im, tuple):
+                        # gets the metadata of the first tile
+                        md = im[0][0].metadata
+                    else:
+                        md = im.metadata
+                    im_mpp = md[model.MD_PIXEL_SIZE][0]
                     # did we just passed the image mpp (=zoom zero)?
                     if ((prev_mpp < im_mpp < mpp or prev_mpp > im_mpp > mpp) and
                             abs(prev_mpp - im_mpp) > 1e-15):  # for float error
