@@ -294,7 +294,9 @@ class RGBSpatialProjection(DataProjection):
         self.should_update = model.BooleanVA(False)
         self.name = stream.name
         self.image = model.VigilantAttribute(None)
-        self.image.subscribe(self._onStreamImageUpdated)
+        #self.image.subscribe(self._onImageUpdated)
+
+        self.stream.image.subscribe(self._onStreamImageUpdated)
 
         # TODO: We need to reorganise everything so that the
         # image display is done via a dataflow (in a separate thread), instead
@@ -324,8 +326,20 @@ class RGBSpatialProjection(DataProjection):
             rect_range = ((l, b, l, b), (r, t, r, t))
             self.rect = model.TupleContinuous(full_rect, rect_range, setter=self._set_rect)
 
+            self.mpp.subscribe(self._onMpp)
+            self.rect.subscribe(self._onRect)
+
     def _onStreamImageUpdated(self, image):
         self.image.value = image
+
+    #def _onImageUpdated(self, image):
+    #    self.stream.image.value = image
+
+    def _onMpp(self, mpp):
+        self.stream.mpp.value = mpp
+
+    def _onRect(self, rect):
+        self.stream.rect.value = rect
 
     def _set_mpp(self, mpp):
         ps0 = self.mpp.range[0]
@@ -346,6 +360,9 @@ class RGBSpatialProjection(DataProjection):
         # If the previous request is still being processed, the event
         # synchronization allows to delay it (without accumulation).
         self._im_needs_recompute.set()
+
+    def getBoundingBox(self):
+        return self.stream.getBoundingBox()
 
     @staticmethod
     def _image_thread2(wprojection):
