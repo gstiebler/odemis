@@ -213,7 +213,7 @@ class Stream(object):
             self._onNewData(None, raw)
 
         # When True, the projected tiles cache should be invalidated
-        self._projectedTilesInvalid = True            
+        self._projectedTilesInvalid = False
 
     # No __del__: subscription should be automatically stopped when the object
     # disappears, and the user should stop the update first anyway.
@@ -977,11 +977,18 @@ class Stream(object):
             x1, y1, x2, y2 = rect
             curr_mpp = self.mpp.value
             curr_rect = self.rect.value
-            # the 4 lines below avoids that lots of old tiles
-            # stays in instance caches
-            prev_raw_cache.update(self._rawTilesCache)
-            prev_proj_cache.update(self._projectedTilesCache)
-            # empty current caches
+            # if the tiles cache are invalid, empty it
+            if self._projectedTilesInvalid:
+                prev_raw_cache = {}
+                prev_proj_cache = {}
+                self._projectedTilesInvalid = False
+            else:
+                # the caches are valid, update the caches with the caches
+                # from the previous execution
+                prev_raw_cache.update(self._rawTilesCache)
+                prev_proj_cache.update(self._projectedTilesCache)
+
+            # empty current caches to avoid that lots of old tiles are kept on the cache
             self._rawTilesCache = {}
             self._projectedTilesCache = {}
 
@@ -994,13 +1001,6 @@ class Stream(object):
                     pt_column = []
 
                     for y in range(y1, y2 + 1):
-                        # the projected tiles cache is invalid
-                        if self._projectedTilesInvalid:
-                            self._projectedTilesCache = {}
-                            prev_proj_cache = {}
-                            self._projectedTilesInvalid = False
-                            raise NeedRecomputeException()
-
                         # check if the image changed in the middle of the process
                         if self._im_needs_recompute.is_set():
                             self._im_needs_recompute.clear()
