@@ -2242,6 +2242,7 @@ class StaticStreamsTestCase(unittest.TestCase):
             ss.rect.value = (0.0, 0.0, 10e10, 10e10)
         # full image
         ss.rect.value = (POS[0] - 0.001, POS[1] + 0.0005, POS[0] + 0.001, POS[1] - 0.0005)
+        ss._shouldUpdateImage()
 
         # Wait a little bit to make sure the image has been generated
         time.sleep(0.5)
@@ -2252,6 +2253,7 @@ class StaticStreamsTestCase(unittest.TestCase):
 
         # half image
         ss.rect.value = (POS[0] - 0.001, POS[1] + 0.0005, POS[0], POS[1])
+        ss._shouldUpdateImage()
 
         # Wait a little bit to make sure the image has been generated
         time.sleep(0.5)
@@ -2288,6 +2290,7 @@ class StaticStreamsTestCase(unittest.TestCase):
 
         # full image
         ss.rect.value = (POS[0] - 0.001, POS[1] + 0.0005, POS[0] + 0.001, POS[1] - 0.0005)
+        ss._shouldUpdateImage()
 
         # Wait a little bit to make sure the image has been generated
         time.sleep(0.5)
@@ -2298,6 +2301,7 @@ class StaticStreamsTestCase(unittest.TestCase):
 
         # half image
         ss.rect.value = (POS[0] - 0.001, POS[1] + 0.0005, POS[0], POS[1])
+        ss._shouldUpdateImage()
 
         # Wait a little bit to make sure the image has been generated
         time.sleep(0.5)
@@ -2351,6 +2355,7 @@ class StaticStreamsTestCase(unittest.TestCase):
 
         # half image (left side), all tiles are cached
         ss.rect.value = (POS[0] - 0.0015, POS[1] + 0.001, POS[0], POS[1] - 0.001)
+        ss._shouldUpdateImage()
         # Wait a little bit to make sure the image has been generated
         time.sleep(0.5)
         self.assertEqual(28, len(read_tiles))
@@ -2359,6 +2364,7 @@ class StaticStreamsTestCase(unittest.TestCase):
 
         # half image (right side), only the center tiles will are cached
         ss.rect.value = (POS[0], POS[1] + 0.001, POS[0] + 0.0015, POS[1] - 0.001)
+        ss._shouldUpdateImage()
         # Wait a little bit to make sure the image has been generated
         time.sleep(0.5)
         self.assertEqual(40, len(read_tiles))
@@ -2367,6 +2373,7 @@ class StaticStreamsTestCase(unittest.TestCase):
 
         # really small rect on the center, the tile is in the cache
         ss.rect.value = (POS[0], POS[1] + 0.00001, POS[0] + 0.00001, POS[1])
+        ss._shouldUpdateImage()
         # Wait a little bit to make sure the image has been generated
         time.sleep(0.5)
         self.assertEqual(40, len(read_tiles))
@@ -2376,6 +2383,7 @@ class StaticStreamsTestCase(unittest.TestCase):
         # rect out of the image
         with self.assertRaises(IndexError): # "rect out of bounds"
             ss.rect.value = (POS[0] - 15, POS[1] + 15, POS[0] + 16, POS[1] - 16)
+            ss._shouldUpdateImage()
             # Wait a little bit to make sure the image has been generated
             time.sleep(0.5)
 
@@ -2434,6 +2442,7 @@ class StaticStreamsTestCase(unittest.TestCase):
         # that are set on Stream constructor
         ss.rect.value = full_image_rect # full image
         ss.mpp.value = ss.mpp.range[1]  # maximum zoom level
+        ss._shouldUpdateImage()
 
         # Wait a little bit to make sure the image has been generated
         time.sleep(0.2)
@@ -2452,6 +2461,7 @@ class StaticStreamsTestCase(unittest.TestCase):
 
         # really small rect on the center, the tile is in the cache
         ss.rect.value = (POS[0], POS[1], POS[0] + 0.00001, POS[1] + 0.00001)
+        ss._shouldUpdateImage()
 
         # Wait a little bit to make sure the image has been generated
         time.sleep(0.5)
@@ -2469,6 +2479,7 @@ class StaticStreamsTestCase(unittest.TestCase):
         # Now, just the tiny rect again, but at the minimum mpp (= fully zoomed in)
         # => should just need one new tile
         ss.mpp.value = ss.mpp.range[0]
+        ss._shouldUpdateImage()
 
         # Wait a little bit to make sure the image has been generated
         time.sleep(0.5)
@@ -2494,6 +2505,7 @@ class StaticStreamsTestCase(unittest.TestCase):
         ss.rect.value = full_image_rect # full image
         # time.sleep(0.0001) # uncomment to test with slight delay between VA changes
         ss.mpp.value = ss.mpp.range[1]  # maximum zoom level
+        ss._shouldUpdateImage()
 
         # Wait a little bit to make sure the image has been generated
         time.sleep(0.5)
@@ -2525,6 +2537,7 @@ class StaticStreamsTestCase(unittest.TestCase):
         ss.rect.value = rect
         # zoom 2
         ss.mpp.value = 4e-6
+        ss._shouldUpdateImage()
         # Wait a little bit to make sure the image has been generated
         time.sleep(0.3)
 
@@ -2549,6 +2562,7 @@ class StaticStreamsTestCase(unittest.TestCase):
         ss.rect.value = rect
         # zoom 0
         ss.mpp.value = ss.mpp.range[0]
+        ss._shouldUpdateImage()
         # Wait a little bit to make sure the image has been generated
         time.sleep(0.5)
 
