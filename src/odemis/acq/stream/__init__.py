@@ -296,7 +296,11 @@ class RGBSpatialProjection(DataProjection):
         self.image = model.VigilantAttribute(None)
         #self.image.subscribe(self._onImageUpdated)
 
-        self.stream.image.subscribe(self._onStreamImageUpdated)
+        # self.stream.image.subscribe(self._onStreamImageUpdated)
+
+        self.tint = model.ListVA((255, 255, 255), unit="RGB")  # 3-int R,G,B
+        # Don't call at init, so don't set metadata if default value
+        self.tint.subscribe(self.onTint)
 
         # TODO: We need to reorganise everything so that the
         # image display is done via a dataflow (in a separate thread), instead
@@ -324,7 +328,7 @@ class RGBSpatialProjection(DataProjection):
             full_rect = img._getBoundingBox(raw)
             l, t, r, b = full_rect
             rect_range = ((l, b, l, b), (r, t, r, t))
-            self.rect = model.TupleContinuous(full_rect, rect_range, setter=self._set_rect)
+            self.rect = model.TupleContinuous(full_rect, rect_range)
 
             self.mpp.subscribe(self._onMpp)
             self.rect.subscribe(self._onRect)
@@ -334,8 +338,11 @@ class RGBSpatialProjection(DataProjection):
             # initialize the raw tiles cache
             self._rawTilesCache = {}
 
-    def _onStreamImageUpdated(self, image):
-        self.image.value = image
+            # When True, the projected tiles cache should be invalidated
+            self._projectedTilesInvalid = True
+
+    #def _onStreamImageUpdated(self, image):
+    #    self.image.value = image
 
     #def _onImageUpdated(self, image):
     #    self.stream.image.value = image
@@ -350,13 +357,46 @@ class RGBSpatialProjection(DataProjection):
         ps0 = self.mpp.range[0]
         exp = math.log(mpp / ps0, 2)
         exp = round(exp)
-        # TODO check line below
-        self.stream.mpp.value = mpp
         return ps0 * 2 ** exp
 
-    def _set_rect(self, rect):
-        self.stream.rect.value = rect
-        return rect
+    def onTint(self, value):
+        if isinstance(self.raw, list):
+            if len(self.stream.raw) > 0:
+                raw = self.stream.raw[0]
+            else:
+                raw = None
+        elif isinstance(self.stream.raw, tuple):
+            raw = self.stream._das
+        else:
+            raise AttributeError(".raw must be a list of DA/DAS or a tuple of tuple of DA")
+
+        if raw is not None:
+            # If the image is pyramidal, the exported image is based on tiles from .raw.
+            # And the metadata from raw will be used to generate the metadata of the merged
+            # image from the tiles. So, in the end, the exported image metadata will be based
+            # on the raw metadata
+            raw.metadata[model.MD_USER_TINT] = value
+
+        self._shouldUpdateImage()
+
+    def _projectXY2RGB(self, data, tint=(255, 255, 255)):
+        """
+        Project a 2D spatial DataArray into a RGB representation
+        data (DataArray): 2D DataArray
+        tint ((int, int, int)): colouration of the image, in RGB.
+        return (DataArray): 3D DataArray
+        """
+        # TODO replace by local irange
+        irange = self.stream._getDisplayIRange()
+        rgbim = img.DataArray2RGB(data, irange, tint)
+        rgbim.flags.writeable = False
+        # Commented to prevent log flooding
+        # if model.MD_ACQ_DATE in data.metadata:
+        #     logging.debug("Computed RGB projection %g s after acquisition",
+        #                    time.time() - data.metadata[model.MD_ACQ_DATE])
+        md = self.stream._find_metadata(data.metadata)
+        md[model.MD_DIMS] = "YXC" # RGB format
+        return model.DataArray(rgbim, md)
 
     def _shouldUpdateImage(self):
         """
@@ -414,6 +454,48 @@ class RGBSpatialProjection(DataProjection):
 
         gc.collect()
 
+    def _zFromMpp(self):
+        """
+        Return the zoom level based on the current .mpp value
+        return (int): The zoom level based on the current .mpp value
+        """
+        md = self.stream._das.metadata
+        ps = md[model.MD_PIXEL_SIZE]
+        return int(math.log(self.mpp.value / ps[0], 2))
+
+    def _rectWorldToPixel(self, rect):
+        """
+        Convert rect from world coordinates to pixel coordinates
+        rect (tuple containing x1, y1, x2, y2): Rect on world coordinates
+        return (tuple containing x1, y1, x2, y2): Rect on pixel coordinates
+        """
+        md = self.stream._das.metadata
+        ps = md.get(model.MD_PIXEL_SIZE, (1e-6, 1e-6))
+        pos = md.get(model.MD_POS, (0.0, 0.0))
+        # Removes the center coordinates of the image. After that, rect will be centered on 0, 0
+        rect = (
+            rect[0] - pos[0],
+            rect[1] - pos[1],
+            rect[2] - pos[0],
+            rect[3] - pos[1]
+        )
+        dims = md.get(model.MD_DIMS, "CTZYX"[-self.stream._das.ndim::])
+        img_shape = (self.stream._das.shape[dims.index('X')], self.stream._das.shape[dims.index('Y')])
+
+        # Converts rect from physical to pixel coordinates.
+        # The received rect is relative to the center of the image, but pixel coordinates
+        # are relative to the top-left corner. So it also needs to sum half image.
+        # The -1 are necessary on the right and bottom sides, as the coordinates of a pixel
+        # are -1 relative to the side of the pixel
+        # The '-' before ps[1] is necessary due to the fact that 
+        # Y in pixel coordinates grows down, and Y in physical coordinates grows up
+        return (
+            int(round(rect[0] / ps[0] + img_shape[0] / 2)),
+            int(round(rect[1] / (-ps[1]) + img_shape[1] / 2)),
+            int(round(rect[2] / ps[0] + img_shape[0] / 2)) - 1,
+            int(round(rect[3] / (-ps[1]) + img_shape[1] / 2)) - 1,
+        )
+
     def _getTile(self, x, y, z, prev_raw_cache, prev_proj_cache):
         """
         Get a tile from a DataArrayShadow. Uses cache.
@@ -437,7 +519,7 @@ class RGBSpatialProjection(DataProjection):
             raw_tile = self._rawTilesCache[tile_key]
         else:
             # The tile was not cached, so it must be read from the file
-            raw_tile = self._das.getTile(x, y, z)
+            raw_tile = self.stream._das.getTile(x, y, z)
 
         # if the projected tile has been already cached, read it from the cache
         if tile_key in prev_proj_cache:
@@ -485,7 +567,7 @@ class RGBSpatialProjection(DataProjection):
             rect = self._rectWorldToPixel(self.rect.value)
             # convert the rect coords to tile indexes
             rect = [l / (2 ** z) for l in rect]
-            rect = [int(math.floor(l / self._das.tile_shape[0])) for l in rect]
+            rect = [int(math.floor(l / self.stream._das.tile_shape[0])) for l in rect]
             x1, y1, x2, y2 = rect
             curr_mpp = self.mpp.value
             curr_rect = self.rect.value
@@ -538,15 +620,15 @@ class RGBSpatialProjection(DataProjection):
         """ Recomputes the image with all the raw data available
         """
         # logging.debug("Updating image")
-        if not self.raw and isinstance(self.raw, list):
+        if not self.stream.raw and isinstance(self.stream.raw, list):
             return
 
         try:
             # if .raw is a list of DataArray, .image is a complete image
-            if isinstance(self.raw, list):
+            if isinstance(self.stream.raw, list):
                 raw = self.raw[0]
                 self.image.value = self._projectTile(raw)
-            elif isinstance(self.raw, tuple):
+            elif isinstance(self.stream.raw, tuple):
                 # .raw is an instance of DataArrayShadow, so .image is
                 # a tuple of tuple of tiles
                 raw_tiles, projected_tiles = self._getTilesFromSelectedArea()
