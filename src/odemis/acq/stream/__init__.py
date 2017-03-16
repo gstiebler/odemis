@@ -303,7 +303,7 @@ class RGBSpatialProjection(DataProjection):
         # of a VA.
         self._im_needs_recompute = threading.Event()
         weak = weakref.ref(self)
-        self._imthread = threading.Thread(target=self._image_thread2,
+        self._imthread = threading.Thread(target=self._image_thread,
                                           args=(weak,),
                                           name="Image computation")
         self._imthread.daemon = True
@@ -328,6 +328,11 @@ class RGBSpatialProjection(DataProjection):
 
             self.mpp.subscribe(self._onMpp)
             self.rect.subscribe(self._onRect)
+
+            # initialize the projected tiles cache
+            self._projectedTilesCache = {}
+            # initialize the raw tiles cache
+            self._rawTilesCache = {}
 
     def _onStreamImageUpdated(self, image):
         self.image.value = image
@@ -365,7 +370,7 @@ class RGBSpatialProjection(DataProjection):
         return self.stream.getBoundingBox()
 
     @staticmethod
-    def _image_thread2(wprojection):
+    def _image_thread(wprojection):
         """ Called as a separate thread, and recomputes the image whenever it receives an event
         asking for it.
 
@@ -403,8 +408,152 @@ class RGBSpatialProjection(DataProjection):
 
                 tnext = time.time() + 0.1  # max 10 Hz
                 im_needs_recompute.clear()
-                stream._updateImage()
+                projection._updateImage()
         except Exception:
             logging.exception("image update thread failed")
 
         gc.collect()
+
+    def _getTile(self, x, y, z, prev_raw_cache, prev_proj_cache):
+        """
+        Get a tile from a DataArrayShadow. Uses cache.
+        The cache for projected tiles and the cache for raw tiles has always the same tiles
+        x (int): X coordinate of the tile
+        y (int): Y coordinate of the tile
+        z (int): zoom level where the tile is
+        prev_raw_cache (dictionary): raw tiles cache from the
+            last execution of _updateImage
+        prev_proj_cache (dictionary): projected tiles cache from the
+            last execution of _updateImage
+        return (tuple(DataArray, DataArray)): raw tile and projected tile
+        """
+        # the key of the tile on the cache
+        tile_key = "%d-%d-%d" % (x, y, z)
+
+        # if the raw tile has been already cached, read it from the cache
+        if tile_key in prev_raw_cache:
+            raw_tile = prev_raw_cache[tile_key]
+        elif tile_key in self._rawTilesCache:
+            raw_tile = self._rawTilesCache[tile_key]
+        else:
+            # The tile was not cached, so it must be read from the file
+            raw_tile = self._das.getTile(x, y, z)
+
+        # if the projected tile has been already cached, read it from the cache
+        if tile_key in prev_proj_cache:
+            proj_tile = prev_proj_cache[tile_key]
+        elif tile_key in self._projectedTilesCache:
+            proj_tile = self._projectedTilesCache[tile_key]
+        else:
+            # The tile was not cached, so it must be projected again
+            proj_tile = self._projectTile(raw_tile)
+
+        # cache raw and projected tiles
+        self._rawTilesCache[tile_key] = raw_tile
+        self._projectedTilesCache[tile_key] = proj_tile
+        return (raw_tile, proj_tile)
+
+    def _projectTile(self, tile):
+        """
+        Project the tile
+        tile (DataArray): Raw tile
+        return (DataArray): Projected tile
+        """
+        if tile.ndim != 2:
+            tile = img.ensure2DImage(tile)  # Remove extra dimensions (of length 1)
+        return self._projectXY2RGB(tile, self.tint.value)
+
+    def _getTilesFromSelectedArea(self):
+        """
+        Get the tiles inside the region defined by .rect and .mpp
+        return ((DataArray, DataArray)): Raw tiles and projected tiles
+        """
+
+        # This custom exception is used when the .mpp or .rect values changes while
+        # generating the tiles. If the values changes, everything needs to be recomputed
+        class NeedRecomputeException(Exception):
+            pass
+
+        # store the previous cache to use in this execution
+        prev_raw_cache = self._rawTilesCache
+        prev_proj_cache = self._projectedTilesCache
+        # Execute at least once. If mpp and rect changed in
+        # the last execution of the loops, execute again
+        need_recompute = True
+        while need_recompute:
+            z = self._zFromMpp()
+            rect = self._rectWorldToPixel(self.rect.value)
+            # convert the rect coords to tile indexes
+            rect = [l / (2 ** z) for l in rect]
+            rect = [int(math.floor(l / self._das.tile_shape[0])) for l in rect]
+            x1, y1, x2, y2 = rect
+            curr_mpp = self.mpp.value
+            curr_rect = self.rect.value
+            # the 4 lines below avoids that lots of old tiles
+            # stays in instance caches
+            prev_raw_cache.update(self._rawTilesCache)
+            prev_proj_cache.update(self._projectedTilesCache)
+            # empty current caches
+            self._rawTilesCache = {}
+            self._projectedTilesCache = {}
+
+            raw_tiles = []
+            projected_tiles = []
+            need_recompute = False
+            try:
+                for x in range(x1, x2 + 1):
+                    rt_column = []
+                    pt_column = []
+
+                    for y in range(y1, y2 + 1):
+                        # the projected tiles cache is invalid
+                        if self._projectedTilesInvalid:
+                            self._projectedTilesCache = {}
+                            prev_proj_cache = {}
+                            self._projectedTilesInvalid = False
+                            raise NeedRecomputeException()
+
+                        # check if the image changed in the middle of the process
+                        if self._im_needs_recompute.is_set():
+                            self._im_needs_recompute.clear()
+                            # Raise the exception, so everything will be calculated again,
+                            # but using the cache from the last execution
+                            raise NeedRecomputeException()
+
+                        raw_tile, proj_tile = \
+                                self._getTile(x, y, z, prev_raw_cache, prev_proj_cache)
+                        rt_column.append(raw_tile)
+                        pt_column.append(proj_tile)
+
+                    raw_tiles.append(tuple(rt_column))
+                    projected_tiles.append(tuple(pt_column))
+
+            except NeedRecomputeException:
+                # image changed
+                need_recompute = True
+
+        return (tuple(raw_tiles), tuple(projected_tiles))
+
+    def _updateImage(self):
+        """ Recomputes the image with all the raw data available
+        """
+        # logging.debug("Updating image")
+        if not self.raw and isinstance(self.raw, list):
+            return
+
+        try:
+            # if .raw is a list of DataArray, .image is a complete image
+            if isinstance(self.raw, list):
+                raw = self.raw[0]
+                self.image.value = self._projectTile(raw)
+            elif isinstance(self.raw, tuple):
+                # .raw is an instance of DataArrayShadow, so .image is
+                # a tuple of tuple of tiles
+                raw_tiles, projected_tiles = self._getTilesFromSelectedArea()
+                self.image.value = projected_tiles
+                self.raw = raw_tiles
+            else:
+                raise AttributeError(".raw must be a list of DA/DAS or a tuple of tuple of DA")
+
+        except Exception:
+            logging.exception("Updating %s %s image", self.__class__.__name__, self.name.value)
