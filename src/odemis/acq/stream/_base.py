@@ -977,16 +977,16 @@ class Stream(object):
             x1, y1, x2, y2 = rect
             curr_mpp = self.mpp.value
             curr_rect = self.rect.value
-            # if the tiles cache are invalid, empty it
+            # if the projected tiles cache are invalid, empty it
             if self._projectedTilesInvalid:
-                prev_raw_cache = {}
                 prev_proj_cache = {}
                 self._projectedTilesInvalid = False
             else:
-                # the caches are valid, update the caches with the caches
+                # the caches are valid, update the projected tiles cache with the cache
                 # from the previous execution
-                prev_raw_cache.update(self._rawTilesCache)
                 prev_proj_cache.update(self._projectedTilesCache)
+            # update the raw tiles cache with the cache from the previous execution
+            prev_raw_cache.update(self._rawTilesCache)
 
             # empty current caches to avoid that lots of old tiles are kept on the cache
             self._rawTilesCache = {}
