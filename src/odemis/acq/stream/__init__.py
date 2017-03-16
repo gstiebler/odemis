@@ -144,7 +144,7 @@ class StreamTree(object):
         return False
 
     def add_stream(self, stream):
-        if isinstance(stream, (Stream, StreamTree)):
+        if isinstance(stream, (Stream, StreamTree, RGBSpatialProjection)):
             self.streams.append(stream)
             self.size.value = len(self.streams)
             if hasattr(stream, 'should_update'):
@@ -290,9 +290,21 @@ class RGBSpatialProjection(DataProjection):
         stream (Stream): the Stream to project
         '''
         super(RGBSpatialProjection, self).__init__(stream)
-        
-        self.should_update = model.BooleanVA(False)
 
+        self.should_update = model.BooleanVA(False)
+        self.name = stream.name
+        self.image = model.VigilantAttribute(None)
+        self.image.subscribe(self._onStreamImageUpdated)
+
+        # TODO: We need to reorganise everything so that the
+        # image display is done via a dataflow (in a separate thread), instead
+        # of a VA.
+        self._im_needs_recompute = threading.Event()
+        self._imthread = threading.Thread(target=self._image_thread,
+                                          args=(weakref.ref(stream),),
+                                          name="Image computation")
+        self._imthread.daemon = True
+        self._imthread.start()
         if isinstance(stream.raw, tuple):
             raw = stream._das
             md = raw.metadata
@@ -311,17 +323,67 @@ class RGBSpatialProjection(DataProjection):
             rect_range = ((l, b, l, b), (r, t, r, t))
             self.rect = model.TupleContinuous(full_rect, rect_range, setter=self._set_rect)
 
-    def _set_mpp(self, mpp):
-        self._shouldUpdateImage()
+    def _onStreamImageUpdated(self, image):
+        self.image.value = image
 
+    def _set_mpp(self, mpp):
         ps0 = self.mpp.range[0]
         exp = math.log(mpp / ps0, 2)
         exp = round(exp)
+        self.stream.mpp = mpp
         return ps0 * 2 ** exp
 
     def _set_rect(self, rect):
-        self._shouldUpdateImage()
+        self.stream.rect = rect
         return rect
 
     def _shouldUpdateImage(self):
-        self.stream._shouldUpdateImage()
+        """
+        Ensures that the image VA will be updated in the "near future".
+        """
+        # If the previous request is still being processed, the event
+        # synchronization allows to delay it (without accumulation).
+        self._im_needs_recompute.set()
+
+    @staticmethod
+    def _image_thread(wstream):
+        """ Called as a separate thread, and recomputes the image whenever it receives an event
+        asking for it.
+
+        Args:
+            wstream (Weakref to a Stream): the stream to follow
+
+        """
+
+        try:
+            stream = wstream()
+            name = stream.name.value
+            im_needs_recompute = stream._im_needs_recompute
+            # Only hold a weakref to allow the stream to be garbage collected
+            # On GC, trigger im_needs_recompute so that the thread can end too
+            wstream = weakref.ref(stream, lambda o: im_needs_recompute.set())
+
+            tnext = 0
+            while True:
+                del stream
+                im_needs_recompute.wait()  # wait until a new image is available
+                stream = wstream()
+
+                if stream is None:
+                    logging.debug("Stream %s disappeared so ending image update thread", name)
+                    break
+
+                tnow = time.time()
+
+                # sleep a bit to avoid refreshing too fast
+                tsleep = tnext - tnow
+                if tsleep > 0.0001:
+                    time.sleep(tsleep)
+
+                tnext = time.time() + 0.1  # max 10 Hz
+                im_needs_recompute.clear()
+                stream._updateImage()
+        except Exception:
+            logging.exception("image update thread failed")
+
+        gc.collect()

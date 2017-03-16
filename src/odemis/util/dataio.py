@@ -148,9 +148,6 @@ def data_to_static_streams(data):
                 d = d[-2, -1]
 
         stream_instance = klass(name, d)
-        # TODO temporary, just testing
-        if isinstance(stream_instance.raw, tuple):
-            stream_instance = stream.RGBSpatialProjection(stream_instance)
         result_streams.append(stream_instance)
 
     # Add one global AR stream
