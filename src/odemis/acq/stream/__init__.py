@@ -342,6 +342,8 @@ class RGBSpatialProjection(DataProjection):
             # When True, the projected tiles cache should be invalidated
             self._projectedTilesInvalid = True
 
+            self._shouldUpdateImage()
+
     #def _onStreamImageUpdated(self, image):
     #    self.image.value = image
 
