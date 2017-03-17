@@ -204,7 +204,7 @@ class Stream(object):
 
         # if there is already some data, update image with it
         # TODO: have this done by the child class, if needed.
-        if self.raw or isinstance(self.raw, tuple):
+        if self.raw:
             self._updateHistogram(drange_raw)
             if isinstance(self.raw, list):
                 raw = self.raw[0]
@@ -837,48 +837,6 @@ class Stream(object):
 
         gc.collect()
 
-    def _zFromMpp(self):
-        """
-        Return the zoom level based on the current .mpp value
-        return (int): The zoom level based on the current .mpp value
-        """
-        md = self._das.metadata
-        ps = md[model.MD_PIXEL_SIZE]
-        return int(math.log(self.mpp.value / ps[0], 2))
-
-    def _rectWorldToPixel(self, rect):
-        """
-        Convert rect from world coordinates to pixel coordinates
-        rect (tuple containing x1, y1, x2, y2): Rect on world coordinates
-        return (tuple containing x1, y1, x2, y2): Rect on pixel coordinates
-        """
-        md = self._das.metadata
-        ps = md.get(model.MD_PIXEL_SIZE, (1e-6, 1e-6))
-        pos = md.get(model.MD_POS, (0.0, 0.0))
-        # Removes the center coordinates of the image. After that, rect will be centered on 0, 0
-        rect = (
-            rect[0] - pos[0],
-            rect[1] - pos[1],
-            rect[2] - pos[0],
-            rect[3] - pos[1]
-        )
-        dims = md.get(model.MD_DIMS, "CTZYX"[-self._das.ndim::])
-        img_shape = (self._das.shape[dims.index('X')], self._das.shape[dims.index('Y')])
-
-        # Converts rect from physical to pixel coordinates.
-        # The received rect is relative to the center of the image, but pixel coordinates
-        # are relative to the top-left corner. So it also needs to sum half image.
-        # The -1 are necessary on the right and bottom sides, as the coordinates of a pixel
-        # are -1 relative to the side of the pixel
-        # The '-' before ps[1] is necessary due to the fact that 
-        # Y in pixel coordinates grows down, and Y in physical coordinates grows up
-        return (
-            int(round(rect[0] / ps[0] + img_shape[0] / 2)),
-            int(round(rect[1] / (-ps[1]) + img_shape[1] / 2)),
-            int(round(rect[2] / ps[0] + img_shape[0] / 2)) - 1,
-            int(round(rect[3] / (-ps[1]) + img_shape[1] / 2)) - 1,
-        )
-
     def _getMergedRawImage(self, z):
         """
         Returns the merged image based on z and .rect, using the raw tiles (not projected)
@@ -902,126 +860,6 @@ class Stream(object):
 
         return img.mergeTiles(tiles)
 
-    def _getTile(self, x, y, z, prev_raw_cache, prev_proj_cache):
-        """
-        Get a tile from a DataArrayShadow. Uses cache.
-        The cache for projected tiles and the cache for raw tiles has always the same tiles
-        x (int): X coordinate of the tile
-        y (int): Y coordinate of the tile
-        z (int): zoom level where the tile is
-        prev_raw_cache (dictionary): raw tiles cache from the
-            last execution of _updateImage
-        prev_proj_cache (dictionary): projected tiles cache from the
-            last execution of _updateImage
-        return (tuple(DataArray, DataArray)): raw tile and projected tile
-        """
-        # the key of the tile on the cache
-        tile_key = "%d-%d-%d" % (x, y, z)
-
-        # if the raw tile has been already cached, read it from the cache
-        if tile_key in prev_raw_cache:
-            raw_tile = prev_raw_cache[tile_key]
-        elif tile_key in self._rawTilesCache:
-            raw_tile = self._rawTilesCache[tile_key]
-        else:
-            # The tile was not cached, so it must be read from the file
-            raw_tile = self._das.getTile(x, y, z)
-
-        # if the projected tile has been already cached, read it from the cache
-        if tile_key in prev_proj_cache:
-            proj_tile = prev_proj_cache[tile_key]
-        elif tile_key in self._projectedTilesCache:
-            proj_tile = self._projectedTilesCache[tile_key]
-        else:
-            # The tile was not cached, so it must be projected again
-            proj_tile = self._projectTile(raw_tile)
-
-        # cache raw and projected tiles
-        self._rawTilesCache[tile_key] = raw_tile
-        self._projectedTilesCache[tile_key] = proj_tile
-        return (raw_tile, proj_tile)
-
-    def _projectTile(self, tile):
-        """
-        Project the tile
-        tile (DataArray): Raw tile
-        return (DataArray): Projected tile
-        """
-        if tile.ndim != 2:
-            tile = img.ensure2DImage(tile)  # Remove extra dimensions (of length 1)
-        return self._projectXY2RGB(tile, self.tint.value)
-
-    def _getTilesFromSelectedArea(self):
-        """
-        Get the tiles inside the region defined by .rect and .mpp
-        return ((DataArray, DataArray)): Raw tiles and projected tiles
-        """
-
-        # This custom exception is used when the .mpp or .rect values changes while
-        # generating the tiles. If the values changes, everything needs to be recomputed
-        class NeedRecomputeException(Exception):
-            pass
-
-        # store the previous cache to use in this execution
-        prev_raw_cache = self._rawTilesCache
-        prev_proj_cache = self._projectedTilesCache
-        # Execute at least once. If mpp and rect changed in
-        # the last execution of the loops, execute again
-        need_recompute = True
-        while need_recompute:
-            z = self._zFromMpp()
-            rect = self._rectWorldToPixel(self.rect.value)
-            # convert the rect coords to tile indexes
-            rect = [l / (2 ** z) for l in rect]
-            rect = [int(math.floor(l / self._das.tile_shape[0])) for l in rect]
-            x1, y1, x2, y2 = rect
-            curr_mpp = self.mpp.value
-            curr_rect = self.rect.value
-            # if the projected tiles cache are invalid, empty it
-            if self._projectedTilesInvalid:
-                prev_proj_cache = {}
-                self._projectedTilesInvalid = False
-            else:
-                # the caches are valid, update the projected tiles cache with the cache
-                # from the previous execution
-                prev_proj_cache.update(self._projectedTilesCache)
-            # update the raw tiles cache with the cache from the previous execution
-            prev_raw_cache.update(self._rawTilesCache)
-
-            # empty current caches to avoid that lots of old tiles are kept on the cache
-            self._rawTilesCache = {}
-            self._projectedTilesCache = {}
-
-            raw_tiles = []
-            projected_tiles = []
-            need_recompute = False
-            try:
-                for x in range(x1, x2 + 1):
-                    rt_column = []
-                    pt_column = []
-
-                    for y in range(y1, y2 + 1):
-                        # check if the image changed in the middle of the process
-                        if self._im_needs_recompute.is_set():
-                            self._im_needs_recompute.clear()
-                            # Raise the exception, so everything will be calculated again,
-                            # but using the cache from the last execution
-                            raise NeedRecomputeException()
-
-                        raw_tile, proj_tile = \
-                                self._getTile(x, y, z, prev_raw_cache, prev_proj_cache)
-                        rt_column.append(raw_tile)
-                        pt_column.append(proj_tile)
-
-                    raw_tiles.append(tuple(rt_column))
-                    projected_tiles.append(tuple(pt_column))
-
-            except NeedRecomputeException:
-                # image changed
-                need_recompute = True
-
-        return (tuple(raw_tiles), tuple(projected_tiles))
-
     def _updateImage(self):
         """ Recomputes the image with all the raw data available
         """
@@ -1030,18 +868,10 @@ class Stream(object):
             return
 
         try:
-            # if .raw is a list of DataArray, .image is a complete image
-            if isinstance(self.raw, list):
-                raw = self.raw[0]
-                self.image.value = self._projectTile(raw)
-            elif isinstance(self.raw, tuple):
-                # .raw is an instance of DataArrayShadow, so .image is
-                # a tuple of tuple of tiles
-                raw_tiles, projected_tiles = self._getTilesFromSelectedArea()
-                self.image.value = projected_tiles
-                self.raw = raw_tiles
-            else:
-                raise AttributeError(".raw must be a list of DA/DAS or a tuple of tuple of DA")
+            raw = self.raw[0]
+            if raw.ndim != 2:
+                raw = img.ensure2DImage(raw)  # Remove extra dimensions (of length 1)
+            self.image.value = self._projectXY2RGB(raw, self.tint.value)
 
         except Exception:
             logging.exception("Updating %s %s image", self.__class__.__name__, self.name.value)

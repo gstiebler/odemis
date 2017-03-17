@@ -342,6 +342,15 @@ class RGBSpatialProjection(DataProjection):
             # When True, the projected tiles cache should be invalidated
             self._projectedTilesInvalid = True
 
+        # TODO check if the code below is necessary
+        '''if self.raw or isinstance(self.raw, tuple):
+            self._updateHistogram(drange_raw)
+            if isinstance(self.raw, list):
+                raw = self.raw[0]
+            else:
+                raw = self.raw
+            self._onNewData(None, raw)'''
+
         self._shouldUpdateImage()
 
     #def _onStreamImageUpdated(self, image):
@@ -414,7 +423,23 @@ class RGBSpatialProjection(DataProjection):
         self._im_needs_recompute.set()
 
     def getBoundingBox(self):
-        return self.stream.getBoundingBox()
+        ''' Get the bounding box. I
+        return (tuple of floats(l,t,r,b)): Tuple with the bounding box
+        Raises:
+            ValueError: If the .image member is not set
+        '''
+        if hasattr(self, 'rect'):
+            rng = self.rect.range
+            return (rng[0][0], rng[0][1], rng[1][0], rng[1][1])
+        else:
+            md = self.image.value.metadata
+            if self.image.value is None:
+                raise ValueError("Stream's image not defined")
+            shape = self.image.value.shape
+            im_scale = md[model.MD_PIXEL_SIZE]
+            w, h = shape[1] * im_scale[0], shape[0] * im_scale[1]
+            c = md[model.MD_POS]
+            return [c[0] - w / 2, c[1] - h / 2, c[0] + w / 2, c[1] + h / 2]
 
     @staticmethod
     def _image_thread(wprojection):
