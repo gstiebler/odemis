@@ -297,10 +297,11 @@ class RGBSpatialProjection(DataProjection):
         #self.image.subscribe(self._onImageUpdated)
 
         # self.stream.image.subscribe(self._onStreamImageUpdated)
-
-        self.tint = model.ListVA((255, 255, 255), unit="RGB")  # 3-int R,G,B
         # Don't call at init, so don't set metadata if default value
-        self.tint.subscribe(self.onTint)
+        self.stream.tint.subscribe(self.needImageUpdate)
+        self.stream.intensityRange.subscribe(self.needImageUpdate)
+        self.stream.auto_bc.subscribe(self.needImageUpdate)
+        self.stream.auto_bc_outliers.subscribe(self.needImageUpdate)
 
         # TODO: We need to reorganise everything so that the
         # image display is done via a dataflow (in a separate thread), instead
@@ -346,6 +347,10 @@ class RGBSpatialProjection(DataProjection):
 
     #def _onImageUpdated(self, image):
     #    self.stream.image.value = image
+
+    def needImageUpdate(self, param):
+        self._projectedTilesInvalid = True
+        self._shouldUpdateImage()
 
     def _onMpp(self, mpp):
         self.stream.mpp.value = mpp
@@ -543,7 +548,7 @@ class RGBSpatialProjection(DataProjection):
         """
         if tile.ndim != 2:
             tile = img.ensure2DImage(tile)  # Remove extra dimensions (of length 1)
-        return self._projectXY2RGB(tile, self.tint.value)
+        return self._projectXY2RGB(tile, self.stream.tint.value)
 
     def _getTilesFromSelectedArea(self):
         """
