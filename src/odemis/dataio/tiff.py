@@ -35,6 +35,7 @@ import re
 import sys
 import time
 import uuid
+import threading
 from odemis.model import DataArrayShadow, AcquisitionData
 
 import libtiff.libtiff_ctypes as T  # for the constant names
@@ -1863,6 +1864,9 @@ class DataArrayShadowPyramidalTIFF(DataArrayShadowTIFF):
             maxzoom = 0
 
         tile_shape = (num_tcols, num_trows)
+        
+        # TODO seems to be working, but discuss with Éric if it is the best place to create the Lock
+        self.lock = threading.Lock()
         DataArrayShadow.__init__(self, shape, dtype, metadata, maxzoom, tile_shape)
     
     def getTile(self, x, y, zoom):
@@ -1874,6 +1878,7 @@ class DataArrayShadowPyramidalTIFF(DataArrayShadowTIFF):
             The number of tiles available in an image is ceil((shape//zoom)/tile_shape)
         return (DataArray): the shape of the DataArray is typically of shape
         '''
+        self.lock.acquire()
         # get information about how to retrieve the actual pixels from the TIFF file
         tiff_info = self.tiff_info
         # TODO Implement the reading of the subdata when tiff_info is a list.
@@ -1911,6 +1916,7 @@ class DataArrayShadowPyramidalTIFF(DataArrayShadowTIFF):
         tile.metadata[model.MD_PIXEL_SIZE] = tile_pixel_size
         # calculate the center of the tile
         tile.metadata[model.MD_POS] = get_tile_md_pos((x, y), self.tile_shape, tile, self)
+        self.lock.release()
         return tile
 
 
