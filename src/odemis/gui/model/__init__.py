@@ -29,7 +29,7 @@ import logging
 import math
 from odemis import model
 from odemis.acq import path
-from odemis.acq.stream import Stream, StreamTree, RGBSpatialProjection
+from odemis.acq.stream import Stream, StreamTree, StaticStream, RGBSpatialProjection
 from odemis.gui.conf import get_general_conf
 from odemis.model import (FloatContinuous, VigilantAttribute, IntEnumerated, StringVA, BooleanVA,
                           MD_POS, InstantaneousFuture, hasVA, StringEnumerated)
@@ -1215,7 +1215,7 @@ class StreamView(View):
         """
 
         # TODO temporary, just testing
-        if isinstance(stream.raw, tuple):
+        if isinstance(stream, StaticStream):
             stream = RGBSpatialProjection(stream)
 
         # check if the stream is already present

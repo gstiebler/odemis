@@ -342,7 +342,7 @@ class RGBSpatialProjection(DataProjection):
             # When True, the projected tiles cache should be invalidated
             self._projectedTilesInvalid = True
 
-            self._shouldUpdateImage()
+        self._shouldUpdateImage()
 
     #def _onStreamImageUpdated(self, image):
     #    self.image.value = image
@@ -355,10 +355,10 @@ class RGBSpatialProjection(DataProjection):
         self._shouldUpdateImage()
 
     def _onMpp(self, mpp):
-        self.stream.mpp.value = mpp
+        self._shouldUpdateImage()
 
     def _onRect(self, rect):
-        self.stream.rect.value = rect
+        self._shouldUpdateImage()
 
     def _set_mpp(self, mpp):
         ps0 = self.mpp.range[0]
@@ -633,7 +633,7 @@ class RGBSpatialProjection(DataProjection):
         try:
             # if .raw is a list of DataArray, .image is a complete image
             if isinstance(self.stream.raw, list):
-                raw = self.raw[0]
+                raw = self.stream.raw[0]
                 self.image.value = self._projectTile(raw)
             elif isinstance(self.stream.raw, tuple):
                 # .raw is an instance of DataArrayShadow, so .image is
