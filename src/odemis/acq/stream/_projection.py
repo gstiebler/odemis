@@ -134,6 +134,10 @@ class RGBSpatialProjection(DataProjection):
 
         self._shouldUpdateImage()
 
+    @property
+    def raw(self):
+        return self.stream.raw
+
     #def _onStreamImageUpdated(self, image):
     #    self.image.value = image
 
@@ -446,7 +450,7 @@ class RGBSpatialProjection(DataProjection):
                 # a tuple of tuple of tiles
                 raw_tiles, projected_tiles = self._getTilesFromSelectedArea()
                 self.image.value = projected_tiles
-                self.raw = raw_tiles
+                self.stream.raw = raw_tiles
             else:
                 raise AttributeError(".raw must be a list of DA/DAS or a tuple of tuple of DA")
 
