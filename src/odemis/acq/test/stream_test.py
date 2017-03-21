@@ -2231,32 +2231,33 @@ class StaticStreamsTestCase(unittest.TestCase):
 
         acd = tiff.open_data(FILENAME)
         ss = stream.StaticSEMStream("test", acd.content[0])
+        pj = stream.RGBSpatialProjection(ss)
 
         # out of bounds
         with self.assertRaises(IndexError):
-            ss.mpp.value = 1.0
-        ss.mpp.value = 2e-6 # second zoom level
+            pj.mpp.value = 1.0
+        pj.mpp.value = 2e-6 # second zoom level
 
         # out of bounds
         with self.assertRaises(IndexError):
-            ss.rect.value = (0.0, 0.0, 10e10, 10e10)
+            pj.rect.value = (0.0, 0.0, 10e10, 10e10)
         # full image
-        ss.rect.value = (POS[0] - 0.001, POS[1] + 0.0005, POS[0] + 0.001, POS[1] - 0.0005)
+        pj.rect.value = (POS[0] - 0.001, POS[1] + 0.0005, POS[0] + 0.001, POS[1] - 0.0005)
 
         # Wait a little bit to make sure the image has been generated
         time.sleep(0.5)
-        self.assertEqual(len(ss.image.value), 4)
-        self.assertEqual(len(ss.image.value[0]), 2)
+        self.assertEqual(len(pj.image.value), 4)
+        self.assertEqual(len(pj.image.value[0]), 2)
         # the corner tile should be smaller
-        self.assertEqual(ss.image.value[3][1].shape, (244, 232, 3))
+        self.assertEqual(pj.image.value[3][1].shape, (244, 232, 3))
 
         # half image
-        ss.rect.value = (POS[0] - 0.001, POS[1] + 0.0005, POS[0], POS[1])
+        pj.rect.value = (POS[0] - 0.001, POS[1] + 0.0005, POS[0], POS[1])
 
         # Wait a little bit to make sure the image has been generated
         time.sleep(0.5)
-        self.assertEqual(len(ss.image.value), 2)
-        self.assertEqual(len(ss.image.value[0]), 1)
+        self.assertEqual(len(pj.image.value), 2)
+        self.assertEqual(len(pj.image.value[0]), 1)
 
     def test_rgb_tiled_stream(self):
         POS = (5.0, 7.0)
