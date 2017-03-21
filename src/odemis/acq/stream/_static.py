@@ -114,15 +114,6 @@ class RGBStream(StaticStream):
 
         super(RGBStream, self).__init__(name, raw)
 
-    def _projectTile(self, tile):
-        # Just pass the RGB data on
-        tile = img.ensureYXC(tile)
-        tile.flags.writeable = False
-        # merge and ensures all the needed metadata is there
-        tile.metadata = self._find_metadata(tile.metadata)
-        tile.metadata[model.MD_DIMS] = "YXC" # RGB format
-        return tile
-
 
 class Static2DStream(StaticStream):
     """

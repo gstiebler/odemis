@@ -30,6 +30,7 @@ import gc
 
 from odemis import model
 from odemis.util import img
+from odemis.acq.stream import RGBStream
 
 class DataProjection(object):
 
@@ -358,9 +359,18 @@ class RGBSpatialProjection(DataProjection):
         tile (DataArray): Raw tile
         return (DataArray): Projected tile
         """
-        if tile.ndim != 2:
-            tile = img.ensure2DImage(tile)  # Remove extra dimensions (of length 1)
-        return self._projectXY2RGB(tile, self.stream.tint.value)
+        if isinstance(self.stream, RGBStream):
+            # Just pass the RGB data on
+            tile = img.ensureYXC(tile)
+            tile.flags.writeable = False
+            # merge and ensures all the needed metadata is there
+            tile.metadata = self.stream._find_metadata(tile.metadata)
+            tile.metadata[model.MD_DIMS] = "YXC" # RGB format
+            return tile
+        else:
+            if tile.ndim != 2:
+                tile = img.ensure2DImage(tile)  # Remove extra dimensions (of length 1)
+            return self._projectXY2RGB(tile, self.stream.tint.value)
 
     def _getTilesFromSelectedArea(self):
         """
