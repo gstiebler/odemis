@@ -29,7 +29,7 @@ import logging
 import math
 from odemis import model
 from odemis.acq import path
-from odemis.acq.stream import Stream, StreamTree
+from odemis.acq.stream import Stream, StreamTree, StaticStream, RGBSpatialProjection
 from odemis.gui.conf import get_general_conf
 from odemis.model import (FloatContinuous, VigilantAttribute, IntEnumerated, StringVA, BooleanVA,
                           MD_POS, InstantaneousFuture, hasVA, StringEnumerated)
@@ -880,6 +880,11 @@ class StreamView(View):
         else:
             self.stream_classes = stream_classes
         self._stage = stage
+        # TODO fix it
+        if isinstance(self.stream_classes, tuple):
+            self.stream_classes = self.stream_classes + (RGBSpatialProjection,)
+        else:
+            self.stream_classes = (self.stream_classes, RGBSpatialProjection)
 
         self.fov_hw = fov_hw
 
@@ -1209,6 +1214,11 @@ class StreamView(View):
         If the stream is already present, nothing happens
         """
 
+        # TODO temporary, just testing
+        if isinstance(stream, StaticStream):
+            stream = RGBSpatialProjection(stream)
+            self._updateStreamsViewParams()
+
         # check if the stream is already present
         if stream in self.stream_tree.getStreams():
             logging.warning("Aborting the addition of a duplicate stream")
@@ -1224,6 +1234,9 @@ class StreamView(View):
         # operation possible
         with self._streams_lock:
             self.stream_tree.add_stream(stream)
+
+        if isinstance(stream, RGBSpatialProjection):
+            self._updateStreamsViewParams()
 
         # subscribe to the stream's image
         if hasattr(stream, "image"):
@@ -1247,15 +1260,21 @@ class StreamView(View):
 
         with self._streams_lock:
             # check if the stream is already removed
-            if stream not in self.stream_tree.getStreams():
-                return
+            streams = self.stream_tree.getStreams()
 
-            # remove stream from the StreamTree()
-            # TODO: handle more complex trees
-            self.stream_tree.remove_stream(stream)
+            for stream_in_tree in streams:
+                if isinstance(stream_in_tree, RGBSpatialProjection):
+                    original_stream = stream_in_tree.stream
+                else:
+                    original_stream = stream_in_tree
 
-        # let everyone know that the view has changed
-        self.lastUpdate.value = time.time()
+                if stream == original_stream:
+                    # remove stream from the StreamTree()
+                    # TODO: handle more complex trees
+                    self.stream_tree.remove_stream(stream_in_tree)
+                    # let everyone know that the view has changed
+                    self.lastUpdate.value = time.time()
+                    break
 
     def _onNewImage(self, im):
         """
