@@ -114,14 +114,24 @@ class RGBStream(StaticStream):
 
         super(RGBStream, self).__init__(name, raw)
 
-    def _projectTile(self, tile):
+    # Copy from RGBCameraStream
+    def _updateImage(self):
         # Just pass the RGB data on
-        tile = img.ensureYXC(tile)
-        tile.flags.writeable = False
-        # merge and ensures all the needed metadata is there
-        tile.metadata = self._find_metadata(tile.metadata)
-        tile.metadata[model.MD_DIMS] = "YXC" # RGB format
-        return tile
+
+        if not self.raw:
+            return
+
+        # TODO: use original image as raw, to allow changing the B/C/tint
+        try:
+            data = self.raw[0]
+            rgbim = img.ensureYXC(data)
+            rgbim.flags.writeable = False
+            # merge and ensures all the needed metadata is there
+            rgbim.metadata = self._find_metadata(rgbim.metadata)
+            rgbim.metadata[model.MD_DIMS] = "YXC" # RGB format
+            self.image.value = rgbim
+        except Exception:
+            logging.exception("Updating %s image", self.__class__.__name__)
 
 
 class Static2DStream(StaticStream):

@@ -851,7 +851,6 @@ class BitmapCanvas(BufferedCanvas):
 
                     for tile_col in im:
                         for tile in tile_col:
-                            tile.metadata['dc_center'] = tile.metadata.get(model.MD_POS, w_pos)
                             tile.metadata['dc_scale'] = scale
                             tile.metadata['dc_rotation'] = rotation
                             tile.metadata['dc_shear'] = shear
@@ -952,6 +951,9 @@ class BitmapCanvas(BufferedCanvas):
                 if isinstance(im, tuple):
                     first_tile = im[0][0]
                     md = first_tile.metadata
+                    tiles_merged_shape = util.img.getTilesSize(im)
+                    # the center of the image composed of the tiles
+                    center = util.img.getCenterOfTiles(im, tiles_merged_shape)
                 else:
                     md = im.metadata
 
@@ -969,7 +971,7 @@ class BitmapCanvas(BufferedCanvas):
                     self._draw_tiles(
                         ctx,
                         im,
-                        md['dc_center'],
+                        center,
                         merge_ratio,
                         im_scale=md['dc_scale'],
                         rotation=md['dc_rotation'],
@@ -1021,8 +1023,10 @@ class BitmapCanvas(BufferedCanvas):
             logging.debug("Skipping draw: image fully transparent")
             return
 
+        # calculates the shape of the image composed from the tiles
+        im_shape = util.img.getTilesSize(tiles)
         # Determine the rectangle the image would occupy in the buffer
-        b_im_rect = self._calc_img_buffer_rect(first_tile.shape[:2], im_scale, p_im_center)
+        b_im_rect = self._calc_img_buffer_rect(im_shape[:2], im_scale, p_im_center)
 
         # To small to see, so no need to draw
         if b_im_rect[2] < 1 or b_im_rect[3] < 1:
