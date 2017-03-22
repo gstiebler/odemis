@@ -768,24 +768,6 @@ class Stream(object):
 
         return md
 
-    def _projectXY2RGB(self, data, tint=(255, 255, 255)):
-        """
-        Project a 2D spatial DataArray into a RGB representation
-        data (DataArray): 2D DataArray
-        tint ((int, int, int)): colouration of the image, in RGB.
-        return (DataArray): 3D DataArray
-        """
-        irange = self._getDisplayIRange()
-        rgbim = img.DataArray2RGB(data, irange, tint)
-        rgbim.flags.writeable = False
-        # Commented to prevent log flooding
-        # if model.MD_ACQ_DATE in data.metadata:
-        #     logging.debug("Computed RGB projection %g s after acquisition",
-        #                    time.time() - data.metadata[model.MD_ACQ_DATE])
-        md = self._find_metadata(data.metadata)
-        md[model.MD_DIMS] = "YXC" # RGB format
-        return model.DataArray(rgbim, md)
-
     def _shouldUpdateImage(self):
         """
         Ensures that the image VA will be updated in the "near future".
@@ -868,10 +850,13 @@ class Stream(object):
             return
 
         try:
-            raw = self.raw[0]
-            if raw.ndim != 2:
-                raw = img.ensure2DImage(raw)  # Remove extra dimensions (of length 1)
-            self.image.value = self._projectXY2RGB(raw, self.tint.value)
+            # if .raw is a list of DataArray, .image is a complete image
+            if isinstance(self.raw, list):
+                raw = self.raw[0]
+            elif isinstance(self.raw, tuple):
+                pass
+            else:
+                raise AttributeError(".raw must be a list of DA/DAS or a tuple of tuple of DA")
 
         except Exception:
             logging.exception("Updating %s %s image", self.__class__.__name__, self.name.value)
