@@ -851,7 +851,6 @@ class BitmapCanvas(BufferedCanvas):
 
                     for tile_col in im:
                         for tile in tile_col:
-                            tile.metadata['dc_center'] = tile.metadata.get(model.MD_POS, w_pos)
                             tile.metadata['dc_scale'] = scale
                             tile.metadata['dc_rotation'] = rotation
                             tile.metadata['dc_shear'] = shear
