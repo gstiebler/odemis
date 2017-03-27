@@ -44,8 +44,9 @@ class DataProjection(object):
         # image display is done via a dataflow (in a separate thread), instead
         # of a VA.
         self._im_needs_recompute = threading.Event()
+        weak = weakref.ref(self)
         self._imthread = threading.Thread(target=self._image_thread,
-                                          args=(weakref.ref(self),),
+                                          args=(weak,),
                                           name="Image computation")
         self._imthread.daemon = True
         self._imthread.start()
@@ -54,7 +55,7 @@ class DataProjection(object):
         self.image = model.VigilantAttribute(None)
 
     @staticmethod
-    def _image_thread(wstream):
+    def _image_thread(wprojection):
         """ Called as a separate thread, and recomputes the image whenever it receives an event
         asking for it.
 
@@ -62,7 +63,40 @@ class DataProjection(object):
             wstream (Weakref to a Stream): the stream to follow
 
         """
-        pass
+
+        try:
+            projection = wprojection()
+            stream = projection.stream
+            name = stream.name.value
+            im_needs_recompute = projection._im_needs_recompute
+            # Only hold a weakref to allow the stream to be garbage collected
+            # On GC, trigger im_needs_recompute so that the thread can end too
+            wprojection = weakref.ref(projection, lambda o: im_needs_recompute.set())
+
+            tnext = 0
+            while True:
+                del projection
+                im_needs_recompute.wait()  # wait until a new image is available
+                projection = wprojection()
+
+                if projection is None:
+                    logging.debug("Projection %s disappeared so ending image update thread", name)
+                    break
+
+                tnow = time.time()
+
+                # sleep a bit to avoid refreshing too fast
+                tsleep = tnext - tnow
+                if tsleep > 0.0001:
+                    time.sleep(tsleep)
+
+                tnext = time.time() + 0.1  # max 10 Hz
+                im_needs_recompute.clear()
+                projection._updateImage()
+        except Exception:
+            logging.exception("image update thread failed")
+
+        gc.collect()
 
 
 class RGBSpatialProjection(DataProjection):
@@ -85,16 +119,6 @@ class RGBSpatialProjection(DataProjection):
         self.stream.auto_bc.subscribe(self.needImageUpdate)
         self.stream.auto_bc_outliers.subscribe(self.needImageUpdate)
 
-        # TODO: We need to reorganise everything so that the
-        # image display is done via a dataflow (in a separate thread), instead
-        # of a VA.
-        self._im_needs_recompute = threading.Event()
-        weak = weakref.ref(self)
-        self._imthread = threading.Thread(target=self._image_thread,
-                                          args=(weak,),
-                                          name="Image computation")
-        self._imthread.daemon = True
-        self._imthread.start()
         if isinstance(stream.raw, tuple):
             raw = stream._das
             md = raw.metadata
@@ -139,11 +163,8 @@ class RGBSpatialProjection(DataProjection):
     def raw(self):
         return self.stream.raw
 
-    #def _onStreamImageUpdated(self, image):
-    #    self.image.value = image
-
-    #def _onImageUpdated(self, image):
-    #    self.stream.image.value = image
+    def __del__(self):
+        logging.error("destructor")
 
     def needImageUpdate(self, param):
         self._projectedTilesInvalid = True
@@ -226,51 +247,6 @@ class RGBSpatialProjection(DataProjection):
             w, h = shape[1] * im_scale[0], shape[0] * im_scale[1]
             c = md[model.MD_POS]
             return [c[0] - w / 2, c[1] - h / 2, c[0] + w / 2, c[1] + h / 2]
-
-    @staticmethod
-    def _image_thread(wprojection):
-        """ Called as a separate thread, and recomputes the image whenever it receives an event
-        asking for it.
-
-        Args:
-            wstream (Weakref to a Stream): the stream to follow
-
-        """
-
-        try:
-            projection = wprojection()
-            stream = projection.stream
-            name = stream.name.value
-            im_needs_recompute = projection._im_needs_recompute
-            # Only hold a weakref to allow the stream to be garbage collected
-            # On GC, trigger im_needs_recompute so that the thread can end too
-            wprojection = weakref.ref(projection, lambda o: im_needs_recompute.set())
-
-            tnext = 0
-            while True:
-                # del projection
-                im_needs_recompute.wait()  # wait until a new image is available
-                projection = wprojection()
-                stream = projection.stream
-
-                if projection is None:
-                    logging.debug("Projection %s disappeared so ending image update thread", name)
-                    break
-
-                tnow = time.time()
-
-                # sleep a bit to avoid refreshing too fast
-                tsleep = tnext - tnow
-                if tsleep > 0.0001:
-                    time.sleep(tsleep)
-
-                tnext = time.time() + 0.1  # max 10 Hz
-                im_needs_recompute.clear()
-                projection._updateImage()
-        except Exception:
-            logging.exception("image update thread failed")
-
-        gc.collect()
 
     def _zFromMpp(self):
         """
