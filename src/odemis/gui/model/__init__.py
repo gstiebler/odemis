@@ -1256,15 +1256,21 @@ class StreamView(View):
 
         with self._streams_lock:
             # check if the stream is already removed
-            if stream not in self.stream_tree.getStreams():
-                return
+            streams = self.stream_tree.getStreams()
 
-            # remove stream from the StreamTree()
-            # TODO: handle more complex trees
-            self.stream_tree.remove_stream(stream)
+            for stream_in_tree in streams:
+                if isinstance(stream_in_tree, RGBSpatialProjection):
+                    original_stream = stream_in_tree.stream
+                else:
+                    original_stream = stream_in_tree
 
-        # let everyone know that the view has changed
-        self.lastUpdate.value = time.time()
+                if stream == original_stream:
+                    # remove stream from the StreamTree()
+                    # TODO: handle more complex trees
+                    self.stream_tree.remove_stream(stream_in_tree)
+                    # let everyone know that the view has changed
+                    self.lastUpdate.value = time.time()
+                    break
 
     def _onNewImage(self, im):
         """
