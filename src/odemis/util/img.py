@@ -28,7 +28,7 @@ import logging
 import math
 import numpy
 from odemis import model
-import scipy.ndimage
+import scipy.misc
 from odemis.util.conversion import get_img_transformation_matrix
 
 
@@ -466,9 +466,8 @@ def rescale_hq(data, shape):
     """
     # TODO: make it faster
 
-    out = numpy.empty(shape, dtype=data.dtype)
     scale = tuple(n / o for o, n in zip(data.shape, shape))
-    scipy.ndimage.interpolation.zoom(data, zoom=scale, output=out, order=1, prefilter=False)
+    out = scipy.misc.imresize(data, scale[1], 'bilinear')
 
     # Update the metadata
     if hasattr(data, "metadata"):
