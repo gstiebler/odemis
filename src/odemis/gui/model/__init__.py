@@ -1217,6 +1217,7 @@ class StreamView(View):
         # TODO temporary, just testing
         if isinstance(stream, StaticStream):
             stream = RGBSpatialProjection(stream)
+            self._updateStreamsViewParams()
 
         # check if the stream is already present
         if stream in self.stream_tree.getStreams():
@@ -1233,6 +1234,9 @@ class StreamView(View):
         # operation possible
         with self._streams_lock:
             self.stream_tree.add_stream(stream)
+
+        if isinstance(stream, RGBSpatialProjection):
+            self._updateStreamsViewParams()
 
         # subscribe to the stream's image
         if hasattr(stream, "image"):
