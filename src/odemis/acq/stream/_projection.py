@@ -165,9 +165,6 @@ class RGBSpatialProjection(DataProjection):
     def raw(self):
         return self.stream.raw
 
-    def __del__(self):
-        logging.error("destructor")
-
     def needImageUpdate(self, param):
         self._projectedTilesInvalid = True
         self._shouldUpdateImage()
