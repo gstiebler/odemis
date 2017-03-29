@@ -880,7 +880,8 @@ class StreamView(View):
         else:
             self.stream_classes = stream_classes
         self._stage = stage
-        # TODO fix it
+
+        # add RGBSpatialProjection as a valid stream class 
         if isinstance(self.stream_classes, tuple):
             self.stream_classes = self.stream_classes + (RGBSpatialProjection,)
         else:
@@ -1214,10 +1215,10 @@ class StreamView(View):
         If the stream is already present, nothing happens
         """
 
-        # TODO temporary, just testing
         if isinstance(stream, StaticStream):
+            # if the stream is a StaticStream,
+            # create a RGBSpatialProjection for it
             stream = RGBSpatialProjection(stream)
-            self._updateStreamsViewParams()
 
         # check if the stream is already present
         if stream in self.stream_tree.getStreams():
@@ -1236,6 +1237,7 @@ class StreamView(View):
             self.stream_tree.add_stream(stream)
 
         if isinstance(stream, RGBSpatialProjection):
+            # sets the current mpp and viewport to the projection
             self._updateStreamsViewParams()
 
         # subscribe to the stream's image
@@ -1259,15 +1261,14 @@ class StreamView(View):
             stream.image.unsubscribe(self._onNewImage)
 
         with self._streams_lock:
-            # check if the stream is already removed
             streams = self.stream_tree.getStreams()
-
             for stream_in_tree in streams:
                 if isinstance(stream_in_tree, RGBSpatialProjection):
                     original_stream = stream_in_tree.stream
                 else:
                     original_stream = stream_in_tree
 
+                # check if the stream is still present on the stream list
                 if stream == original_stream:
                     # remove stream from the StreamTree()
                     # TODO: handle more complex trees

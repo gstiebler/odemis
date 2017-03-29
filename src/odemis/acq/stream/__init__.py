@@ -35,7 +35,6 @@ from ._sync import *
 from ._projection import *
 
 from abc import ABCMeta
-import threading
 
 
 # Generic cross-cut types

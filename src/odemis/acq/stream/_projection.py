@@ -150,15 +150,6 @@ class RGBSpatialProjection(DataProjection):
             # When True, the projected tiles cache should be invalidated
             self._projectedTilesInvalid = True
 
-        # TODO check if the code below is necessary
-        '''if self.raw or isinstance(self.raw, tuple):
-            self._updateHistogram(drange_raw)
-            if isinstance(self.raw, list):
-                raw = self.raw[0]
-            else:
-                raw = self.raw
-            self._onNewData(None, raw)'''
-
         self._shouldUpdateImage()
 
     @property
