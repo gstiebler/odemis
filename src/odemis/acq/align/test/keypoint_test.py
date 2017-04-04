@@ -31,11 +31,15 @@ import cv2
 class TestKeypoint(unittest.TestCase):
 
     def test_first(self):
-        imgs_folder = '/home/gstiebler/Projetos/Delmic/iCLEM/Images/'
-        ima = cv2.imread(imgs_folder + '001_CBS_010.jpg', 0)
-        imb = cv2.imread(imgs_folder + '20141014-113042_1.jpg', 0)
-        mat = keypoint.FindTransform(ima, imb)
-        print mat
+        imgs_folder = 'C:/Projetos/Delmic/iCLEM/images/'
+        ima = cv2.imread(imgs_folder + '20141014-113042_1.jpg', 0)
+        imb = cv2.imread(imgs_folder + '001_CBS_010.jpg', 0)
+        tmat = keypoint.FindTransform(ima, imb)
+        warped_im = cv2.warpPerspective(ima, tmat, (imb.shape[1], imb.shape[0]))
+        merged_im = cv2.addWeighted(imb, 0.5, warped_im, 0.5, 0.0)
+        cv2.imwrite(imgs_folder + 'warped.jpg', merged_im)
+
+        print tmat
 
 
 if __name__ == '__main__':
