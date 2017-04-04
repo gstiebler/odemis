@@ -28,7 +28,8 @@ from odemis.util.conversion import \
     convert_to_object, \
     reproduce_typed_value, \
     get_img_transformation_matrix,\
-    get_tile_md_pos
+    get_tile_md_pos, \
+    get_img_transformation_md
 import unittest
 import math
 import numpy
@@ -275,6 +276,28 @@ class TestConversion(unittest.TestCase):
         numpy.testing.assert_almost_equal(tile_md_pos, [-0.00041236630212, -0.000413347328499])
         tile_md_pos = get_tile_md_pos((1, 1), (TILE_SIZE, TILE_SIZE), tile, origda)
         numpy.testing.assert_almost_equal(tile_md_pos, [0.00065225309200, -0.00051098638647])
+
+    def test_get_img_transformation_md(self):
+        tx = 1.1
+        ty = 2.2
+        rot = 0.35
+        scale = (0.8, 0.9)
+        shear = 0.2
+
+        ps_mat = numpy.matrix([[scale[0], 0, 0], [0, scale[1], 0], [0, 0, 1]])
+        rcos, rsin = math.cos(rot), math.sin(rot)
+        rot_mat = numpy.matrix([[rcos, -rsin, 0], [rsin, rcos, 0], [0, 0, 1]])
+        shear_mat = numpy.matrix([[1, 0, 0], [shear, 1, 0], [0, 0, 1]])
+        tmat = rot_mat * shear_mat * ps_mat
+        tmat[0, 2] = tx
+        tmat[1, 2] = ty
+        metadata = get_img_transformation_md(tmat)
+        print metadata
+        self.assertEqual((tx, ty), metadata[model.MD_POS])
+        self.assertEqual(scale, metadata[model.MD_PIXEL_SIZE])
+        self.assertEqual(rot, metadata[model.MD_ROTATION])
+        self.assertEqual(shear, metadata[model.MD_SHEAR])
+
 
 if __name__ == "__main__":
     unittest.main()
