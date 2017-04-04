@@ -363,3 +363,32 @@ def get_tile_md_pos(i, tile_size, tileda, origda):
     # calculate the final position of the tile, in world coordinates
     tile_pos_world_final = md_pos + new_tile_pos_rel
     return tuple(tile_pos_world_final)
+
+def get_img_transformation_md(mat):
+    """
+    Computes the metadata of the transformations from the transformation matrix
+    mat (ndarray of shape 3,3): transformation matrix
+    return (dict str value): metadata MD_POS, MD_PIXEL_SIZE, MD_ROTATION, MD_SHEAR.
+    """
+    tx = mat[0, 2]
+    ty = mat[1, 2]
+
+    a = mat[0, 0]
+    b = mat[0, 1]
+    c = mat[1, 0]
+    d = mat[1, 1]
+
+    sx = math.sqrt(math.pow(a, 2) + math.pow(c, 2))
+    sy = math.sqrt(math.pow(b, 2) + math.pow(d, 2))
+
+    t1 = math.atan(c / d)
+    t2 = math.atan(-b / a)
+
+    metadata = {}
+    metadata[model.MD_POS] = (tx, ty)
+    # TODO needs the original PIXEL SIZE?
+    metadata[model.MD_PIXEL_SIZE] = (sx, sy)
+    metadata[model.MD_ROTATION] = (t1 + t2) / 2.0
+    # TODO calculate shear
+    metadata[model.MD_SHEAR] = 0.0
+    return metadata
