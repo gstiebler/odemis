@@ -34,6 +34,8 @@ class TestKeypoint(unittest.TestCase):
         imgs_folder = 'C:/Projetos/Delmic/iCLEM/images/'
         ima = cv2.imread(imgs_folder + '20141014-113042_1.jpg', 0)
         imb = cv2.imread(imgs_folder + '001_CBS_010.jpg', 0)
+        # ima = cv2.imread(imgs_folder + 'Slice69.tif', 0)
+        # imb = cv2.imread(imgs_folder + 'g_009.tif', 0)
         tmat = keypoint.FindTransform(ima, imb)
         warped_im = cv2.warpPerspective(ima, tmat, (imb.shape[1], imb.shape[0]))
         merged_im = cv2.addWeighted(imb, 0.5, warped_im, 0.5, 0.0)
