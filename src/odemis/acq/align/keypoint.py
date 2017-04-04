@@ -64,22 +64,23 @@ def FindTransform(ima, imb):
     # sift = cv2.xfeatures2d.SIFT_create()
     # ima_kp = cv2.drawKeypoints(ima, kp)
 
-    # Initiate ORB detector
-    orb = cv2.ORB()
+    surf = cv2.SURF()
 
     # find and compute the descriptors with ORB
-    ima_kp, ima_des = orb.detectAndCompute(ima, None)
-    imb_kp, imb_des = orb.detectAndCompute(imb, None)
+    ima_kp, ima_des = surf.detectAndCompute(ima, None)
+    imb_kp, imb_des = surf.detectAndCompute(imb, None)
 
-    # create BFMatcher object
-    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-    # Match descriptors.
-    matches = bf.match(ima_des, imb_des)
-    # Sort them in the order of their distance.
-    sorted_matches = sorted(matches, key = lambda x:x.distance)
+    FLANN_INDEX_KDTREE = 0
+    index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
+    search_params = dict(checks = 50)
+    flann = cv2.FlannBasedMatcher(index_params, search_params)
+    matches = flann.knnMatch(ima_des,imb_des,k=2)
 
-    # get the best matches
-    selected_matches = sorted_matches[:NUM_SELECTED_KP]
+    # store all the good matches as per Lowe's ratio test.
+    selected_matches = []
+    for m,n in matches:
+        if m.distance < 0.7*n.distance:
+            selected_matches.append(m)
 
     # get keypoints for selected matches
     selected_ima_kp = [list(ima_kp[m.queryIdx].pt) for m in selected_matches]
