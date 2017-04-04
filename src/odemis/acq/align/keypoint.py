@@ -85,11 +85,11 @@ def FindTransform(ima, imb):
     selected_ima_kp = [list(ima_kp[m.queryIdx].pt) for m in selected_matches]
     selected_imb_kp = [list(imb_kp[m.trainIdx].pt) for m in selected_matches]
 
-    selected_ima_kp = np.array([selected_ima_kp]).astype(np.int)
-    selected_imb_kp = np.array([selected_imb_kp]).astype(np.int)
+    selected_ima_kp = np.array([selected_ima_kp])
+    selected_imb_kp = np.array([selected_imb_kp])
 
     # testing detecting the matching points automatically
-    mat = cv2.estimateRigidTransform(selected_ima_kp, selected_imb_kp, True)
+    mat, mask = cv2.findHomography(selected_ima_kp, selected_imb_kp, cv2.RANSAC)
     if mat is None:
         raise ValueError("The images does not match")
 
