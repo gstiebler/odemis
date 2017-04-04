@@ -333,7 +333,10 @@ class AcquisitionDialog(xrcfr_plugin):
         data_model = MicroscopyGUIData(plugin.main_app.main_data)
         self.microscope_view = MicroscopeView("Plugin View")
         data_model.focussedView = VigilantAttribute(self.microscope_view)
-        self.viewport.setView(self.microscope_view, data_model)
+        self.viewport_l.setView(self.microscope_view, data_model)
+
+        self.microscope_view_r = MicroscopeView("Plugin View2")
+        self.viewport_r.setView(self.microscope_view_r, data_model)
 
         self.streambar_controller = StreamBarController(
             data_model,
@@ -420,10 +423,9 @@ class AcquisitionDialog(xrcfr_plugin):
         returns (StreamController): the stream entry
 
         """
-
-        if not self.fp_streams.IsShown() or not self.viewport.IsShown():
+        if not self.fp_streams.IsShown() or not self.viewport_l.IsShown():
             self.fp_streams.Show()
-            self.viewport.Show()
+            self.viewport_l.Show()
             self.Layout()
             self.Fit()
             self.Update()

@@ -26,6 +26,7 @@ import re
 import yaml
 from odemis import model
 import numpy
+import cv2
 import math
 
 
@@ -363,3 +364,72 @@ def get_tile_md_pos(i, tile_size, tileda, origda):
     # calculate the final position of the tile, in world coordinates
     tile_pos_world_final = md_pos + new_tile_pos_rel
     return tuple(tile_pos_world_final)
+
+def get_img_transformation_md(mat, image, src_img):
+    """
+    Computes the metadata of the transformations from the transformation matrix
+    It is an approximation, as a 3 x 3 matrix cannot be fully represented only
+    with translation, scale, rotation and shear.
+    mat (ndarray of shape 3,3): transformation matrix
+    image (numpy.array): Transformed image
+    src_image (numpy.array): Source image
+    return (dict str value): metadata MD_POS, MD_PIXEL_SIZE, MD_ROTATION, MD_SHEAR.
+    """
+
+    b = mat[0, 1]
+    d = mat[1, 1]
+
+    half_size = ((image.shape[1] / 2, image.shape[0] / 2))
+    img_src_center = ((src_img.shape[1] / 2, src_img.shape[0] / 2))
+    centers_dif = (img_src_center[0] - half_size[0], img_src_center[1] - half_size[1])
+
+    points = [
+        [half_size[0], half_size[1]],
+        [0.0, 0.0],
+        [image.shape[1], 0.0],
+        [0.0, image.shape[0]],
+        [image.shape[1], image.shape[0]]
+    ]
+    converted_points = cv2.perspectiveTransform(numpy.array([numpy.array(points)]), mat)[0]
+
+    # project some key points from the original image on the transformed image
+    center_point = converted_points[0]
+    top_left_point = converted_points[1]
+    top_right_point = converted_points[2]
+    bottom_left_point = converted_points[3]
+
+    dif_x = top_right_point[0] - top_left_point[0]
+    dif_y = top_right_point[1] - top_left_point[1]
+
+    top_length = math.sqrt(math.pow(dif_x, 2) + math.pow(dif_y, 2))
+    scale_x = top_length / image.shape[1]
+
+    def length(p1, p2):
+        dif_x = p2[0] - p1[0]
+        dif_y = p2[1] - p1[1]
+        return math.sqrt(math.pow(dif_x, 2) + math.pow(dif_y, 2))
+
+    left_length = length(top_left_point, bottom_left_point)
+    scale_y = left_length / image.shape[0]
+
+    top_length = length(top_left_point, top_right_point)
+    diag_length = length(bottom_left_point, top_right_point)
+    # using the law of cosines
+    corner_ang = math.acos((math.pow(left_length, 2) + math.pow(top_length, 2) - math.pow(diag_length, 2)) /
+            (2 * left_length * top_length))
+    shear = math.tan(corner_ang - math.pi / 2)
+
+    sin_full = -b / scale_y
+    cos_full = d / scale_y
+    rot = math.atan2(sin_full, cos_full)
+
+    translation_x = center_point[0] - img_src_center[0]
+    translation_y = center_point[1] - img_src_center[1]
+
+    metadata = {}
+    metadata[model.MD_POS] = (translation_x, -translation_y)
+    metadata[model.MD_PIXEL_SIZE] = (scale_x, scale_y)
+    metadata[model.MD_ROTATION] = -rot
+    metadata[model.MD_SHEAR] = shear
+
+    return metadata
