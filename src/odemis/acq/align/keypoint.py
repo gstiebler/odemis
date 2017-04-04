@@ -40,8 +40,8 @@ def FindTransform(ima, imb):
     ValueError: if no good transformation is found.
     """
 
-    # Invert the image
-    #ima = 255 - ima
+    # Invert the image brightness
+    ima = 255 - ima
 
     ima_height = ima.shape[0]
     # calculate the height of the bar
@@ -56,19 +56,15 @@ def FindTransform(ima, imb):
     imb = cv2.equalizeHist(imb)
 
     # blur (window size must be odd)
-    # ima = cv2.GaussianBlur(ima, (41, 41), 10)
+    ima = cv2.GaussianBlur(ima, (41, 41), 10)
+    imb = cv2.GaussianBlur(imb, (21, 21), 5)
 
-    # TODO resize?
+    # instantiate the feature detector
+    feature_detector = cv2.SIFT()
 
-    # With sift, not available on default OpenCV installation
-    # sift = cv2.xfeatures2d.SIFT_create()
-    # ima_kp = cv2.drawKeypoints(ima, kp)
-
-    surf = cv2.SURF()
-
-    # find and compute the descriptors with ORB
-    ima_kp, ima_des = surf.detectAndCompute(ima, None)
-    imb_kp, imb_des = surf.detectAndCompute(imb, None)
+    # find and compute the descriptors
+    ima_kp, ima_des = feature_detector.detectAndCompute(ima, None)
+    imb_kp, imb_des = feature_detector.detectAndCompute(imb, None)
 
     FLANN_INDEX_KDTREE = 0
     index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
@@ -79,12 +75,18 @@ def FindTransform(ima, imb):
     # store all the good matches as per Lowe's ratio test.
     selected_matches = []
     for m,n in matches:
-        if m.distance < 0.7*n.distance:
+        if m.distance < 0.7 * n.distance:
             selected_matches.append(m)
 
     # get keypoints for selected matches
     selected_ima_kp = [list(ima_kp[m.queryIdx].pt) for m in selected_matches]
     selected_imb_kp = [list(imb_kp[m.trainIdx].pt) for m in selected_matches]
+
+    # ima_painted_kp = cv2.drawKeypoints(ima, ima_kp, None, color=(0,255,0), flags=0)
+    # imb_painted_kp = cv2.drawKeypoints(imb, imb_kp, None, color=(0,255,0), flags=0)
+    # imgs_folder = 'C:/Projetos/Delmic/iCLEM/images/'
+    # cv2.imwrite(imgs_folder + 'ima_painted_kp.jpg', ima_painted_kp)
+    # cv2.imwrite(imgs_folder + 'imb_painted_kp.jpg', imb_painted_kp)
 
     selected_ima_kp = np.array([selected_ima_kp])
     selected_imb_kp = np.array([selected_imb_kp])
