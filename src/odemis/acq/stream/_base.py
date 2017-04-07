@@ -167,7 +167,7 @@ class Stream(object):
         # The drawback of not using the full image, is that some of the pixels are lost, so
         # maybe the max/min of the smaller image is different from the min/max of the full image.
         # And the histogram of both images will probably be a bit different also.
-        if isinstance(self.raw, tuple):
+        if hasattr(self, '_das'):
             # if the image is pyramidal, use the smaller image
             drange_raw = self._getMergedRawImage(self._das.maxzoom)
         else:

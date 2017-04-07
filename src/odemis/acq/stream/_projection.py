@@ -115,7 +115,7 @@ class RGBSpatialProjection(DataProjection):
         self.stream.auto_bc.subscribe(self.needImageUpdate)
         self.stream.auto_bc_outliers.subscribe(self.needImageUpdate)
 
-        if isinstance(stream.raw, tuple):
+        if hasattr(stream, '_das'):
             raw = stream._das
             md = raw.metadata
             # get the pixel size of the full image
