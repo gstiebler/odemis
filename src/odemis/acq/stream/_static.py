@@ -48,47 +48,7 @@ class StaticStream(Stream):
         Note: parameters are different from the base class.
         raw (DataArray, DataArrayShadow or list of DataArray): The data to display.
         """
-        if isinstance(raw, model.DataArray):
-            raw = [raw]
-        elif isinstance(raw, list):
-            if len(raw) > 0 and not isinstance(raw[0], model.DataArray):
-                raise ValueError("'raw' must be a list of DataArray")
-        elif isinstance(raw, model.DataArrayShadow):
-            if hasattr(raw, 'maxzoom'):
-                md = raw.metadata
-                # get the pixel size of the full image
-                ps = md[model.MD_PIXEL_SIZE]
-                max_mpp = ps[0] * (2 ** raw.maxzoom)
-                # sets the mpp as the X axis of the pixel size of the full image
-                mpp_rng = (ps[0], max_mpp)
-                self.mpp = model.FloatContinuous(max_mpp, mpp_rng, setter=self._set_mpp)
-                self.mpp.subscribe(self._on_mpp)
-
-                full_rect = img._getBoundingBox(raw)
-                l, t, r, b = full_rect
-                rect_range = ((l, b, l, b), (r, t, r, t))
-                self.rect = model.TupleContinuous(full_rect, rect_range)
-                self.rect.subscribe(self._on_rect)
-            else:
-                # If raw does not have maxzoom,
-                # StaticStream should behave as when raw is a DataArray
-                raw = [raw.getData()]
-        else:
-            raise ValueError("'raw' must be a list of DataArray or a DataArrayShadow")
-
         super(StaticStream, self).__init__(name, None, None, None, raw=raw)
-
-    def _set_mpp(self, mpp):
-        ps0 = self.mpp.range[0]
-        exp = math.log(mpp / ps0, 2)
-        exp = round(exp)
-        return ps0 * 2 ** exp
-
-    def _on_mpp(self, mpp):
-        self._shouldUpdateImage()
-
-    def _on_rect(self, mpp):
-        self._shouldUpdateImage()
 
 
 class RGBStream(StaticStream):
@@ -113,25 +73,6 @@ class RGBStream(StaticStream):
                 raise ValueError("Data must be RGB(A)")
 
         super(RGBStream, self).__init__(name, raw)
-
-    # Copy from RGBCameraStream
-    def _updateImage(self):
-        # Just pass the RGB data on
-
-        if not self.raw:
-            return
-
-        # TODO: use original image as raw, to allow changing the B/C/tint
-        try:
-            data = self.raw[0]
-            rgbim = img.ensureYXC(data)
-            rgbim.flags.writeable = False
-            # merge and ensures all the needed metadata is there
-            rgbim.metadata = self._find_metadata(rgbim.metadata)
-            rgbim.metadata[model.MD_DIMS] = "YXC" # RGB format
-            self.image.value = rgbim
-        except Exception:
-            logging.exception("Updating %s image", self.__class__.__name__)
 
 
 class Static2DStream(StaticStream):

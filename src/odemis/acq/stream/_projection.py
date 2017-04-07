@@ -41,10 +41,6 @@ class DataProjection(object):
         stream (Stream): the Stream to project
         '''
         self.stream = stream
-
-        # TODO: We need to reorganise everything so that the
-        # image display is done via a dataflow (in a separate thread), instead
-        # of a VA.
         self._im_needs_recompute = threading.Event()
         weak = weakref.ref(self)
         self._imthread = threading.Thread(target=self._image_thread,
@@ -62,7 +58,7 @@ class DataProjection(object):
         asking for it.
 
         Args:
-            wstream (Weakref to a Stream): the stream to follow
+            wprojection (Weakref to a DataProjection): the data projection to follow
 
         """
 
@@ -112,9 +108,7 @@ class RGBSpatialProjection(DataProjection):
         self.should_update = model.BooleanVA(False)
         self.name = stream.name
         self.image = model.VigilantAttribute(None)
-        #self.image.subscribe(self._onImageUpdated)
 
-        # self.stream.image.subscribe(self._onStreamImageUpdated)
         # Don't call at init, so don't set metadata if default value
         self.stream.tint.subscribe(self.needImageUpdate)
         self.stream.intensityRange.subscribe(self.needImageUpdate)
@@ -124,9 +118,6 @@ class RGBSpatialProjection(DataProjection):
         if isinstance(stream.raw, tuple):
             raw = stream._das
             md = raw.metadata
-            # TODO The code below is copied from StaticStream. Someday StaticStream will
-            # not have this code anymore
-
             # get the pixel size of the full image
             ps = md[model.MD_PIXEL_SIZE]
             max_mpp = ps[0] * (2 ** raw.maxzoom)
@@ -220,7 +211,7 @@ class RGBSpatialProjection(DataProjection):
         self._im_needs_recompute.set()
 
     def getBoundingBox(self):
-        ''' Get the bounding box. I
+        ''' Get the bounding box of the whole image, whether it`s tiled or not.
         return (tuple of floats(l,t,r,b)): Tuple with the bounding box
         Raises:
             ValueError: If the .image member is not set

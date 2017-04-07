@@ -874,10 +874,8 @@ class Stream(object):
                 if raw.ndim != 2:
                     raw = img.ensure2DImage(raw)  # Remove extra dimensions (of length 1)
                 self.image.value = self._projectXY2RGB(raw, self.tint.value)
-            elif isinstance(self.raw, tuple):
-                pass
             else:
-                raise AttributeError(".raw must be a list of DA/DAS or a tuple of tuple of DA")
+                raise AttributeError(".raw must be a list of DA/DAS")
 
         except Exception:
             logging.exception("Updating %s %s image", self.__class__.__name__, self.name.value)
