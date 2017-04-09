@@ -40,25 +40,6 @@ def FindTransform(ima, imb):
     ValueError: if no good transformation is found.
     """
 
-    # Invert the image brightness
-    ima = 255 - ima
-
-    ima_height = ima.shape[0]
-    # calculate the height of the bar
-    barLen = int(ima_height * BAR_LEN_FACTOR)
-
-    # remove the bar on both images
-    ima = ima[:-barLen, :]
-    imb = imb[:-barLen, :]
-
-    # equalize histogram
-    ima = cv2.equalizeHist(ima)
-    imb = cv2.equalizeHist(imb)
-
-    # blur (window size must be odd)
-    ima = cv2.GaussianBlur(ima, (41, 41), 10)
-    imb = cv2.GaussianBlur(imb, (21, 21), 5)
-
     # instantiate the feature detector
     feature_detector = cv2.SIFT()
 
@@ -97,3 +78,28 @@ def FindTransform(ima, imb):
         raise ValueError("The images does not match")
 
     return mat
+
+def Preprocess(ima, imb):
+    # invert on Y axis
+    ima = cv2.flip(ima, 0)
+
+    # Invert the image brightness
+    ima = 255 - ima
+
+    ima_height = ima.shape[0]
+    # calculate the height of the bar
+    barLen = int(ima_height * BAR_LEN_FACTOR)
+
+    # remove the bar on both images
+    ima = ima[:-barLen, :]
+    imb = imb[:-barLen, :]
+
+    # equalize histogram
+    ima = cv2.equalizeHist(ima)
+    imb = cv2.equalizeHist(imb)
+
+    # blur (window size must be odd)
+    ima = cv2.GaussianBlur(ima, (41, 41), 10)
+    imb = cv2.GaussianBlur(imb, (21, 21), 5)
+
+    return ima, imb
