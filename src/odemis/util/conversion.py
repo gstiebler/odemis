@@ -370,25 +370,23 @@ def get_img_transformation_md(mat):
     mat (ndarray of shape 3,3): transformation matrix
     return (dict str value): metadata MD_POS, MD_PIXEL_SIZE, MD_ROTATION, MD_SHEAR.
     """
-    tx = mat[0, 2]
-    ty = mat[1, 2]
+    translation_x = mat[0, 2]
+    translation_y = mat[1, 2]
 
-    a = mat[0, 0]
-    b = mat[0, 1]
-    c = mat[1, 0]
-    d = mat[1, 1]
+    cossh = mat[0, 0]
+    sinv = mat[0, 1]
+    cosv = mat[1, 0]
+    sinsh = mat[1, 1]
 
-    sx = math.sqrt(math.pow(a, 2) + math.pow(c, 2))
-    sy = math.sqrt(math.pow(b, 2) + math.pow(d, 2))
-
-    t1 = math.atan(c / d)
-    t2 = math.atan(-b / a)
+    rot = math.atan2(sinv, cosv) % (2 * math.pi)
+    scaling_y = math.sqrt(math.pow(sinv, 2) + math.pow(cosv, 2))
+    scaling_x = cossh * math.cos(rot) - sinsh * math.sin(rot)
+    shear = (cossh * math.sin(rot) + sinsh * math.cos(rot)) / scaling_x
 
     metadata = {}
-    metadata[model.MD_POS] = (tx, ty)
+    metadata[model.MD_POS] = (translation_x, translation_y)
     # TODO needs the original PIXEL SIZE?
-    metadata[model.MD_PIXEL_SIZE] = (sx, sy)
-    metadata[model.MD_ROTATION] = (t1 + t2) / 2.0
-    # TODO calculate shear
-    metadata[model.MD_SHEAR] = 0.0
+    metadata[model.MD_PIXEL_SIZE] = (scaling_x, scaling_y)
+    metadata[model.MD_ROTATION] = rot
+    metadata[model.MD_SHEAR] = shear
     return metadata
