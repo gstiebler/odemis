@@ -881,7 +881,7 @@ class StreamView(View):
             self.stream_classes = stream_classes
         self._stage = stage
 
-        # add RGBSpatialProjection as a valid stream class 
+        # add RGBSpatialProjection as a valid stream class
         if isinstance(self.stream_classes, tuple):
             self.stream_classes = self.stream_classes + (RGBSpatialProjection,)
         else:

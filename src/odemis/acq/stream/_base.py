@@ -107,9 +107,9 @@ class Stream(object):
         # every time it's modified, image is also modified
         if raw is None:
             self.raw = []
-        elif isinstance(raw, model.DataArrayShadow):
-            self._das = raw
-            self.raw = (())
+        elif isinstance(raw[0], model.DataArrayShadow):
+            self._das = raw[0]
+            self.raw =  (())
         else:
             self.raw = raw
 

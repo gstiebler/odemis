@@ -62,11 +62,11 @@ class RGBStream(StaticStream):
         """
         # Check it's RGB
         if isinstance(raw, (model.DataArray, model.DataArrayShadow)):
-            r = [raw]
+            raw = [raw]
         else:
-            r = raw
+            raw = raw
 
-        for d in r:
+        for d in raw:
             dims = d.metadata.get(model.MD_DIMS, "CTZYX"[-d.ndim::])
             ci = dims.find("C")  # -1 if not found
             if not (dims in ("CYX", "YXC") and d.shape[ci] in (3, 4)):
@@ -85,17 +85,7 @@ class Static2DStream(StaticStream):
         Note: parameters are different from the base class.
         raw (DataArray or DataArrayShadow): The data to display.
         """
-        # Check it's 2D
-        if isinstance(raw, (model.DataArray, model.DataArrayShadow)):
-            r = [raw]
-        else:
-            r = raw
-
-        for d in r:
-            if len(d.shape) < 2:
-                raise ValueError("Data must be 2D")
-
-        super(Static2DStream, self).__init__(name, raw)
+        super(Static2DStream, self).__init__(name, [raw])
 
 
 class StaticSEMStream(Static2DStream):
