@@ -80,6 +80,12 @@ def FindTransform(ima, imb):
     return mat
 
 def Preprocess(ima, imb):
+    if ima.ndim > 2:
+        ima = cv2.cvtColor(ima, cv2.COLOR_RGB2GRAY)
+
+    if imb.ndim > 2:
+        imb = cv2.cvtColor(imb, cv2.COLOR_RGB2GRAY)
+
     # invert on Y axis
     ima = cv2.flip(ima, 0)
 
