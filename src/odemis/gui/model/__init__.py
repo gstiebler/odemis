@@ -1215,7 +1215,7 @@ class StreamView(View):
         If the stream is already present, nothing happens
         """
 
-        if isinstance(stream, StaticStream):
+        if not hasattr(stream, 'image'):
             # if the stream is a StaticStream, create a RGBSpatialProjection for it
             stream = RGBSpatialProjection(stream)
 
