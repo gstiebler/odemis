@@ -32,7 +32,7 @@ import gc
 
 from odemis import model
 from odemis.util import img
-from odemis.acq.stream import RGBStream
+
 
 class DataProjection(object):
 
@@ -316,7 +316,7 @@ class RGBSpatialProjection(DataProjection):
         tile (DataArray): Raw tile
         return (DataArray): Projected tile
         """
-        if isinstance(self.stream, RGBStream):
+        if self.stream.__class__.__name__ == 'RGBStream':
             # Just pass the RGB data on
             tile = img.ensureYXC(tile)
             tile.flags.writeable = False
