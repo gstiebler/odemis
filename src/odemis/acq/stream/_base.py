@@ -97,11 +97,7 @@ class Stream(object):
         # image display is done via a dataflow (in a separate thread), instead
         # of a VA.
         self._im_needs_recompute = threading.Event()
-        self._imthread = threading.Thread(target=self._image_thread,
-                                          args=(weakref.ref(self),),
-                                          name="Image computation")
-        self._imthread.daemon = True
-        self._imthread.start()
+        self._init_thread()
 
         # list of DataArray received and used to generate the image
         # every time it's modified, image is also modified
@@ -121,9 +117,6 @@ class Stream(object):
         # TODO: should better be based on a BufferedDataFlow: subscribing starts
         # acquisition and sends (raw) data to whoever is interested. .get()
         # returns the previous or next image acquired.
-
-        # DataArray or None: RGB projection of the raw data
-        self.image = model.VigilantAttribute(None)
 
         # indicating if stream has already been prepared
         self._prepared = False
@@ -150,15 +143,6 @@ class Stream(object):
         self._drange = None  # min/max data range, or None if unknown
         self._drange_unreliable = True  # if current values are a rough guess (based on detector)
 
-        # TODO: move to a "Projection" class, layer between Stream and GUI.
-        # whether to use auto brightness & contrast
-        self.auto_bc = model.BooleanVA(True)
-        # % of values considered outliers discarded in auto BC detection
-        # Note: 1/256th is a nice value because on RGB, it means in degenerated
-        # cases (like flat histogram), you still loose only one value on each
-        # side.
-        self.auto_bc_outliers = model.FloatContinuous(100 / 256, range=(0, 40))
-
         # drange_raw is the smaller (less zoomed) image of an pyramidal image. It is used
         # instead of the full image because it would be too slow or even impossible to read
         # the full data from the image to the memory. It is also not the tiles from the tiled
@@ -172,6 +156,18 @@ class Stream(object):
             drange_raw = self._getMergedRawImage(self._das.maxzoom)
         else:
             drange_raw = None
+
+        # TODO: move to the DataProjection class
+        self.auto_bc = model.BooleanVA(True)
+
+        # % of values considered outliers discarded in auto BC detection
+        # Note: 1/256th is a nice value because on RGB, it means in degenerated
+        # cases (like flat histogram), you still loose only one value on each
+        # side.
+        self.auto_bc_outliers = model.FloatContinuous(100 / 256, range=(0, 40))
+        self.tint = model.ListVA((255, 255, 255), unit="RGB")  # 3-int R,G,B
+
+        self._init_projection_vas()
 
         # Used if auto_bc is False
         # min/max ratio of the whole intensity level which are mapped to
@@ -191,16 +187,8 @@ class Stream(object):
         self.histogram._full_hist = numpy.ndarray(0) # for finding the outliers
         self.histogram._edges = None
 
-        self.auto_bc.subscribe(self._onAutoBC)
-        self.auto_bc_outliers.subscribe(self._onOutliers)
-        self.intensityRange.subscribe(self._onIntensityRange)
-
         # Tuple of (int, str) or (None, None): loglevel and message
         self.status = model.VigilantAttribute((None, None), readonly=True)
-
-        self.tint = model.ListVA((255, 255, 255), unit="RGB")  # 3-int R,G,B
-        # Don't call at init, so don't set metadata if default value
-        self.tint.subscribe(self.onTint)
 
         # if there is already some data, update image with it
         # TODO: have this done by the child class, if needed.
@@ -214,6 +202,29 @@ class Stream(object):
 
         # When True, the projected tiles cache should be invalidated
         self._projectedTilesInvalid = False
+
+    def _init_projection_vas(self):
+        """ Initialize the VAs related with image projection
+        """
+        # DataArray or None: RGB projection of the raw data
+        self.image = model.VigilantAttribute(None)
+
+        self.auto_bc.subscribe(self._onAutoBC)
+        self.auto_bc_outliers.subscribe(self._onOutliers)
+
+        # Don't call at init, so don't set metadata if default value
+        self.tint.subscribe(self.onTint)
+
+        self.intensityRange.subscribe(self._onIntensityRange)
+
+    def _init_thread(self):
+        """ Initialize the thread that updates the image
+        """
+        self._imthread = threading.Thread(target=self._image_thread,
+                                          args=(weakref.ref(self),),
+                                          name="Image computation")
+        self._imthread.daemon = True
+        self._imthread.start()
 
     # No __del__: subscription should be automatically stopped when the object
     # disappears, and the user should stop the update first anyway.

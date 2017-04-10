@@ -50,6 +50,17 @@ class StaticStream(Stream):
         """
         super(StaticStream, self).__init__(name, None, None, None, raw=raw)
 
+    def _init_projection_vas(self):
+        ''' On StaticStreams, the projection is done on RGBSpatialProjection
+        '''
+        pass
+
+    def _init_thread(self):
+        ''' The thread for updating the image on StaticStream resides on DataProjection
+            TODO remove this function when all the streams become projectionless
+        '''
+        pass
+
 
 class RGBStream(StaticStream):
     """
