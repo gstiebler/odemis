@@ -24,9 +24,9 @@ Odemis. If not, see http://www.gnu.org/licenses/.
 import unittest
 import logging
 from odemis.acq.align import keypoint
-
 import cv2
 from odemis.util.conversion import get_img_transformation_md
+from odemis.util.dataio import open_acquisition
 
 class TestKeypoint(unittest.TestCase):
 
@@ -34,8 +34,8 @@ class TestKeypoint(unittest.TestCase):
         imgs_folder = 'C:/Projetos/Delmic/iCLEM/images/'
         # ima = cv2.imread(imgs_folder + '20141014-113042_1.jpg', 0)
         # imb = cv2.imread(imgs_folder + '001_CBS_010.jpg', 0)
-        ima = cv2.imread(imgs_folder + 'Slice69.tif', 0)
-        imb = cv2.imread(imgs_folder + 'g_009.tif', 0)
+        ima = open_acquisition(imgs_folder + 'Slice69.tif')[0].getData()
+        imb = open_acquisition(imgs_folder + 'g_009.tif')[0].getData()
         ima, imb = keypoint.Preprocess(ima, imb)
         tmat = keypoint.FindTransform(ima, imb)
         warped_im = cv2.warpPerspective(ima, tmat, (imb.shape[1], imb.shape[0]))
