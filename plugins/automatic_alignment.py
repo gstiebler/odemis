@@ -41,6 +41,7 @@ from odemis.acq import stream
 from odemis.gui.plugin import Plugin, AcquisitionDialog
 from odemis.util.dataio import data_to_static_streams, open_acquisition
 from odemis.acq.align import keypoint
+from odemis.util.conversion import get_img_transformation_md
 
 class VAHolder(object):
     pass
@@ -160,13 +161,25 @@ class AutomaticOverlayPlugin(Plugin):
         # merged_im = cv2.addWeighted(imb, 0.5, warped_im, 0.5, 0.0)
         # cv2.imwrite(imgs_folder + 'warped.jpg', merged_im)
 
-        print tmat
         transf_md = get_img_transformation_md(tmat)
+        logging.debug(tmat)
+        logging.debug(transf_md)
 
-        self._semStream.raw[0].metadata[model.MD_POS] = transf_md[model.MD_POS]
-        self._semStream.raw[0].metadata[model.MD_PIXEL_SIZE] = transf_md[model.MD_PIXEL_SIZE]
+        ps = transf_md[model.MD_PIXEL_SIZE]
+        orig_ps = self._semStream.raw[0].metadata.get(model.MD_PIXEL_SIZE, (0.0, 0.0))
+        new_ps = (math.fabs(orig_ps[0] * ps[0]), math.fabs(orig_ps[1] * ps[1]))
+
+        pos_corr = transf_md[model.MD_POS]
+        ima_ps = self._semStream.raw[0].metadata.get(model.MD_PIXEL_SIZE, (0.0, 0.0))
+        pos_corr = (pos_corr[0] * ima_ps[0], pos_corr[1] * ima_ps[1])
+        orig_pos = self._semStream.raw[0].metadata.get(model.MD_POS, (0.0, 0.0))
+        new_pos = (orig_pos[0] + pos_corr[0], orig_pos[1] + pos_corr[1])
+
+        # self._semStream.raw[0].metadata[model.MD_POS] = new_pos
+        self._semStream.raw[0].metadata[model.MD_PIXEL_SIZE] = new_ps
         self._semStream.raw[0].metadata[model.MD_ROTATION] = transf_md[model.MD_ROTATION]
         self._semStream.raw[0].metadata[model.MD_SHEAR] = transf_md[model.MD_SHEAR]
+        self._semStream._shouldUpdateImage()
 
     def _on_trans(self, stream, i, value):
         logging.debug("New trans = %f on stream %s", value, stream.name.value)
