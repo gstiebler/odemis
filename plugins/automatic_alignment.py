@@ -40,6 +40,7 @@ from odemis import model
 from odemis.acq import stream
 from odemis.gui.plugin import Plugin, AcquisitionDialog
 from odemis.util.dataio import data_to_static_streams, open_acquisition
+from odemis.acq.align import keypoint
 
 class VAHolder(object):
     pass
@@ -65,6 +66,8 @@ class AutomaticOverlayPlugin(Plugin):
         tab_data = self.main_app.main_data.tab.value.tab_data_model
         for i, stream in enumerate(tab_data.streams.value):
             dlg.addStream(stream)
+            # TODO always use the last?
+            self._semStream = stream
 
             # Add 5 VAs for each stream, to modify the overlay metadata
             poscor = stream.raw[0].metadata.get(model.MD_POS_COR, (0, 0))
@@ -108,6 +111,7 @@ class AutomaticOverlayPlugin(Plugin):
 
         dlg.addSettings(vah, vaconf)
         dlg.addButton("Open image", self.open_image, face_colour='blue')
+        dlg.addButton("Align", self.align, face_colour='blue')
         # TODO: add a 'reset' button
         dlg.addButton("Done", None, face_colour='blue')
         dlg.ShowModal()
@@ -145,6 +149,24 @@ class AutomaticOverlayPlugin(Plugin):
         data = open_acquisition('C:/Projetos/Delmic/iCLEM/images/g_009.tif')
         stream = data_to_static_streams(data)
         dlg.addStream(stream[0])
+        self._temStream = stream[0]
+
+    def align(self, dlg):
+        ima = self._semStream.raw[0]
+        imb = self._temStream.raw[0]
+        ima, imb = keypoint.Preprocess(ima, imb)
+        tmat = keypoint.FindTransform(ima, imb)
+        # warped_im = cv2.warpPerspective(ima, tmat, (imb.shape[1], imb.shape[0]))
+        # merged_im = cv2.addWeighted(imb, 0.5, warped_im, 0.5, 0.0)
+        # cv2.imwrite(imgs_folder + 'warped.jpg', merged_im)
+
+        print tmat
+        transf_md = get_img_transformation_md(tmat)
+
+        self._semStream.raw[0].metadata[model.MD_POS] = transf_md[model.MD_POS]
+        self._semStream.raw[0].metadata[model.MD_PIXEL_SIZE] = transf_md[model.MD_PIXEL_SIZE]
+        self._semStream.raw[0].metadata[model.MD_ROTATION] = transf_md[model.MD_ROTATION]
+        self._semStream.raw[0].metadata[model.MD_SHEAR] = transf_md[model.MD_SHEAR]
 
     def _on_trans(self, stream, i, value):
         logging.debug("New trans = %f on stream %s", value, stream.name.value)
