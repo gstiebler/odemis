@@ -50,17 +50,6 @@ class StaticStream(Stream):
         """
         super(StaticStream, self).__init__(name, None, None, None, raw=raw)
 
-    def _init_projection_vas(self):
-        ''' On StaticStreams, the projection is done on RGBSpatialProjection
-        '''
-        pass
-
-    def _init_thread(self):
-        ''' The thread for updating the image on StaticStream resides on DataProjection
-            TODO remove this function when all the streams become projectionless
-        '''
-        pass
-
 
 class RGBStream(StaticStream):
     """
@@ -85,6 +74,17 @@ class RGBStream(StaticStream):
 
         super(RGBStream, self).__init__(name, raw)
 
+    def _init_projection_vas(self):
+        ''' On RGBStream, the projection is done on RGBSpatialProjection
+        '''
+        pass
+
+    def _init_thread(self):
+        ''' The thread for updating the image on RGBStream resides on DataProjection
+            TODO remove this function when all the streams become projectionless
+        '''
+        pass
+
 
 class Static2DStream(StaticStream):
     """
@@ -97,6 +97,17 @@ class Static2DStream(StaticStream):
         raw (DataArray or DataArrayShadow): The data to display.
         """
         super(Static2DStream, self).__init__(name, [raw])
+
+    def _init_projection_vas(self):
+        ''' On Static2DStream, the projection is done on RGBSpatialProjection
+        '''
+        pass
+
+    def _init_thread(self):
+        ''' The thread for updating the image on Static2DStream resides on DataProjection
+            TODO remove this function when all the streams become projectionless
+        '''
+        pass
 
 
 class StaticSEMStream(Static2DStream):
