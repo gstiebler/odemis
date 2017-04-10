@@ -31,10 +31,35 @@ from odemis.util import img
 import threading
 import time
 import weakref
-# from odemis.acq import stream
-# from odemis.acq.stream._projection import projectImage
-# a = RGBSpatialProjection(None)
-from odemis.acq.stream import *
+
+
+
+def projectImage(stream):
+    """ Project the raw image, and return it
+    stream (Stream): The source stream
+    return (DataArray): Projected image
+    """
+    data = stream.raw[0]
+    dims = data.metadata.get(model.MD_DIMS, "CTZYX"[-data.ndim::])
+    ci = dims.find("C")  # -1 if not found
+    # is RGB
+    if dims in ("CYX", "YXC") and data.shape[ci] in (3, 4):
+        try:
+            rgbim = img.ensureYXC(data)
+            rgbim.flags.writeable = False
+            # merge and ensures all the needed metadata is there
+            rgbim.metadata = stream._find_metadata(rgbim.metadata)
+            rgbim.metadata[model.MD_DIMS] = "YXC" # RGB format
+            return rgbim
+        except Exception:
+            logging.exception("Updating %s image")
+    else: # is grayscale
+        raw = stream.raw[0]
+        if raw.ndim != 2:
+            raw = img.ensure2DImage(raw)  # Remove extra dimensions (of length 1)
+        return stream._projectXY2RGB(raw, stream.tint.value)
+
+
 
 # Contains the base of the streams. Can be imported from other stream modules.
 # to identify a ROI which must still be defined by the user

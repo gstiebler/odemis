@@ -1871,13 +1871,14 @@ class StaticStreamsTestCase(unittest.TestCase):
         da[15] = 2 ** 10
 
         fls = stream.StaticFluoStream(md[model.MD_DESCRIPTION], da)
+        pj = stream.RGBSpatialProjection(fls)
 
         self.assertEqual(fls.excitation.value, md[model.MD_IN_WL])
         self.assertEqual(fls.emission.value, md[model.MD_OUT_WL])
         self.assertEqual(tuple(fls.tint.value), md[model.MD_USER_TINT])
 
         time.sleep(0.5)  # wait a bit for the image to update
-        im = fls.image.value
+        im = pj.image.value
         self.assertEqual(im.shape, (512, 1024, 3))
         numpy.testing.assert_equal(im[0, 0], [0, 0, 0])
         numpy.testing.assert_equal(im[12, 1], md[model.MD_USER_TINT])
@@ -1902,10 +1903,11 @@ class StaticStreamsTestCase(unittest.TestCase):
         da = model.DataArray(1500 + numpy.zeros((512, 1024), dtype=numpy.uint16), md)
 
         cls = stream.StaticCLStream("test", da)
+        pj = stream.RGBSpatialProjection(cls)
         time.sleep(0.5)  # wait a bit for the image to update
 
         self.assertEqual(cls.emission.value, md[model.MD_OUT_WL])
-        self.assertEqual(cls.image.value.shape, (512, 1024, 3))
+        self.assertEqual(pj.image.value.shape, (512, 1024, 3))
 
     def test_small_hist(self):
         """Test small histogram computation"""
