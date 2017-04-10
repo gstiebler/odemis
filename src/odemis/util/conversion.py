@@ -373,20 +373,28 @@ def get_img_transformation_md(mat):
     translation_x = mat[0, 2]
     translation_y = mat[1, 2]
 
-    cossh = mat[0, 0]
-    sinv = mat[0, 1]
-    cosv = mat[1, 0]
-    sinsh = mat[1, 1]
+    a = mat[0, 0]
+    b = mat[0, 1]
+    c = mat[1, 0]
+    d = mat[1, 1]
 
-    rot = math.atan2(sinv, cosv) % (2 * math.pi)
-    scaling_y = math.sqrt(math.pow(sinv, 2) + math.pow(cosv, 2))
-    scaling_x = cossh * math.cos(rot) - sinsh * math.sin(rot)
-    shear = (cossh * math.sin(rot) + sinsh * math.cos(rot)) / scaling_x
+    sin = math.sqrt(1 / (math.pow(d, 2) / math.pow(b, 2) + 1))
+    cos = math.sqrt(1 - math.pow(sin, 2))
+
+    shear = (cos * c - sin * a) / (cos * a + sin * c)
+
+    scale_y = d / cos
+    scale_x = a / (cos - sin * shear)
+
+    sin_full = -b / scale_y
+    cos_full = d / scale_y
+    rot = math.atan2(sin_full, cos_full)
 
     metadata = {}
     metadata[model.MD_POS] = (translation_x, translation_y)
     # TODO needs the original PIXEL SIZE?
-    metadata[model.MD_PIXEL_SIZE] = (scaling_x, scaling_y)
+    metadata[model.MD_PIXEL_SIZE] = (scale_x, scale_y)
     metadata[model.MD_ROTATION] = rot
-    metadata[model.MD_SHEAR] = shear
+    metadata[model.MD_SHEAR] = -shear
+
     return metadata

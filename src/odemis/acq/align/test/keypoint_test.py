@@ -27,6 +27,9 @@ from odemis.acq.align import keypoint
 import cv2
 from odemis.util.conversion import get_img_transformation_md
 from odemis.util.dataio import open_acquisition
+import numpy
+import math
+from odemis import model
 
 class TestKeypoint(unittest.TestCase):
 
@@ -44,6 +47,24 @@ class TestKeypoint(unittest.TestCase):
 
         print tmat
         print get_img_transformation_md(tmat)
+
+    def test_get_img_transformation_md(self):
+        rot = 0.2
+        scale_x = 0.9
+        scale_y = 0.8
+        shear = -0.15
+        ps_mat = numpy.matrix([[scale_x, 0], [0, scale_y]])
+        rcos, rsin = math.cos(rot), math.sin(rot)
+        rot_mat = numpy.matrix([[rcos, -rsin], [rsin, rcos]])
+        shear_mat = numpy.matrix([[1, 0], [-shear, 1]])
+        tmat = rot_mat * shear_mat * ps_mat
+
+        tmat33 = numpy.zeros((3, 3), dtype=numpy.float)
+        tmat33[0:2, 0:2] = tmat
+        transf_md = get_img_transformation_md(tmat33)
+        self.assertAlmostEqual(rot, transf_md[model.MD_ROTATION])
+        self.assertEqual((scale_x, scale_y), transf_md[model.MD_PIXEL_SIZE])
+        self.assertAlmostEqual(shear, transf_md[model.MD_SHEAR])
 
 
 if __name__ == '__main__':
