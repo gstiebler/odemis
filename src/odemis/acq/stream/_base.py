@@ -992,24 +992,20 @@ class Stream(object):
         Raises:
             ValueError: If the stream has no (spatial) data
         """
-        if hasattr(self, "rect"):
-            rng = self.rect.range
-            return (rng[0][0], rng[0][1], rng[1][0], rng[1][1])
+        if not self.raw:
+            raise ValueError("Cannot compute bounding-box as stream has no data")
+        # Use .image if possible as the metadata is already processed but
+        # fallback to the raw, if the image is not yet available
+        if self.image.value is None:
+            data = self.raw[0]
+            md = self._find_metadata(data.metadata)
         else:
-            if not self.raw:
-                raise ValueError("Cannot compute bounding-box as stream has no data")
-            # Use .image if possible as the metadata is already processed but
-            # fallback to the raw, if the image is not yet available
-            if self.image.value is None:
-                data = self.raw[0]
-                md = self._find_metadata(data.metadata)
-            else:
-                data = self.image.value
-                md = data.metadata
+            data = self.image.value
+            md = data.metadata
 
-            # TODO: check img._getBoundingBox which is similar (but uses MD_DIMS)
-            shape = data.shape
-            pxs = md[model.MD_PIXEL_SIZE]
-            c = md[model.MD_POS]
-            w, h = shape[1] * pxs[0], shape[0] * pxs[1]
-            return (c[0] - w / 2, c[1] - h / 2, c[0] + w / 2, c[1] + h / 2)
+        # TODO: check img._getBoundingBox which is similar (but uses MD_DIMS)
+        shape = data.shape
+        pxs = md[model.MD_PIXEL_SIZE]
+        c = md[model.MD_POS]
+        w, h = shape[1] * pxs[0], shape[0] * pxs[1]
+        return (c[0] - w / 2, c[1] - h / 2, c[0] + w / 2, c[1] + h / 2)
