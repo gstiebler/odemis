@@ -881,12 +881,6 @@ class StreamView(View):
             self.stream_classes = stream_classes
         self._stage = stage
 
-        # add RGBSpatialProjection as a valid stream class
-        if isinstance(self.stream_classes, tuple):
-            self.stream_classes = self.stream_classes + (RGBSpatialProjection,)
-        else:
-            self.stream_classes = (self.stream_classes, RGBSpatialProjection)
-
         self.fov_hw = fov_hw
 
         self.fov = model.TupleContinuous((0.0, 0.0), range=((0.0, 0.0), (1e9, 1e9)))
@@ -1214,7 +1208,9 @@ class StreamView(View):
         stream (acq.stream.Stream): stream to add
         If the stream is already present, nothing happens
         """
-
+        # store the original stream, so it can be used to check if
+        # the stream is compatible
+        orig_stream = stream
         if not hasattr(stream, 'image'):
             # if the stream is a StaticStream, create a RGBSpatialProjection for it
             stream = RGBSpatialProjection(stream)
@@ -1224,7 +1220,7 @@ class StreamView(View):
             logging.warning("Aborting the addition of a duplicate stream")
             return
 
-        if not isinstance(stream, self.stream_classes):
+        if not isinstance(orig_stream, self.stream_classes):
             msg = "Adding incompatible stream '%s' to view '%s'. %s needed"
             logging.warning(msg, stream.name.value, self.name.value, self.stream_classes)
 
