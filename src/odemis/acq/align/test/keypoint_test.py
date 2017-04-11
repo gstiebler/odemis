@@ -31,10 +31,11 @@ import numpy
 import math
 from odemis import model
 
+imgs_folder = 'C:/Projetos/Delmic/iCLEM/images/'
+
 class TestKeypoint(unittest.TestCase):
 
     def test_first(self):
-        imgs_folder = 'C:/Projetos/Delmic/iCLEM/images/'
         # ima = cv2.imread(imgs_folder + '20141014-113042_1.jpg', 0)
         # imb = cv2.imread(imgs_folder + '001_CBS_010.jpg', 0)
         ima = open_acquisition(imgs_folder + 'Slice69.tif')[0].getData()
@@ -65,6 +66,38 @@ class TestKeypoint(unittest.TestCase):
         self.assertAlmostEqual(rot, transf_md[model.MD_ROTATION])
         self.assertEqual((scale_x, scale_y), transf_md[model.MD_PIXEL_SIZE])
         self.assertAlmostEqual(shear, transf_md[model.MD_SHEAR])
+
+    def test_synthetic_images(self):
+        image = numpy.ones((1000, 1000), dtype=numpy.uint8)
+        # draw a triangle
+        for i in range(0, 200):
+            image[(i + 200), (200 - i * 0.7):(200 + i * 1.0)] = 255
+        # draw a rectangle
+        # image[500:700, 400:800] = 255
+
+        # draw a trapezoid
+        for i in range(0, 200):
+            image[(i + 500), (400 - i * 0.2):(800 + i * 0.1)] = 255
+
+        angle = 0.2
+        print 'cos', math.cos(angle)
+        print 'sin', math.sin(angle)
+        rot_mat = cv2.getRotationMatrix2D((500, 500), math.degrees(angle), 1.0)
+        print 'rot mat', rot_mat
+        # rot_mat[0, 2] = 0.0
+        # rot_mat[1, 2] = 0.0
+        rotated = cv2.warpAffine(image, rot_mat, (1000, 1000))
+
+        tmat_odemis = keypoint.FindTransform(rotated, image)
+        warped_im = cv2.warpPerspective(rotated, tmat_odemis, (rotated.shape[1], rotated.shape[0]))
+
+        print tmat_odemis
+        transf_md = get_img_transformation_md(tmat_odemis)
+        print transf_md
+
+        cv2.imwrite(imgs_folder + 'test.jpg', image)
+        cv2.imwrite(imgs_folder + 'rotated.jpg', rotated)
+        cv2.imwrite(imgs_folder + 'rotated_opencv.jpg', warped_im)
 
 
 if __name__ == '__main__':
