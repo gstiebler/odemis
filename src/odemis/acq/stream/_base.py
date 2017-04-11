@@ -31,7 +31,6 @@ from odemis.util import img
 import threading
 import time
 import weakref
-from ._projection import projectImage
 
 # Contains the base of the streams. Can be imported from other stream modules.
 # to identify a ROI which must still be defined by the user
@@ -880,7 +879,25 @@ class Stream(object):
         try:
             # if .raw is a list of DataArray, .image is a complete image
             if isinstance(self.raw, list):
-                self.image.value = projectImage(self)
+                data = self.raw[0]
+                dims = data.metadata.get(model.MD_DIMS, "CTZYX"[-data.ndim::])
+                ci = dims.find("C")  # -1 if not found
+                # is RGB
+                if dims in ("CYX", "YXC") and data.shape[ci] in (3, 4):
+                    try:
+                        rgbim = img.ensureYXC(data)
+                        rgbim.flags.writeable = False
+                        # merge and ensures all the needed metadata is there
+                        rgbim.metadata = self._find_metadata(rgbim.metadata)
+                        rgbim.metadata[model.MD_DIMS] = "YXC" # RGB format
+                        self.image.value = rgbim
+                    except Exception:
+                        logging.exception("Updating %s image", self.__class__.__name__)
+                else: # is grayscale
+                    raw = self.raw[0]
+                    if raw.ndim != 2:
+                        raw = img.ensure2DImage(raw)  # Remove extra dimensions (of length 1)
+                    self.image.value = self._projectXY2RGB(raw, self.tint.value)
             else:
                 raise AttributeError(".raw must be a list of DA/DAS")
 
