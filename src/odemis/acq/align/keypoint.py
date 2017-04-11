@@ -24,6 +24,7 @@ Odemis. If not, see http://www.gnu.org/licenses/.
 import numpy as np
 import cv2
 import math
+from odemis import model
 
 BAR_LEN_FACTOR = 0.06
 NUM_SELECTED_KP = 10
@@ -80,6 +81,8 @@ def FindTransform(ima, imb):
     return mat
 
 def Preprocess(ima, imb):
+    metadata_a = ima.metadata
+    metadata_b = imb.metadata
     if ima.ndim > 2:
         ima = cv2.cvtColor(ima, cv2.COLOR_RGB2GRAY)
 
@@ -108,4 +111,4 @@ def Preprocess(ima, imb):
     ima = cv2.GaussianBlur(ima, (41, 41), 10)
     imb = cv2.GaussianBlur(imb, (21, 21), 5)
 
-    return ima, imb
+    return  model.DataArray(ima, metadata_a), model.DataArray(imb, metadata_b)
