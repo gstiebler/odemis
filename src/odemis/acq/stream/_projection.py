@@ -316,7 +316,10 @@ class RGBSpatialProjection(DataProjection):
         tile (DataArray): Raw tile
         return (DataArray): Projected tile
         """
-        if self.stream.__class__.__name__ == 'RGBStream':
+        dims = tile.metadata.get(model.MD_DIMS, "CTZYX"[-tile.ndim::])
+        ci = dims.find("C")  # -1 if not found
+        # is RGB
+        if dims in ("CYX", "YXC") and tile.shape[ci] in (3, 4):
             # Just pass the RGB data on
             tile = img.ensureYXC(tile)
             tile.flags.writeable = False
