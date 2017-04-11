@@ -167,22 +167,28 @@ class AutomaticOverlayPlugin(Plugin):
 
         ima_ps = ima.metadata.get(model.MD_PIXEL_SIZE, (0.0, 0.0))
         imb_ps = imb.metadata.get(model.MD_PIXEL_SIZE, (0.0, 0.0))
-        ps = transf_md[model.MD_PIXEL_SIZE]
-        # psa * ps * psb / psa
-        new_ps = (imb_ps[0] * ps[0], imb_ps[1] * ps[1])
+        ps_cor = transf_md[model.MD_PIXEL_SIZE]
 
-        pos_corr = transf_md[model.MD_POS]
-        pos_corr = (pos_corr[0] * ima_ps[0], pos_corr[1] * ima_ps[1])
         orig_pos = ima.metadata.get(model.MD_POS, (0.0, 0.0))
-        new_pos = (orig_pos[0] + pos_corr[0], orig_pos[1] + pos_corr[1])
 
+        # psa * ps * psb / psa
+        new_a_ps = (imb_ps[0] * ps_cor[0], imb_ps[1] * ps_cor[1])
+
+        pos_cor = transf_md[model.MD_POS]
+        pos_cor_phys = (pos_cor[0] * new_a_ps[0], pos_cor[1] * new_a_ps[1])
+
+        flip = True
         sem_metadata = self._semStream.raw[0].metadata
-        # self._semStream.raw[0].metadata[model.MD_POS] = new_pos
-        sem_metadata[model.MD_PIXEL_SIZE] = new_ps
-        sem_metadata[model.MD_ROTATION] = transf_md[model.MD_ROTATION]
+        sem_metadata[model.MD_POS] = new_a_ps
+        sem_metadata[model.MD_PIXEL_SIZE] = new_a_ps
         # sem_metadata[model.MD_SHEAR] = transf_md[model.MD_SHEAR]
-        # vertical flip
-        sem_metadata[model.MD_FLIP] = 8
+        if flip:
+            self._semStream.raw[0] = self._semStream.raw[0][::-1, :]
+            sem_metadata[model.MD_ROTATION] = -transf_md[model.MD_ROTATION]
+        else:
+            sem_metadata[model.MD_ROTATION] = transf_md[model.MD_ROTATION]
+        print sem_metadata
+        self._semStream.raw[0].metadata = sem_metadata
         self._semStream._shouldUpdateImage()
 
     def _on_trans(self, stream, i, value):
