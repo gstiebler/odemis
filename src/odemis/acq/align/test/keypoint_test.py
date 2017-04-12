@@ -75,52 +75,38 @@ class TestKeypoint(unittest.TestCase):
         cr.set_source_rgb(1.0, 1.0, 1.0)
         cr.paint()
 
+        cr.set_source_rgb(0.0, 0.0, 0.0)
+        
         # draw circles
         cr.arc(200, 150, 80, 0, 2*math.pi)
-        cr.set_source_rgb(1.0, 0.0, 0.0)
-        cr.stroke_preserve()
         cr.fill()
 
         cr.arc(400, 150, 70, 0, 2*math.pi)
-        cr.set_source_rgb(0.0, 0.0, 1.0)
-        cr.stroke_preserve()
         cr.fill()
 
         cr.arc(700, 150, 50, 0, 2*math.pi)
-        cr.set_source_rgb(0.0, 1.0, 0.0)
-        cr.stroke_preserve()
         cr.fill()
 
         cr.arc(200, 500, 80, 0, 2*math.pi)
-        cr.set_source_rgb(1.0, 0.0, 0.0)
-        cr.stroke_preserve()
         cr.fill()
 
         cr.arc(400, 600, 70, 0, 2*math.pi)
-        cr.set_source_rgb(0.0, 0.0, 1.0)
-        cr.stroke_preserve()
         cr.fill()
 
         cr.arc(600, 500, 50, 0, 2*math.pi)
-        cr.set_source_rgb(0.0, 1.0, 0.0)
-        cr.stroke_preserve()
         cr.fill()
 
         cr.arc(600, 500, 50, 0, 2*math.pi)
-        cr.set_source_rgb(0.0, 1.0, 0.0)
-        cr.stroke_preserve()
         cr.fill()
 
         cr.rectangle(600, 700, 200, 100)
-        cr.set_source_rgb(0.0, 0.0, 0.0)
-        cr.stroke_preserve()
         cr.fill()
 
         angle = 0.2
         print 'cos', math.cos(angle)
         print 'sin', math.sin(angle)
         rot_mat = cv2.getRotationMatrix2D((500, 500), math.degrees(angle), 1.0)
-        print 'rot mat', rot_mat
+        print rot_mat
         # rot_mat[0, 2] = 0.0
         # rot_mat[1, 2] = 0.0
         rotated = cv2.warpAffine(image, rot_mat, (1000, 1000),\
