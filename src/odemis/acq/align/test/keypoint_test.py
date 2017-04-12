@@ -28,6 +28,7 @@ import cv2
 from odemis.util.conversion import get_img_transformation_md
 from odemis.util.dataio import open_acquisition
 import numpy
+import cairo
 import math
 from odemis import model
 
@@ -68,16 +69,52 @@ class TestKeypoint(unittest.TestCase):
         self.assertAlmostEqual(shear, transf_md[model.MD_SHEAR])
 
     def test_synthetic_images(self):
-        image = numpy.ones((1000, 1000), dtype=numpy.uint8)
-        # draw a triangle
-        for i in range(0, 200):
-            image[(i + 200), (200 - i * 0.7):(200 + i * 1.0)] = 255
-        # draw a rectangle
-        # image[500:700, 400:800] = 255
+        image = numpy.zeros((1000, 1000, 4), dtype=numpy.uint8)
+        surface = cairo.ImageSurface.create_for_data(image, cairo.FORMAT_ARGB32, 1000, 1000)
+        cr = cairo.Context(surface)
+        cr.set_source_rgb(1.0, 1.0, 1.0)
+        cr.paint()
 
-        # draw a trapezoid
-        for i in range(0, 200):
-            image[(i + 500), (400 - i * 0.2):(800 + i * 0.1)] = 255
+        # draw circles
+        cr.arc(200, 150, 80, 0, 2*math.pi)
+        cr.set_source_rgb(1.0, 0.0, 0.0)
+        cr.stroke_preserve()
+        cr.fill()
+
+        cr.arc(400, 150, 70, 0, 2*math.pi)
+        cr.set_source_rgb(0.0, 0.0, 1.0)
+        cr.stroke_preserve()
+        cr.fill()
+
+        cr.arc(700, 150, 50, 0, 2*math.pi)
+        cr.set_source_rgb(0.0, 1.0, 0.0)
+        cr.stroke_preserve()
+        cr.fill()
+
+        cr.arc(200, 500, 80, 0, 2*math.pi)
+        cr.set_source_rgb(1.0, 0.0, 0.0)
+        cr.stroke_preserve()
+        cr.fill()
+
+        cr.arc(400, 600, 70, 0, 2*math.pi)
+        cr.set_source_rgb(0.0, 0.0, 1.0)
+        cr.stroke_preserve()
+        cr.fill()
+
+        cr.arc(600, 500, 50, 0, 2*math.pi)
+        cr.set_source_rgb(0.0, 1.0, 0.0)
+        cr.stroke_preserve()
+        cr.fill()
+
+        cr.arc(600, 500, 50, 0, 2*math.pi)
+        cr.set_source_rgb(0.0, 1.0, 0.0)
+        cr.stroke_preserve()
+        cr.fill()
+
+        cr.rectangle(600, 700, 200, 100)
+        cr.set_source_rgb(0.0, 0.0, 0.0)
+        cr.stroke_preserve()
+        cr.fill()
 
         angle = 0.2
         print 'cos', math.cos(angle)
@@ -86,10 +123,12 @@ class TestKeypoint(unittest.TestCase):
         print 'rot mat', rot_mat
         # rot_mat[0, 2] = 0.0
         # rot_mat[1, 2] = 0.0
-        rotated = cv2.warpAffine(image, rot_mat, (1000, 1000))
+        rotated = cv2.warpAffine(image, rot_mat, (1000, 1000),\
+                borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
 
         tmat_odemis = keypoint.FindTransform(rotated, image)
-        warped_im = cv2.warpPerspective(rotated, tmat_odemis, (rotated.shape[1], rotated.shape[0]))
+        warped_im = cv2.warpPerspective(rotated, tmat_odemis, (rotated.shape[1], rotated.shape[0]),\
+                borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
 
         print tmat_odemis
         transf_md = get_img_transformation_md(tmat_odemis)
