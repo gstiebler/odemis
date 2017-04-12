@@ -76,7 +76,7 @@ class TestKeypoint(unittest.TestCase):
         cr.paint()
 
         cr.set_source_rgb(0.0, 0.0, 0.0)
-        
+
         # draw circles
         cr.arc(200, 150, 80, 0, 2*math.pi)
         cr.fill()
@@ -84,7 +84,7 @@ class TestKeypoint(unittest.TestCase):
         cr.arc(400, 150, 70, 0, 2*math.pi)
         cr.fill()
 
-        cr.arc(700, 150, 50, 0, 2*math.pi)
+        cr.arc(700, 180, 50, 0, 2*math.pi)
         cr.fill()
 
         cr.arc(200, 500, 80, 0, 2*math.pi)
@@ -99,16 +99,24 @@ class TestKeypoint(unittest.TestCase):
         cr.arc(600, 500, 50, 0, 2*math.pi)
         cr.fill()
 
+        cr.arc(500, 500, 350, 0, 2*math.pi)
+        cr.set_line_width(5)
+        cr.stroke()
+
+        cr.arc(600, 500, 50, 0, 2*math.pi)
+        cr.fill()
+
         cr.rectangle(600, 700, 200, 100)
         cr.fill()
 
-        angle = 0.2
+        angle = 0.5
+        scale = 1.0
         print 'cos', math.cos(angle)
         print 'sin', math.sin(angle)
-        rot_mat = cv2.getRotationMatrix2D((500, 500), math.degrees(angle), 1.0)
+        rot_mat = cv2.getRotationMatrix2D((500, 500), math.degrees(angle), scale)
         print rot_mat
-        # rot_mat[0, 2] = 0.0
-        # rot_mat[1, 2] = 0.0
+        # rot_mat[0, 2] += 100.0
+        # rot_mat[1, 2] += 100.0
         rotated = cv2.warpAffine(image, rot_mat, (1000, 1000),\
                 borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
 
@@ -117,7 +125,7 @@ class TestKeypoint(unittest.TestCase):
                 borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
 
         print tmat_odemis
-        transf_md = get_img_transformation_md(tmat_odemis)
+        transf_md = get_img_transformation_md(tmat_odemis, image)
         print transf_md
 
         cv2.imwrite(imgs_folder + 'test.jpg', image)
