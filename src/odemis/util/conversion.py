@@ -364,10 +364,11 @@ def get_tile_md_pos(i, tile_size, tileda, origda):
     tile_pos_world_final = md_pos + new_tile_pos_rel
     return tuple(tile_pos_world_final)
 
-def get_img_transformation_md(mat):
+def get_img_transformation_md(mat, image):
     """
     Computes the metadata of the transformations from the transformation matrix
     mat (ndarray of shape 3,3): transformation matrix
+    image TODO
     return (dict str value): metadata MD_POS, MD_PIXEL_SIZE, MD_ROTATION, MD_SHEAR.
     """
     translation_x = mat[0, 2]
@@ -390,8 +391,17 @@ def get_img_transformation_md(mat):
     cos_full = d / scale_y
     rot = math.atan2(sin_full, cos_full)
 
+    arc = math.atan2(image.shape[1] / 2, image.shape[0] / 2)
+    print arc
+    arc_dif = arc - rot
+    hipo = math.sqrt(math.pow(image.shape[1] / 2, 2) + math.pow(image.shape[0] / 2, 2))
+    print math.cos(arc_dif) * hipo, math.sin(arc_dif) * hipo
+
+    translation_x_corr = image.shape[1] / 2 - math.sin(arc_dif) * hipo
+    translation_y_corr = image.shape[0] / 2 - math.cos(arc_dif) * hipo
+
     metadata = {}
-    metadata[model.MD_POS] = (translation_x, translation_y)
+    metadata[model.MD_POS] = (translation_x - translation_x_corr, translation_y - translation_y_corr)
     # TODO needs the original PIXEL SIZE?
     metadata[model.MD_PIXEL_SIZE] = (scale_x, scale_y)
     metadata[model.MD_ROTATION] = rot
