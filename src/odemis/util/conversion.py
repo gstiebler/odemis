@@ -391,17 +391,21 @@ def get_img_transformation_md(mat, image):
     cos_full = d / scale_y
     rot = math.atan2(sin_full, cos_full)
 
-    arc = math.atan2(image.shape[1] / 2, image.shape[0] / 2)
-    print arc
+    half_size = ((image.shape[1] / 2, image.shape[0] / 2))
+    arc = math.atan2(half_size[0], half_size[1])
     arc_dif = arc - rot
-    hipo = math.sqrt(math.pow(image.shape[1] / 2, 2) + math.pow(image.shape[0] / 2, 2))
-    print math.cos(arc_dif) * hipo, math.sin(arc_dif) * hipo
+    hipo = math.sqrt(math.pow(half_size[0], 2) + math.pow(half_size[1], 2))
 
-    translation_x_corr = image.shape[1] / 2 - math.sin(arc_dif) * hipo
-    translation_y_corr = image.shape[0] / 2 - math.cos(arc_dif) * hipo
+    rot_x_corr = half_size[0] - math.sin(arc_dif) * hipo
+    rot_y_corr = half_size[1] - math.cos(arc_dif) * hipo
+    scale_x_corr = half_size[0] * (1.0 - scale_x)
+    scale_y_corr = half_size[1] * (1.0 - scale_y)
+
+    print 'rot correction', rot_x_corr, rot_y_corr
+    print 'scale correction', 1 / scale_x, scale_x_corr, scale_y_corr
 
     metadata = {}
-    metadata[model.MD_POS] = (translation_x - translation_x_corr, translation_y - translation_y_corr)
+    metadata[model.MD_POS] = (translation_x - rot_x_corr - scale_x_corr, translation_y - rot_y_corr - scale_y_corr)
     # TODO needs the original PIXEL SIZE?
     metadata[model.MD_PIXEL_SIZE] = (scale_x, scale_y)
     metadata[model.MD_ROTATION] = rot
