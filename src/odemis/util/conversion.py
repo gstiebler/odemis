@@ -26,6 +26,8 @@ import re
 import yaml
 from odemis import model
 import numpy
+from numpy.linalg import inv
+import cv2
 import math
 
 
@@ -392,20 +394,45 @@ def get_img_transformation_md(mat, image):
     rot = math.atan2(sin_full, cos_full)
 
     half_size = ((image.shape[1] / 2, image.shape[0] / 2))
-    arc = math.atan2(half_size[0], half_size[1])
-    arc_dif = arc - rot
-    hipo = math.sqrt(math.pow(half_size[0], 2) + math.pow(half_size[1], 2))
+    inv_mat = inv(mat)
+    '''inv_rot = -rot
+    inv_scale_x = 1 / scale_x
+    inv_scale_y = 1 / scale_y
+    orig_tmat = cv2.getRotationMatrix2D((half_size[0], half_size[1]), math.degrees(inv_rot), inv_scale_x)
+    translation_x = orig_tmat[0, 2] - inv_mat[0, 2]
+    translation_y = orig_tmat[1, 2] - inv_mat[1, 2]
+    # print orig_tmat
+    # print inv_mat'''
 
-    rot_x_corr = half_size[0] - math.sin(arc_dif) * hipo
-    rot_y_corr = half_size[1] - math.cos(arc_dif) * hipo
-    scale_x_corr = half_size[0] * (1.0 - scale_x)
-    scale_y_corr = half_size[1] * (1.0 - scale_y)
+    def convert_point(point):
+        point1 = numpy.matrix([point[0], point[1], 1.0]).getT()
+        point2 = mat * point1
+        return numpy.ravel(point2)
 
-    print 'rot correction', rot_x_corr, rot_y_corr
-    print 'scale correction', 1 / scale_x, scale_x_corr, scale_y_corr
+    center_point = convert_point([half_size[0], half_size[1]])
+    top_left_point = convert_point([0.0, 0.0])
+    top_right_point = convert_point([image.shape[1], 0.0])
+    bottom_left_point = convert_point([0.0, image.shape[0]])
+    bottom_right_point = convert_point([image.shape[1], image.shape[0]])
+
+    dif_x = top_right_point[0] - top_left_point[0]
+    dif_y = top_right_point[1] - top_left_point[1]
+    rot = math.atan2(dif_y, dif_x)
+
+    top_length = math.sqrt(math.pow(dif_x, 2) + math.pow(dif_y, 2))
+    scale_x = top_length / image.shape[1]
+
+    dif_x = bottom_left_point[0] - top_left_point[0]
+    dif_y = bottom_left_point[1] - top_left_point[1]
+    left_length = math.sqrt(math.pow(dif_x, 2) + math.pow(dif_y, 2))
+    scale_y = left_length / image.shape[0]
+
+    translation_x = half_size[0] - center_point[0]
+    translation_y = half_size[1] - center_point[1]
 
     metadata = {}
-    metadata[model.MD_POS] = (translation_x - rot_x_corr - scale_x_corr, translation_y - rot_y_corr - scale_y_corr)
+    # metadata[model.MD_POS] = (translation_x - rot_x_corr - scale_x_corr, translation_y - rot_y_corr - scale_y_corr)
+    metadata[model.MD_POS] = (translation_x, translation_y)
     # TODO needs the original PIXEL SIZE?
     metadata[model.MD_PIXEL_SIZE] = (scale_x, scale_y)
     metadata[model.MD_ROTATION] = rot

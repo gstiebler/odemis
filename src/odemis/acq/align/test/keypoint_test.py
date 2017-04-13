@@ -31,6 +31,7 @@ import numpy
 import cairo
 import math
 from odemis import model
+from numpy.linalg import inv
 
 imgs_folder = 'C:/Projetos/Delmic/iCLEM/images/'
 
@@ -40,7 +41,7 @@ class TestKeypoint(unittest.TestCase):
         # ima = cv2.imread(imgs_folder + '20141014-113042_1.jpg', 0)
         # imb = cv2.imread(imgs_folder + '001_CBS_010.jpg', 0)
         ima = open_acquisition(imgs_folder + 'Slice69.tif')[0].getData()
-        imb = open_acquisition(imgs_folder + 'g_009.tif')[0].getData()
+        imb = open_acquisition(imgs_folder + 'g_009_stretched.tif')[0].getData()
         ima, imb = keypoint.Preprocess(ima, imb)
         tmat = keypoint.FindTransform(ima, imb)
         warped_im = cv2.warpPerspective(ima, tmat, (imb.shape[1], imb.shape[0]))
@@ -48,7 +49,7 @@ class TestKeypoint(unittest.TestCase):
         cv2.imwrite(imgs_folder + 'warped.jpg', merged_im)
 
         print tmat
-        print get_img_transformation_md(tmat)
+        print get_img_transformation_md(tmat, ima)
 
     def test_get_img_transformation_md(self):
         rot = 0.2
@@ -106,17 +107,21 @@ class TestKeypoint(unittest.TestCase):
         cr.arc(600, 500, 50, 0, 2*math.pi)
         cr.fill()
 
+        # rectangle
         cr.rectangle(600, 700, 200, 100)
         cr.fill()
 
-        angle = 0.5
-        scale = 1.0
+        angle = 0.3
+        scale = 0.7
+        translation_x = 150.0
+        translation_y = 160.0
         print 'cos', math.cos(angle)
         print 'sin', math.sin(angle)
-        rot_mat = cv2.getRotationMatrix2D((500, 500), math.degrees(angle), scale)
+        rot_mat = cv2.getRotationMatrix2D((500.0, 500.0), math.degrees(angle), scale)
+        print 'rot_mat'
         print rot_mat
-        # rot_mat[0, 2] += 100.0
-        # rot_mat[1, 2] += 100.0
+        rot_mat[0, 2] += translation_x
+        rot_mat[1, 2] += translation_y
         rotated = cv2.warpAffine(image, rot_mat, (1000, 1000),\
                 borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
 
@@ -124,6 +129,7 @@ class TestKeypoint(unittest.TestCase):
         warped_im = cv2.warpPerspective(rotated, tmat_odemis, (rotated.shape[1], rotated.shape[0]),\
                 borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
 
+        print 'tmat_odemis'
         print tmat_odemis
         transf_md = get_img_transformation_md(tmat_odemis, image)
         print transf_md
