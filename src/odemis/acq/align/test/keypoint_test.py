@@ -44,9 +44,11 @@ class TestKeypoint(unittest.TestCase):
         imb = open_acquisition(imgs_folder + 'g_009_stretched.tif')[0].getData()
         ima, imb = keypoint.Preprocess(ima, imb)
         tmat = keypoint.FindTransform(ima, imb)
+        # tmat[2, 0] = 0.0
+        # tmat[2, 1] = 0.0
         warped_im = cv2.warpPerspective(ima, tmat, (imb.shape[1], imb.shape[0]))
         merged_im = cv2.addWeighted(imb, 0.5, warped_im, 0.5, 0.0)
-        cv2.imwrite(imgs_folder + 'warped.jpg', merged_im)
+        cv2.imwrite(imgs_folder + 'merged_with_warped.jpg', merged_im)
 
         print tmat
         print get_img_transformation_md(tmat, ima)
