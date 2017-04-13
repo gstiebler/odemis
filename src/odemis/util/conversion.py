@@ -418,7 +418,6 @@ def get_img_transformation_md(mat, image):
     dif_x = top_right_point[0] - top_left_point[0]
     dif_y = top_right_point[1] - top_left_point[1]
     # rot = math.atan2(dif_y, dif_x)
-    print 'points', top_left_point, top_right_point, bottom_right_point
 
     top_length = math.sqrt(math.pow(dif_x, 2) + math.pow(dif_y, 2))
     # scale_x = top_length / image.shape[1]
