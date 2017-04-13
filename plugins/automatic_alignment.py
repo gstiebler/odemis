@@ -165,27 +165,25 @@ class AutomaticOverlayPlugin(Plugin):
         logging.debug(tmat)
         logging.debug(transf_md)
 
-        orig_pos_sem = ima.metadata.get(model.MD_POS, (0.0, 0.0))
-        orig_pos_tem = imb.metadata.get(model.MD_POS, (0.0, 0.0))
-        orig_centers_diff_phys = (orig_pos_sem[0] - orig_pos_tem[0], orig_pos_sem[1] - orig_pos_tem[1])
-
         orig_sem_ps = ima.metadata.get(model.MD_PIXEL_SIZE, (0.0, 0.0))
         orig_tem_ps = imb.metadata.get(model.MD_PIXEL_SIZE, (0.0, 0.0))
         ps_prop = (orig_tem_ps[0] / orig_sem_ps[0], orig_tem_ps[1] / orig_sem_ps[1])
         ps_cor = transf_md[model.MD_PIXEL_SIZE]
+        new_pixel_size = (orig_sem_ps[0] * ps_prop[0] * ps_cor[0],\
+                orig_sem_ps[1] * ps_prop[1] * ps_cor[1])
 
-        # psa * ps * psb / psa
-        new_a_ps = (orig_tem_ps[0] * ps_cor[0], orig_tem_ps[1] * ps_cor[1])
+        orig_pos_sem = ima.metadata.get(model.MD_POS, (0.0, 0.0))
+        orig_pos_tem = imb.metadata.get(model.MD_POS, (0.0, 0.0))
+        orig_centers_diff_phys = (orig_pos_sem[0] - orig_pos_tem[0], orig_pos_sem[1] - orig_pos_tem[1])
 
         pos_cor = transf_md[model.MD_POS]
-        pos_cor_phys = (pos_cor[0] * orig_sem_ps[0], pos_cor[1] * orig_sem_ps[1])
+        pos_cor_phys = (pos_cor[0] * new_pixel_size[0], pos_cor[1] * new_pixel_size[1])
 
         flip = True
         sem_metadata = self._semStream.raw[0].metadata
         sem_metadata[model.MD_POS] = (orig_pos_sem[0] - orig_centers_diff_phys[0] + pos_cor_phys[0],\
                 orig_pos_sem[1] - orig_centers_diff_phys[1] + pos_cor_phys[1])
-        sem_metadata[model.MD_PIXEL_SIZE] = (orig_sem_ps[0] * ps_prop[0] * ps_cor[0],\
-                orig_sem_ps[1] * ps_prop[1] * ps_cor[1])
+        sem_metadata[model.MD_PIXEL_SIZE] = new_pixel_size
         # sem_metadata[model.MD_SHEAR] = transf_md[model.MD_SHEAR]
         if flip:
             self._semStream.raw[0] = self._semStream.raw[0][::-1, :]
