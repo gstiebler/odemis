@@ -147,7 +147,7 @@ class AutomaticOverlayPlugin(Plugin):
         filename = dialog.GetPath()
         '''
 
-        data = open_acquisition('C:/Projetos/Delmic/iCLEM/images/g_009.tif')
+        data = open_acquisition('C:/Projetos/Delmic/iCLEM/images/g_009_stretched.tif')
         stream = data_to_static_streams(data)
         dlg.addStream(stream[0])
         self._temStream = stream[0]
@@ -161,7 +161,7 @@ class AutomaticOverlayPlugin(Plugin):
         # merged_im = cv2.addWeighted(imb, 0.5, warped_im, 0.5, 0.0)
         # cv2.imwrite(imgs_folder + 'warped.jpg', merged_im)
 
-        transf_md = get_img_transformation_md(tmat)
+        transf_md = get_img_transformation_md(tmat, ima)
         logging.debug(tmat)
         logging.debug(transf_md)
 
@@ -179,7 +179,7 @@ class AutomaticOverlayPlugin(Plugin):
 
         flip = True
         sem_metadata = self._semStream.raw[0].metadata
-        sem_metadata[model.MD_POS] = new_a_ps
+        sem_metadata[model.MD_POS] = (orig_pos[0] + pos_cor_phys[0], orig_pos[1] + pos_cor_phys[1])
         sem_metadata[model.MD_PIXEL_SIZE] = new_a_ps
         # sem_metadata[model.MD_SHEAR] = transf_md[model.MD_SHEAR]
         if flip:
