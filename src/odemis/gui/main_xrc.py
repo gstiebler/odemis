@@ -497,6 +497,7 @@ class xrcfr_plugin(wx.Dialog):
         # Define variables for the controls, bind event handlers
         self.pnl_desc = xrc.XRCCTRL(self, "pnl_desc")
         self.viewport = xrc.XRCCTRL(self, "viewport")
+        self.viewport2 = xrc.XRCCTRL(self, "viewport2")
         self.scr_win_right = xrc.XRCCTRL(self, "scr_win_right")
         self.fp_settings = xrc.XRCCTRL(self, "fp_settings")
         self.fp_streams = xrc.XRCCTRL(self, "fp_streams")
@@ -4188,7 +4189,7 @@ def __init_resources():
               <object class="ImageTextButton" name="btn_open_image">
                 <height>24</height>
                 <face_colour>def</face_colour>
-                <label>Select image...</label>
+                <label>Select 2image ai filho...</label>
                 <fg>#1A1A1A</fg>
                 <style>wxALIGN_CENTRE</style>
                 <XRCED>
@@ -5423,6 +5424,16 @@ def __init_resources():
         <object class="wxBoxSizer">
           <object class="sizeritem">
             <object class="LiveViewport" name="viewport">
+              <hidden>1</hidden>
+              <XRCED>
+                <assign_var>1</assign_var>
+              </XRCED>
+            </object>
+            <option>1</option>
+            <flag>wxEXPAND</flag>
+          </object>
+          <object class="sizeritem">
+            <object class="LiveViewport" name="viewport2">
               <hidden>1</hidden>
               <XRCED>
                 <assign_var>1</assign_var>
