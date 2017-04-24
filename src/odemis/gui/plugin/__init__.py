@@ -335,8 +335,20 @@ class AcquisitionDialog(xrcfr_plugin):
         data_model.focussedView = VigilantAttribute(self.microscope_view)
         self.viewport.setView(self.microscope_view, data_model)
 
+
+        data_model2 = MicroscopyGUIData(plugin.main_app.main_data)
+        self.microscope_view2 = MicroscopeView("Plugin View2")
+        data_model2.focussedView = VigilantAttribute(self.microscope_view2)
+        self.viewport2.setView(self.microscope_view2, data_model2)
+
         self.streambar_controller = StreamBarController(
             data_model,
+            self.pnl_streams,
+            ignore_view=True
+        )
+
+        self.streambar_controller2 = StreamBarController(
+            data_model2,
             self.pnl_streams,
             ignore_view=True
         )
@@ -431,6 +443,9 @@ class AcquisitionDialog(xrcfr_plugin):
         if stream:
             self.streambar_controller.addStream(stream)
             self.microscope_view.addStream(stream)
+
+            self.streambar_controller2.addStream(stream)
+            self.microscope_view2.addStream(stream)
 
     @call_in_wx_main
     def showProgress(self, future):
