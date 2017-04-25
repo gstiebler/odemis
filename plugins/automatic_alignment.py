@@ -111,15 +111,13 @@ class AutomaticOverlayPlugin(Plugin):
             vascaley.subscribe(va_on_scaley)
 
         dlg.addSettings(vah, vaconf)
-        dlg.addButton("Open image", self.open_image, face_colour='blue')
         dlg.addButton("Align", self.align, face_colour='blue')
-        # TODO: add a 'reset' button
-        dlg.addButton("Done", None, face_colour='blue')
+        dlg.addButton("Cancel", None)
+        self.open_image(dlg)
         dlg.ShowModal()
-        
+
     def open_image(self, dlg):
         '''
-        from select_acq_file on tabs.py
         # Find the available formats (and corresponding extensions)
         formats_to_ext = dataio.get_available_formats(os.O_RDONLY)
 
@@ -146,10 +144,11 @@ class AutomaticOverlayPlugin(Plugin):
         # Detect the format to use
         filename = dialog.GetPath()
         '''
+        filename = u'/home/gstiebler/Projetos/Delmic/iCLEM/Images/g_009.tif'
 
-        data = open_acquisition('C:/Projetos/Delmic/iCLEM/images/g_009_stretched.tif')
+        data = open_acquisition(filename)
         stream = data_to_static_streams(data)
-        dlg.addStream(stream[0])
+        dlg.addStream(stream[0], 1)
         self._temStream = stream[0]
 
     def align(self, dlg):

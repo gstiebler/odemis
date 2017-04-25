@@ -335,11 +335,8 @@ class AcquisitionDialog(xrcfr_plugin):
         data_model.focussedView = VigilantAttribute(self.microscope_view)
         self.viewport.setView(self.microscope_view, data_model)
 
-
-        data_model2 = MicroscopyGUIData(plugin.main_app.main_data)
         self.microscope_view2 = MicroscopeView("Plugin View2")
-        data_model2.focussedView = VigilantAttribute(self.microscope_view2)
-        self.viewport2.setView(self.microscope_view2, data_model2)
+        self.viewport2.setView(self.microscope_view2, data_model)
 
         self.streambar_controller = StreamBarController(
             data_model,
@@ -348,7 +345,7 @@ class AcquisitionDialog(xrcfr_plugin):
         )
 
         self.streambar_controller2 = StreamBarController(
-            data_model2,
+            data_model,
             self.pnl_streams,
             ignore_view=True
         )
@@ -422,7 +419,7 @@ class AcquisitionDialog(xrcfr_plugin):
         self.Fit()
 
     @call_in_wx_main
-    def addStream(self, stream):
+    def addStream(self, stream, index=0):
         """
         Adds a stream to the canvas, and a stream entry to the stream panel.
         It also ensures the panel box and canvas are shown.
@@ -432,6 +429,8 @@ class AcquisitionDialog(xrcfr_plugin):
         returns (StreamController): the stream entry
 
         """
+        if index == 1:
+            self.viewport2.Show()
 
         if not self.fp_streams.IsShown() or not self.viewport.IsShown():
             self.fp_streams.Show()
@@ -441,11 +440,12 @@ class AcquisitionDialog(xrcfr_plugin):
             self.Update()
 
         if stream:
-            self.streambar_controller.addStream(stream)
-            self.microscope_view.addStream(stream)
-
-            self.streambar_controller2.addStream(stream)
-            self.microscope_view2.addStream(stream)
+            if index == 0:
+                self.streambar_controller.addStream(stream)
+                self.microscope_view.addStream(stream)
+            else:
+                self.streambar_controller2.addStream(stream)
+                self.microscope_view2.addStream(stream)
 
     @call_in_wx_main
     def showProgress(self, future):
