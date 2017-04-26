@@ -70,20 +70,39 @@ class AutomaticOverlayPlugin(Plugin):
             # TODO always use the last?
             self._semStream = stream
 
-            va_blur_window = model.FloatContinuous(40, range=(1.0, 40.0), unit="pixels")
+            va_blur_window = model.IntContinuous(40, range=(1, 40), unit="pixels")
+            # TODO set the limits of the crop VAs based on the size of the image
+            va_crop_top = model.IntContinuous(0, range=(0, 100), unit="pixels")
+            va_crop_bottom = model.IntContinuous(0, range=(0, 100), unit="pixels")
+            va_crop_left = model.IntContinuous(0, range=(0, 100), unit="pixels")
+            va_crop_right = model.IntContinuous(0, range=(0, 100), unit="pixels")
 
             # Add the VAs to the holder, and to the vaconf mainly to force the order
             setattr(vah, "BlurWindow", va_blur_window)
+            setattr(vah, "CropTop", va_crop_top)
+            setattr(vah, "CropBottom", va_crop_bottom)
+            setattr(vah, "CropLeft", va_crop_left)
+            setattr(vah, "CropRight", va_crop_right)
 
             vaconf["BlurWindow"] = {"label": "Blur window size"}
+            vaconf["CropTop"] = {"label": "Crop top"}
+            vaconf["CropBottom"] = {"label": "Crop bottom"}
+            vaconf["CropLeft"] = {"label": "Crop left"}
+            vaconf["CropRight"] = {"label": "Crop right"}
 
             # Create listeners with information of the stream and dimension
             va_on_blur_window = functools.partial(self._on_blur_window, stream, 0)
+            va_on_crop = functools.partial(self._on_crop, stream)
 
             # We hold a reference to the listeners to prevent automatic subscription
             vah._subscribers.append(va_on_blur_window)
+            vah._subscribers.append(va_on_crop)
 
             va_blur_window.subscribe(va_on_blur_window)
+            va_crop_top.subscribe(va_on_crop)
+            va_crop_bottom.subscribe(va_on_crop)
+            va_crop_left.subscribe(va_on_crop)
+            va_crop_right.subscribe(va_on_crop)
 
         dlg.addSettings(vah, vaconf)
         dlg.addButton("Align", self.align, face_colour='blue')
@@ -171,4 +190,6 @@ class AutomaticOverlayPlugin(Plugin):
     def _on_blur_window(self, stream, i, value):
         logging.debug("New trans = %f on stream %s %d", value, stream.name.value, i)
         stream._shouldUpdateImage()
-        
+
+    def _on_crop(self, stream, value):
+        logging.debug("on crop %d", value)
