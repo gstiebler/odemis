@@ -50,6 +50,12 @@ import wx
 class VAHolder(object):
     pass
 
+class AlignmentProjection(stream.RGBSpatialProjection):
+
+    def _updateImage(self):
+        super(AlignmentProjection, self)._updateImage()
+        logging.debug('called super update image')
+
 
 class AutomaticOverlayPlugin(Plugin):
     name = "Automatic Overlay"
@@ -145,8 +151,9 @@ class AutomaticOverlayPlugin(Plugin):
 
         data = open_acquisition(filename)
         stream = data_to_static_streams(data)
-        dlg.addStream(stream[0], 1)
-        self._temStream = stream[0]
+        stream = AlignmentProjection(stream[0])
+        dlg.addStream(stream, 1)
+        self._temStream = stream
 
     def align(self, dlg):
         ima = self._semStream.raw[0]

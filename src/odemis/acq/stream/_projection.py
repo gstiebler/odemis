@@ -115,6 +115,14 @@ class RGBSpatialProjection(DataProjection):
         self.stream.auto_bc.subscribe(self._onAutoBC)
         self.stream.auto_bc_outliers.subscribe(self._onOutliers)
 
+        # TODO create a decent one. It is needed on StreamController._add_hw_setting_controls
+        self.emitter = None
+        self.detector = None
+        self.hw_vas = {}
+        self.det_vas = {}
+        self.emt_vas = {}
+        self.is_active = model.BooleanVA(False)
+
         if hasattr(stream, '_das'):
             raw = stream._das
             md = raw.metadata
