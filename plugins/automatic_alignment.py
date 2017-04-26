@@ -76,6 +76,7 @@ class AutomaticOverlayPlugin(Plugin):
             va_crop_bottom = model.IntContinuous(0, range=(0, 100), unit="pixels")
             va_crop_left = model.IntContinuous(0, range=(0, 100), unit="pixels")
             va_crop_right = model.IntContinuous(0, range=(0, 100), unit="pixels")
+            va_invert = model.BooleanVA(False)
 
             # Add the VAs to the holder, and to the vaconf mainly to force the order
             setattr(vah, "BlurWindow", va_blur_window)
@@ -83,26 +84,31 @@ class AutomaticOverlayPlugin(Plugin):
             setattr(vah, "CropBottom", va_crop_bottom)
             setattr(vah, "CropLeft", va_crop_left)
             setattr(vah, "CropRight", va_crop_right)
+            setattr(vah, "Invert", va_invert)
 
             vaconf["BlurWindow"] = {"label": "Blur window size"}
             vaconf["CropTop"] = {"label": "Crop top"}
             vaconf["CropBottom"] = {"label": "Crop bottom"}
             vaconf["CropLeft"] = {"label": "Crop left"}
             vaconf["CropRight"] = {"label": "Crop right"}
+            vaconf["Invert"] = {"label": "Invert"}
 
             # Create listeners with information of the stream and dimension
             va_on_blur_window = functools.partial(self._on_blur_window, stream, 0)
             va_on_crop = functools.partial(self._on_crop, stream)
+            va_on_invert = functools.partial(self._on_invert, stream)
 
             # We hold a reference to the listeners to prevent automatic subscription
             vah._subscribers.append(va_on_blur_window)
             vah._subscribers.append(va_on_crop)
+            vah._subscribers.append(va_on_invert)
 
             va_blur_window.subscribe(va_on_blur_window)
             va_crop_top.subscribe(va_on_crop)
             va_crop_bottom.subscribe(va_on_crop)
             va_crop_left.subscribe(va_on_crop)
             va_crop_right.subscribe(va_on_crop)
+            va_invert.subscribe(va_on_invert)
 
         dlg.addSettings(vah, vaconf)
         dlg.addButton("Align", self.align, face_colour='blue')
@@ -193,3 +199,6 @@ class AutomaticOverlayPlugin(Plugin):
 
     def _on_crop(self, stream, value):
         logging.debug("on crop %d", value)
+
+    def _on_invert(self, stream, value):
+        logging.debug("_on_invert %d", value)
