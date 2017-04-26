@@ -36,12 +36,16 @@ from collections import OrderedDict
 import functools
 import logging
 import math
-from odemis import model
+from odemis import dataio, model
 from odemis.acq import stream
 from odemis.gui.plugin import Plugin, AcquisitionDialog
 from odemis.util.dataio import data_to_static_streams, open_acquisition
 from odemis.acq.align import keypoint
 from odemis.util.conversion import get_img_transformation_md
+import odemis.gui.util as guiutil
+from odemis.gui.conf import get_acqui_conf
+import os
+import wx
 
 class VAHolder(object):
     pass
@@ -117,20 +121,14 @@ class AutomaticOverlayPlugin(Plugin):
         dlg.ShowModal()
 
     def open_image(self, dlg):
-        '''
         # Find the available formats (and corresponding extensions)
         formats_to_ext = dataio.get_available_formats(os.O_RDONLY)
-
-        fi = self.tab_data_model.acq_fileinfo.value
-
-        if fi and fi.file_name:
-            path, _ = os.path.split(fi.file_name)
-        else:
-            config = get_acqui_conf()
-            path = config.last_path
+        config = get_acqui_conf()
+        path = config.last_path
 
         wildcards, formats = guiutil.formats_to_wildcards(formats_to_ext, include_all=True)
-        dialog = wx.FileDialog(self.panel,
+        # TODO dlg.pnl_desc?
+        dialog = wx.FileDialog(dlg.pnl_desc,
                                message="Choose a file to load",
                                defaultDir=path,
                                defaultFile="",
@@ -143,8 +141,7 @@ class AutomaticOverlayPlugin(Plugin):
 
         # Detect the format to use
         filename = dialog.GetPath()
-        '''
-        filename = u'/home/gstiebler/Projetos/Delmic/iCLEM/Images/g_009.tif'
+        # filename = u'/home/gstiebler/Projetos/Delmic/iCLEM/Images/g_009.tif'
 
         data = open_acquisition(filename)
         stream = data_to_static_streams(data)
