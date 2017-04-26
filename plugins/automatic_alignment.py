@@ -70,45 +70,20 @@ class AutomaticOverlayPlugin(Plugin):
             # TODO always use the last?
             self._semStream = stream
 
-            # Add 5 VAs for each stream, to modify the overlay metadata
-            poscor = stream.raw[0].metadata.get(model.MD_POS_COR, (0, 0))
-            rotation = stream.raw[0].metadata.get(model.MD_ROTATION_COR, 0)
-            scalecor = stream.raw[0].metadata.get(model.MD_PIXEL_SIZE_COR, (1, 1))
-            vatransx = model.FloatContinuous(-poscor[0], range=(-10e-6, 10e-6), unit="m")
-            vatransy = model.FloatContinuous(-poscor[1], range=(-10e-6, 10e-6), unit="m")
-            varot = model.FloatContinuous(rotation, range=(-math.pi, math.pi), unit="rad")
-            vascalex = model.FloatContinuous(scalecor[0], range=(0.5, 1.5))
-            vascaley = model.FloatContinuous(scalecor[1], range=(0.5, 1.5))
+            va_blur_window = model.FloatContinuous(40, range=(1.0, 40.0), unit="pixels")
 
             # Add the VAs to the holder, and to the vaconf mainly to force the order
-            setattr(vah, "%dTransX" % i, vatransx)
-            setattr(vah, "%dTransY" % i, vatransy)
-            setattr(vah, "%dRotation" % i, varot)
-            setattr(vah, "%dScaleX" % i, vascalex)
-            setattr(vah, "%dScaleY" % i, vascaley)
-            vaconf["%dTransX" % i] = {"label": "%s trans X" % stream.name.value}
-            vaconf["%dTransY" % i] = {"label": "%s trans Y" % stream.name.value}
-            vaconf["%dRotation" % i] = {"label": "%s rotation X" % stream.name.value}
-            vaconf["%dScaleX" % i] = {"label": "%s scale X" % stream.name.value}
-            vaconf["%dScaleY" % i] = {"label": "%s scale Y" % stream.name.value}
+            setattr(vah, "BlurWindow", va_blur_window)
+
+            vaconf["BlurWindow"] = {"label": "Blur window size"}
 
             # Create listeners with information of the stream and dimension
-            va_on_transx = functools.partial(self._on_trans, stream, 0)
-            va_on_transy = functools.partial(self._on_trans, stream, 1)
-            va_on_rotation = functools.partial(self._on_rotation, stream)
-            va_on_scalex = functools.partial(self._on_scale, stream, 0)
-            va_on_scaley = functools.partial(self._on_scale, stream, 1)
+            va_on_blur_window = functools.partial(self._on_blur_window, stream, 0)
+
             # We hold a reference to the listeners to prevent automatic subscription
-            vah._subscribers.append(va_on_transx)
-            vah._subscribers.append(va_on_transy)
-            vah._subscribers.append(va_on_rotation)
-            vah._subscribers.append(va_on_scalex)
-            vah._subscribers.append(va_on_scaley)
-            vatransx.subscribe(va_on_transx)
-            vatransy.subscribe(va_on_transy)
-            varot.subscribe(va_on_rotation)
-            vascalex.subscribe(va_on_scalex)
-            vascaley.subscribe(va_on_scaley)
+            vah._subscribers.append(va_on_blur_window)
+
+            va_blur_window.subscribe(va_on_blur_window)
 
         dlg.addSettings(vah, vaconf)
         dlg.addButton("Align", self.align, face_colour='blue')
@@ -193,27 +168,7 @@ class AutomaticOverlayPlugin(Plugin):
         self._semStream.raw[0].metadata = sem_metadata
         self._semStream._shouldUpdateImage()
 
-    def _on_trans(self, stream, i, value):
-        logging.debug("New trans = %f on stream %s", value, stream.name.value)
-        poscor = stream.raw[0].metadata.get(model.MD_POS_COR, (0, 0))
-        if i == 0:
-            poscor = (-value, poscor[1])
-        else:
-            poscor = (poscor[0], -value)
-        stream.raw[0].metadata[model.MD_POS_COR] = poscor
+    def _on_blur_window(self, stream, i, value):
+        logging.debug("New trans = %f on stream %s %d", value, stream.name.value, i)
         stream._shouldUpdateImage()
-
-    def _on_scale(self, stream, i, value):
-        logging.debug("New scale = %f on stream %s", value, stream.name.value)
-        scalecor = stream.raw[0].metadata.get(model.MD_PIXEL_SIZE_COR, (1, 1))
-        if i == 0:
-            scalecor = (value, scalecor[1])
-        else:
-            scalecor = (scalecor[0], value)
-        stream.raw[0].metadata[model.MD_PIXEL_SIZE_COR] = scalecor
-        stream._shouldUpdateImage()
-
-    def _on_rotation(self, stream, value):
-        logging.debug("New rotation = %f on stream %s", value, stream.name.value)
-        stream.raw[0].metadata[model.MD_ROTATION_COR] = value
-        stream._shouldUpdateImage()
+        
