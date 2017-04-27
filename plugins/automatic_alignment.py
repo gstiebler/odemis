@@ -257,13 +257,18 @@ class AutomaticOverlayPlugin(Plugin):
 
     def _on_blur_window(self, stream, i, value):
         logging.debug("blur value %d, va: %d", value, self.va_blur_window.value)
+        self._update_stream(stream)
+
+    def _on_crop(self, stream, value):
+        logging.debug("on crop %d", value)
+        self._update_stream(stream)
+
+    def _on_invert(self, stream, value):
+        logging.debug("_on_invert %d", value)
+        self._update_stream(stream)
+
+    def _update_stream(self, stream):
         crop = (self.va_crop_top.value, self.va_crop_bottom.value,\
                 self.va_crop_left.value, self.va_crop_right.value)
         stream.setPreprocessingParams(self.va_invert.value, True, crop, self.va_blur_window.value, 10)
         stream._shouldUpdateImage()
-
-    def _on_crop(self, stream, value):
-        logging.debug("on crop %d", value)
-
-    def _on_invert(self, stream, value):
-        logging.debug("_on_invert %d", value)
