@@ -115,6 +115,11 @@ class AutomaticOverlayPlugin(Plugin):
     def start(self):
         dlg = AcquisitionDialog(self, "Automatically change the alignment",
                                 text="Automatically change the alignment")
+
+        # removing the play overlay from the viewports
+        dlg.viewport_l.canvas.remove_view_overlay(dlg.viewport_l.canvas.play_overlay)
+        dlg.viewport_r.canvas.remove_view_overlay(dlg.viewport_r.canvas.play_overlay)
+
         vah = VAHolder()
         vah._subscribers = []
         vaconf = OrderedDict()
