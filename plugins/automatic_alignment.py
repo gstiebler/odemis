@@ -54,6 +54,8 @@ class VAHolder(object):
 class AlignmentProjection(stream.RGBSpatialProjection):
 
     def setPreprocessingParams(self, invert, flip, crop, gaussian_ksize, gaussian_sigma):
+        # gaussian_ksize must be odd
+        gaussian_ksize = gaussian_ksize + 1 if gaussian_ksize % 2 == 0 else gaussian_ksize
         self._invert = invert
         self._flip = flip
         self._crop = crop
@@ -126,27 +128,30 @@ class AutomaticOverlayPlugin(Plugin):
 
         tab_data = self.main_app.main_data.tab.value.tab_data_model
         for i, stream in enumerate(tab_data.streams.value):
+
+            self.va_blur_window = model.IntContinuous(41, range=(1, 81), unit="pixels")
+            # TODO set the limits of the crop VAs based on the size of the image
+            self.va_crop_top = model.IntContinuous(0, range=(0, 100), unit="pixels")
+            self.va_crop_bottom = model.IntContinuous(0, range=(0, 100), unit="pixels")
+            self.va_crop_left = model.IntContinuous(0, range=(0, 100), unit="pixels")
+            self.va_crop_right = model.IntContinuous(0, range=(0, 100), unit="pixels")
+            self.va_invert = model.BooleanVA(False)
+
             # TODO always use the last?
             projection = AlignmentProjection(stream)
-            projection.setPreprocessingParams(True, True, (0, 0, 0, 0), 41, 10)
+            crop = (self.va_crop_top.value, self.va_crop_bottom.value,\
+                    self.va_crop_left.value, self.va_crop_right.value)
+            projection.setPreprocessingParams(self.va_invert.value, True, crop, self.va_blur_window.value, 10)
             self._semStream = projection
             dlg.addStream(projection, 0)
 
-            va_blur_window = model.IntContinuous(40, range=(1, 40), unit="pixels")
-            # TODO set the limits of the crop VAs based on the size of the image
-            va_crop_top = model.IntContinuous(0, range=(0, 100), unit="pixels")
-            va_crop_bottom = model.IntContinuous(0, range=(0, 100), unit="pixels")
-            va_crop_left = model.IntContinuous(0, range=(0, 100), unit="pixels")
-            va_crop_right = model.IntContinuous(0, range=(0, 100), unit="pixels")
-            va_invert = model.BooleanVA(False)
-
             # Add the VAs to the holder, and to the vaconf mainly to force the order
-            setattr(vah, "BlurWindow", va_blur_window)
-            setattr(vah, "CropTop", va_crop_top)
-            setattr(vah, "CropBottom", va_crop_bottom)
-            setattr(vah, "CropLeft", va_crop_left)
-            setattr(vah, "CropRight", va_crop_right)
-            setattr(vah, "Invert", va_invert)
+            setattr(vah, "BlurWindow", self.va_blur_window)
+            setattr(vah, "CropTop", self.va_crop_top)
+            setattr(vah, "CropBottom", self.va_crop_bottom)
+            setattr(vah, "CropLeft", self.va_crop_left)
+            setattr(vah, "CropRight", self.va_crop_right)
+            setattr(vah, "Invert", self.va_invert)
 
             vaconf["BlurWindow"] = {"label": "Blur window size"}
             vaconf["CropTop"] = {"label": "Crop top"}
@@ -165,12 +170,12 @@ class AutomaticOverlayPlugin(Plugin):
             vah._subscribers.append(va_on_crop)
             vah._subscribers.append(va_on_invert)
 
-            va_blur_window.subscribe(va_on_blur_window)
-            va_crop_top.subscribe(va_on_crop)
-            va_crop_bottom.subscribe(va_on_crop)
-            va_crop_left.subscribe(va_on_crop)
-            va_crop_right.subscribe(va_on_crop)
-            va_invert.subscribe(va_on_invert)
+            self.va_blur_window.subscribe(va_on_blur_window)
+            self.va_crop_top.subscribe(va_on_crop)
+            self.va_crop_bottom.subscribe(va_on_crop)
+            self.va_crop_left.subscribe(va_on_crop)
+            self.va_crop_right.subscribe(va_on_crop)
+            self.va_invert.subscribe(va_on_invert)
 
         dlg.addSettings(vah, vaconf)
         dlg.addButton("Align", self.align, face_colour='blue')
@@ -251,7 +256,10 @@ class AutomaticOverlayPlugin(Plugin):
         self._semStream._shouldUpdateImage()
 
     def _on_blur_window(self, stream, i, value):
-        logging.debug("New trans = %f on stream %s %d", value, stream.name.value, i)
+        logging.debug("blur value %d, va: %d", value, self.va_blur_window.value)
+        crop = (self.va_crop_top.value, self.va_crop_bottom.value,\
+                self.va_crop_left.value, self.va_crop_right.value)
+        stream.setPreprocessingParams(self.va_invert.value, True, crop, self.va_blur_window.value, 10)
         stream._shouldUpdateImage()
 
     def _on_crop(self, stream, value):
