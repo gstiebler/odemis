@@ -53,10 +53,48 @@ class VAHolder(object):
 
 class AlignmentProjection(stream.RGBSpatialProjection):
 
+    def setPreprocessingParams(self, invert, crop, gaussian_ksize, gaussian_sigma):
+        self._invert = invert
+        self._crop = crop
+        self._gaussian_ksize = gaussian_ksize
+        self._gaussian_sigma = gaussian_sigma
+
+    def preprocess(self, ima):
+        '''
+        invert(bool)
+        gaussian_ksize: kernel size for the gaussian processing: Must be odd and positive
+        gaussian_sigma: sigma for the gaussian processing
+        '''
+        metadata_a = ima.metadata
+        if ima.ndim > 2:
+            ima = cv2.cvtColor(ima, cv2.COLOR_RGB2GRAY)
+
+        # invert on Y axis
+        ima = cv2.flip(ima, 0)
+
+        # Invert the image brightness
+        if self._invert:
+            ima = 255 - ima
+
+        ima_height = ima.shape[0]
+
+        crop_top, crop_bottom, crop_left, crop_right = self._crop
+        # remove the bar
+        ima = ima[crop_top:ima.shape[0] - crop_bottom, crop_left:ima.shape[1] - crop_right]
+
+        # equalize histogram
+        ima = cv2.equalizeHist(ima)
+
+        # blur (kernel size must be odd)
+        ima = cv2.GaussianBlur(ima, (self._gaussian_ksize, self._gaussian_ksize),\
+                self._gaussian_sigma)
+
+        return  model.DataArray(ima, metadata_a)
+
     def _updateImage(self):
         super(AlignmentProjection, self)._updateImage()
         metadata = self.image.value.metadata
-        self.grayscale_im = keypoint.PreprocessA(self.image.value)
+        self.grayscale_im = self.preprocess(self.image.value)
         rgb_im = cv2.cvtColor(self.grayscale_im, cv2.COLOR_GRAY2RGB)
         rgb_im = model.DataArray(rgb_im, metadata)
         self.image.value = rgb_im
@@ -155,9 +193,10 @@ class AutomaticOverlayPlugin(Plugin):
 
         data = open_acquisition(filename)
         stream = data_to_static_streams(data)
-        stream = AlignmentProjection(stream[0])
-        dlg.addStream(stream, 1)
-        self._temStream = stream
+        projection = AlignmentProjection(stream[0])
+        projection.setPreprocessingParams(True, (0, 50, 0, 0), 41, 10)
+        dlg.addStream(projection, 1)
+        self._temStream = projection
 
     def align(self, dlg):
         ima = self._semStream.raw[0]
