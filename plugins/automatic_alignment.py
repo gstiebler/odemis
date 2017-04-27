@@ -46,6 +46,7 @@ import odemis.gui.util as guiutil
 from odemis.gui.conf import get_acqui_conf
 import os
 import wx
+import cv2
 
 class VAHolder(object):
     pass
@@ -54,7 +55,11 @@ class AlignmentProjection(stream.RGBSpatialProjection):
 
     def _updateImage(self):
         super(AlignmentProjection, self)._updateImage()
-        logging.debug('called super update image')
+        metadata = self.image.value.metadata
+        self.grayscale_im = keypoint.PreprocessA(self.image.value)
+        rgb_im = cv2.cvtColor(self.grayscale_im, cv2.COLOR_GRAY2RGB)
+        rgb_im = model.DataArray(rgb_im, metadata)
+        self.image.value = rgb_im
 
 
 class AutomaticOverlayPlugin(Plugin):
@@ -147,7 +152,6 @@ class AutomaticOverlayPlugin(Plugin):
 
         # Detect the format to use
         filename = dialog.GetPath()
-        # filename = u'/home/gstiebler/Projetos/Delmic/iCLEM/Images/g_009.tif'
 
         data = open_acquisition(filename)
         stream = data_to_static_streams(data)
@@ -157,7 +161,8 @@ class AutomaticOverlayPlugin(Plugin):
 
     def align(self, dlg):
         ima = self._semStream.raw[0]
-        imb = self._temStream.raw[0]
+        imb = self._temStream.grayscale_im
+        # TODO Preprocess not needed here
         ima, imb = keypoint.Preprocess(ima, imb)
         tmat = keypoint.FindTransform(ima, imb)
         # warped_im = cv2.warpPerspective(ima, tmat, (imb.shape[1], imb.shape[0]))

@@ -81,14 +81,10 @@ def FindTransform(ima, imb):
 
     return mat
 
-def Preprocess(ima, imb):
+def PreprocessA(ima):
     metadata_a = ima.metadata
-    metadata_b = imb.metadata
     if ima.ndim > 2:
         ima = cv2.cvtColor(ima, cv2.COLOR_RGB2GRAY)
-
-    if imb.ndim > 2:
-        imb = cv2.cvtColor(imb, cv2.COLOR_RGB2GRAY)
 
     # invert on Y axis
     ima = cv2.flip(ima, 0)
@@ -100,16 +96,27 @@ def Preprocess(ima, imb):
     # calculate the height of the bar
     barLen = int(ima_height * BAR_LEN_FACTOR)
 
-    # remove the bar on both images
+    # remove the bar
     ima = ima[:-barLen, :]
-    imb = imb[:-barLen, :]
 
     # equalize histogram
     ima = cv2.equalizeHist(ima)
-    imb = cv2.equalizeHist(imb)
 
     # blur (window size must be odd)
     ima = cv2.GaussianBlur(ima, (41, 41), 10)
+
+    return  model.DataArray(ima, metadata_a)
+
+def PreprocessB(imb):
+    metadata_b = imb.metadata
+
+    if imb.ndim > 2:
+        imb = cv2.cvtColor(imb, cv2.COLOR_RGB2GRAY)
+
+    # equalize histogram
+    imb = cv2.equalizeHist(imb)
+
+    # blur (window size must be odd)
     imb = cv2.GaussianBlur(imb, (21, 21), 5)
 
-    return  model.DataArray(ima, metadata_a), model.DataArray(imb, metadata_b)
+    return model.DataArray(imb, metadata_b)
