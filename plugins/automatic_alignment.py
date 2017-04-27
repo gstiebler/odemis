@@ -53,8 +53,9 @@ class VAHolder(object):
 
 class AlignmentProjection(stream.RGBSpatialProjection):
 
-    def setPreprocessingParams(self, invert, crop, gaussian_ksize, gaussian_sigma):
+    def setPreprocessingParams(self, invert, flip, crop, gaussian_ksize, gaussian_sigma):
         self._invert = invert
+        self._flip = flip
         self._crop = crop
         self._gaussian_ksize = gaussian_ksize
         self._gaussian_sigma = gaussian_sigma
@@ -70,7 +71,8 @@ class AlignmentProjection(stream.RGBSpatialProjection):
             ima = cv2.cvtColor(ima, cv2.COLOR_RGB2GRAY)
 
         # invert on Y axis
-        ima = cv2.flip(ima, 0)
+        if self._flip:
+            ima = cv2.flip(ima, 0)
 
         # Invert the image brightness
         if self._invert:
@@ -119,9 +121,11 @@ class AutomaticOverlayPlugin(Plugin):
 
         tab_data = self.main_app.main_data.tab.value.tab_data_model
         for i, stream in enumerate(tab_data.streams.value):
-            dlg.addStream(stream)
             # TODO always use the last?
-            self._semStream = stream
+            projection = AlignmentProjection(stream)
+            projection.setPreprocessingParams(True, True, (0, 0, 0, 0), 41, 10)
+            self._semStream = projection
+            dlg.addStream(projection, 0)
 
             va_blur_window = model.IntContinuous(40, range=(1, 40), unit="pixels")
             # TODO set the limits of the crop VAs based on the size of the image
@@ -147,9 +151,9 @@ class AutomaticOverlayPlugin(Plugin):
             vaconf["Invert"] = {"label": "Invert"}
 
             # Create listeners with information of the stream and dimension
-            va_on_blur_window = functools.partial(self._on_blur_window, stream, 0)
-            va_on_crop = functools.partial(self._on_crop, stream)
-            va_on_invert = functools.partial(self._on_invert, stream)
+            va_on_blur_window = functools.partial(self._on_blur_window, projection, 0)
+            va_on_crop = functools.partial(self._on_crop, projection)
+            va_on_invert = functools.partial(self._on_invert, projection)
 
             # We hold a reference to the listeners to prevent automatic subscription
             vah._subscribers.append(va_on_blur_window)
@@ -194,12 +198,12 @@ class AutomaticOverlayPlugin(Plugin):
         data = open_acquisition(filename)
         stream = data_to_static_streams(data)
         projection = AlignmentProjection(stream[0])
-        projection.setPreprocessingParams(True, (0, 50, 0, 0), 41, 10)
+        projection.setPreprocessingParams(False, False, (0, 100, 0, 0), 21, 5)
         dlg.addStream(projection, 1)
         self._temStream = projection
 
     def align(self, dlg):
-        ima = self._semStream.raw[0]
+        ima = self._semStream.grayscale_im
         imb = self._temStream.grayscale_im
         # TODO Preprocess not needed here
         ima, imb = keypoint.Preprocess(ima, imb)
