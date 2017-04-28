@@ -51,6 +51,39 @@ import cv2
 class VAHolder(object):
     pass
 
+def preprocess(ima, flip, invert, crop, gaussian_ksize, gaussian_sigma):
+    '''
+    invert(bool)
+    gaussian_ksize: kernel size for the gaussian processing: Must be odd and positive
+    gaussian_sigma: sigma for the gaussian processing
+    '''
+    metadata_a = ima.metadata
+    if ima.ndim > 2:
+        ima = cv2.cvtColor(ima, cv2.COLOR_RGB2GRAY)
+
+    # invert on Y axis
+    if flip:
+        ima = cv2.flip(ima, 0)
+
+    # Invert the image brightness
+    if invert:
+        ima = 255 - ima
+
+    ima_height = ima.shape[0]
+
+    crop_top, crop_bottom, crop_left, crop_right = crop
+    # remove the bar
+    ima = ima[crop_top:ima.shape[0] - crop_bottom, crop_left:ima.shape[1] - crop_right]
+
+    # equalize histogram
+    ima = cv2.equalizeHist(ima)
+
+    # blur (kernel size must be odd)
+    ima = cv2.GaussianBlur(ima, (gaussian_ksize, gaussian_ksize), gaussian_sigma)
+
+    return  model.DataArray(ima, metadata_a)
+
+
 class AlignmentProjection(stream.RGBSpatialProjection):
 
     def setPreprocessingParams(self, invert, flip, crop, gaussian_ksize, gaussian_sigma):
@@ -62,47 +95,14 @@ class AlignmentProjection(stream.RGBSpatialProjection):
         self._gaussian_ksize = gaussian_ksize
         self._gaussian_sigma = gaussian_sigma
 
-    def preprocess(self, ima):
-        '''
-        invert(bool)
-        gaussian_ksize: kernel size for the gaussian processing: Must be odd and positive
-        gaussian_sigma: sigma for the gaussian processing
-        '''
-        metadata_a = ima.metadata
-        if ima.ndim > 2:
-            ima = cv2.cvtColor(ima, cv2.COLOR_RGB2GRAY)
-
-        # invert on Y axis
-        if self._flip:
-            ima = cv2.flip(ima, 0)
-
-        # Invert the image brightness
-        if self._invert:
-            ima = 255 - ima
-
-        ima_height = ima.shape[0]
-
-        crop_top, crop_bottom, crop_left, crop_right = self._crop
-        # remove the bar
-        ima = ima[crop_top:ima.shape[0] - crop_bottom, crop_left:ima.shape[1] - crop_right]
-
-        # equalize histogram
-        ima = cv2.equalizeHist(ima)
-
-        # blur (kernel size must be odd)
-        ima = cv2.GaussianBlur(ima, (self._gaussian_ksize, self._gaussian_ksize),\
-                self._gaussian_sigma)
-
-        return  model.DataArray(ima, metadata_a)
-
     def _updateImage(self):
         super(AlignmentProjection, self)._updateImage()
         metadata = self.image.value.metadata
-        self.grayscale_im = self.preprocess(self.image.value)
+        self.grayscale_im = preprocess(self.image.value, self._flip, self._invert, self._crop,\
+                self._gaussian_ksize, self._gaussian_sigma)
         rgb_im = cv2.cvtColor(self.grayscale_im, cv2.COLOR_GRAY2RGB)
         rgb_im = model.DataArray(rgb_im, metadata)
         self.image.value = rgb_im
-
 
 class AutomaticOverlayPlugin(Plugin):
     name = "Automatic Overlay"
@@ -229,8 +229,6 @@ class AutomaticOverlayPlugin(Plugin):
     def align(self, dlg):
         ima = self._semStream.grayscale_im
         imb = self._temStream.grayscale_im
-        # TODO Preprocess not needed here
-        ima, imb = keypoint.Preprocess(ima, imb)
         tmat = keypoint.FindTransform(ima, imb)
         # warped_im = cv2.warpPerspective(ima, tmat, (imb.shape[1], imb.shape[0]))
         # merged_im = cv2.addWeighted(imb, 0.5, warped_im, 0.5, 0.0)
