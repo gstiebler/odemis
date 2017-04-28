@@ -97,10 +97,10 @@ class AlignmentProjection(stream.RGBSpatialProjection):
 
     def _updateImage(self):
         raw = self.stream.raw[0]
-        self.image.value = self._projectTile(raw)
+        raw = self._projectTile(raw)
 
-        metadata = self.image.value.metadata
-        self.grayscale_im = preprocess(self.image.value, self._flip, self._invert, self._crop,\
+        metadata = raw.metadata
+        self.grayscale_im = preprocess(raw, self._flip, self._invert, self._crop,\
                 self._gaussian_ksize, self._gaussian_sigma)
         rgb_im = cv2.cvtColor(self.grayscale_im, cv2.COLOR_GRAY2RGB)
         rgb_im = model.DataArray(rgb_im, metadata)
