@@ -96,7 +96,9 @@ class AlignmentProjection(stream.RGBSpatialProjection):
         self._gaussian_sigma = gaussian_sigma
 
     def _updateImage(self):
-        super(AlignmentProjection, self)._updateImage()
+        raw = self.stream.raw[0]
+        self.image.value = self._projectTile(raw)
+
         metadata = self.image.value.metadata
         self.grayscale_im = preprocess(self.image.value, self._flip, self._invert, self._crop,\
                 self._gaussian_ksize, self._gaussian_sigma)
@@ -218,8 +220,9 @@ class AutomaticOverlayPlugin(Plugin):
         filename = dialog.GetPath()
 
         data = open_acquisition(filename)
-        stream = data_to_static_streams(data)
-        projection = AlignmentProjection(stream[0])
+        s = data_to_static_streams(data)[0]
+        s = s.stream if isinstance(s, stream.DataProjection) else s
+        projection = AlignmentProjection(s)
         projection.setPreprocessingParams(False, False, (0, 100, 0, 0), 21, 5)
         dlg.addStream(projection, 1)
         # after addStream
