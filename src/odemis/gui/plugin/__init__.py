@@ -444,7 +444,7 @@ class AcquisitionDialog(xrcfr_plugin):
                 self.streambar_controller.addStream(stream)
                 self.microscope_view.addStream(stream)
             else:
-                self.streambar_controller2.addStream(stream)
+                # self.streambar_controller2.addStream(stream)
                 self.microscope_view2.addStream(stream)
 
     @call_in_wx_main
