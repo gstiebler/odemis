@@ -100,9 +100,9 @@ class AlignmentProjection(stream.RGBSpatialProjection):
         raw = self._projectTile(raw)
 
         metadata = raw.metadata
-        self.grayscale_im = preprocess(raw, self._flip, self._invert, self._crop,\
+        grayscale_im = preprocess(raw, self._flip, self._invert, self._crop,\
                 self._gaussian_ksize, self._gaussian_sigma)
-        rgb_im = cv2.cvtColor(self.grayscale_im, cv2.COLOR_GRAY2RGB)
+        rgb_im = cv2.cvtColor(grayscale_im, cv2.COLOR_GRAY2RGB)
         rgb_im = model.DataArray(rgb_im, metadata)
         self.image.value = rgb_im
 
@@ -230,8 +230,9 @@ class AutomaticOverlayPlugin(Plugin):
         self._temStream = projection
 
     def align(self, dlg):
-        ima = self._semStream.grayscale_im
-        imb = self._temStream.grayscale_im
+        ima = preprocess(self._semStream.raw, True, self.va_invert.value, crop,\
+                self.va_blur_window.value, 10)
+        imb = preprocess(self._temStream.raw, False, False, crop, 21, 5)
         tmat = keypoint.FindTransform(ima, imb)
         # warped_im = cv2.warpPerspective(ima, tmat, (imb.shape[1], imb.shape[0]))
         # merged_im = cv2.addWeighted(imb, 0.5, warped_im, 0.5, 0.0)
