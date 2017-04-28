@@ -114,6 +114,7 @@ class AutomaticOverlayPlugin(Plugin):
         super(AutomaticOverlayPlugin, self).__init__(microscope, main_app)
         self.addMenu("Overlay/Automatic alignment corrections", self.start)
 
+
     def start(self):
         dlg = AcquisitionDialog(self, "Automatically change the alignment",
                                 text="Automatically change the alignment")
@@ -126,56 +127,53 @@ class AutomaticOverlayPlugin(Plugin):
         vah._subscribers = []
         vaconf = OrderedDict()
 
-        tab_data = self.main_app.main_data.tab.value.tab_data_model
-        for i, stream in enumerate(tab_data.streams.value):
+        self.va_blur_window = model.IntContinuous(41, range=(1, 81), unit="pixels")
+        # TODO set the limits of the crop VAs based on the size of the image
+        self.va_crop_top = model.IntContinuous(0, range=(0, 100), unit="pixels")
+        self.va_crop_bottom = model.IntContinuous(0, range=(0, 100), unit="pixels")
+        self.va_crop_left = model.IntContinuous(0, range=(0, 100), unit="pixels")
+        self.va_crop_right = model.IntContinuous(0, range=(0, 100), unit="pixels")
+        self.va_invert = model.BooleanVA(False)
 
-            self.va_blur_window = model.IntContinuous(41, range=(1, 81), unit="pixels")
-            # TODO set the limits of the crop VAs based on the size of the image
-            self.va_crop_top = model.IntContinuous(0, range=(0, 100), unit="pixels")
-            self.va_crop_bottom = model.IntContinuous(0, range=(0, 100), unit="pixels")
-            self.va_crop_left = model.IntContinuous(0, range=(0, 100), unit="pixels")
-            self.va_crop_right = model.IntContinuous(0, range=(0, 100), unit="pixels")
-            self.va_invert = model.BooleanVA(False)
+        sem_stream = self._get_sem_stream()
+        projection = AlignmentProjection(sem_stream)
+        crop = (self.va_crop_top.value, self.va_crop_bottom.value,\
+                self.va_crop_left.value, self.va_crop_right.value)
+        projection.setPreprocessingParams(self.va_invert.value, True, crop, self.va_blur_window.value, 10)
+        self._semStream = projection
+        dlg.addStream(projection, 0)
 
-            # TODO always use the last?
-            projection = AlignmentProjection(stream)
-            crop = (self.va_crop_top.value, self.va_crop_bottom.value,\
-                    self.va_crop_left.value, self.va_crop_right.value)
-            projection.setPreprocessingParams(self.va_invert.value, True, crop, self.va_blur_window.value, 10)
-            self._semStream = projection
-            dlg.addStream(projection, 0)
+        # Add the VAs to the holder, and to the vaconf mainly to force the order
+        setattr(vah, "BlurWindow", self.va_blur_window)
+        setattr(vah, "CropTop", self.va_crop_top)
+        setattr(vah, "CropBottom", self.va_crop_bottom)
+        setattr(vah, "CropLeft", self.va_crop_left)
+        setattr(vah, "CropRight", self.va_crop_right)
+        setattr(vah, "Invert", self.va_invert)
 
-            # Add the VAs to the holder, and to the vaconf mainly to force the order
-            setattr(vah, "BlurWindow", self.va_blur_window)
-            setattr(vah, "CropTop", self.va_crop_top)
-            setattr(vah, "CropBottom", self.va_crop_bottom)
-            setattr(vah, "CropLeft", self.va_crop_left)
-            setattr(vah, "CropRight", self.va_crop_right)
-            setattr(vah, "Invert", self.va_invert)
+        vaconf["BlurWindow"] = {"label": "Blur window size"}
+        vaconf["CropTop"] = {"label": "Crop top"}
+        vaconf["CropBottom"] = {"label": "Crop bottom"}
+        vaconf["CropLeft"] = {"label": "Crop left"}
+        vaconf["CropRight"] = {"label": "Crop right"}
+        vaconf["Invert"] = {"label": "Invert"}
 
-            vaconf["BlurWindow"] = {"label": "Blur window size"}
-            vaconf["CropTop"] = {"label": "Crop top"}
-            vaconf["CropBottom"] = {"label": "Crop bottom"}
-            vaconf["CropLeft"] = {"label": "Crop left"}
-            vaconf["CropRight"] = {"label": "Crop right"}
-            vaconf["Invert"] = {"label": "Invert"}
+        # Create listeners with information of the stream and dimension
+        va_on_blur_window = functools.partial(self._on_blur_window, projection, 0)
+        va_on_crop = functools.partial(self._on_crop, projection)
+        va_on_invert = functools.partial(self._on_invert, projection)
 
-            # Create listeners with information of the stream and dimension
-            va_on_blur_window = functools.partial(self._on_blur_window, projection, 0)
-            va_on_crop = functools.partial(self._on_crop, projection)
-            va_on_invert = functools.partial(self._on_invert, projection)
+        # We hold a reference to the listeners to prevent automatic subscription
+        vah._subscribers.append(va_on_blur_window)
+        vah._subscribers.append(va_on_crop)
+        vah._subscribers.append(va_on_invert)
 
-            # We hold a reference to the listeners to prevent automatic subscription
-            vah._subscribers.append(va_on_blur_window)
-            vah._subscribers.append(va_on_crop)
-            vah._subscribers.append(va_on_invert)
-
-            self.va_blur_window.subscribe(va_on_blur_window)
-            self.va_crop_top.subscribe(va_on_crop)
-            self.va_crop_bottom.subscribe(va_on_crop)
-            self.va_crop_left.subscribe(va_on_crop)
-            self.va_crop_right.subscribe(va_on_crop)
-            self.va_invert.subscribe(va_on_invert)
+        self.va_blur_window.subscribe(va_on_blur_window)
+        self.va_crop_top.subscribe(va_on_crop)
+        self.va_crop_bottom.subscribe(va_on_crop)
+        self.va_crop_left.subscribe(va_on_crop)
+        self.va_crop_right.subscribe(va_on_crop)
+        self.va_invert.subscribe(va_on_invert)
 
         dlg.fp_streams.Hide()
         dlg.addSettings(vah, vaconf)
@@ -183,6 +181,19 @@ class AutomaticOverlayPlugin(Plugin):
         dlg.addButton("Cancel", None)
         self.open_image(dlg)
         dlg.ShowModal()
+
+    def _get_sem_stream(self):
+        """
+        Finds the SEM stream in the acquisition tab
+        return (SEMStream or None): None if not found
+        """
+        tab_data = self.main_app.main_data.tab.value.tab_data_model
+        for s in tab_data.streams.value:
+            if isinstance(s, stream.EMStream):
+                return s
+
+        logging.warning("No SEM stream found")
+        return None
 
     def open_image(self, dlg):
         # Find the available formats (and corresponding extensions)
