@@ -177,6 +177,7 @@ class AutomaticOverlayPlugin(Plugin):
             self.va_crop_right.subscribe(va_on_crop)
             self.va_invert.subscribe(va_on_invert)
 
+        dlg.fp_streams.Hide()
         dlg.addSettings(vah, vaconf)
         dlg.addButton("Align", self.align, face_colour='blue')
         dlg.addButton("Cancel", None)
@@ -210,6 +211,8 @@ class AutomaticOverlayPlugin(Plugin):
         projection = AlignmentProjection(stream[0])
         projection.setPreprocessingParams(False, False, (0, 100, 0, 0), 21, 5)
         dlg.addStream(projection, 1)
+        # after addStream
+        dlg.fp_streams.Hide()
         self._temStream = projection
 
     def align(self, dlg):
