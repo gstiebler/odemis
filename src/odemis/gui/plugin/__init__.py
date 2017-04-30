@@ -419,7 +419,7 @@ class AcquisitionDialog(xrcfr_plugin):
         self.Fit()
 
     @call_in_wx_main
-    def addStream(self, stream, index=0):
+    def addStream(self, stream):
         """
         Adds a stream to the canvas, and a stream entry to the stream panel.
         It also ensures the panel box and canvas are shown.
@@ -429,9 +429,6 @@ class AcquisitionDialog(xrcfr_plugin):
         returns (StreamController): the stream entry
 
         """
-        if index == 1:
-            self.viewport_r.Show()
-
         if not self.fp_streams.IsShown() or not self.viewport_l.IsShown():
             self.fp_streams.Show()
             self.viewport_l.Show()
@@ -440,12 +437,8 @@ class AcquisitionDialog(xrcfr_plugin):
             self.Update()
 
         if stream:
-            if index == 0:
-                self.streambar_controller.addStream(stream)
-                self.microscope_view.addStream(stream)
-            else:
-                # self.streambar_controller2.addStream(stream)
-                self.microscope_view2.addStream(stream)
+            self.streambar_controller.addStream(stream)
+            self.microscope_view.addStream(stream)
 
     @call_in_wx_main
     def showProgress(self, future):
