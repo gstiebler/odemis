@@ -166,7 +166,7 @@ class AutomaticOverlayPlugin(Plugin):
         self.va_crop_bottom = model.IntContinuous(0, range=(0, 100), unit="pixels")
         self.va_crop_left = model.IntContinuous(0, range=(0, 100), unit="pixels")
         self.va_crop_right = model.IntContinuous(0, range=(0, 100), unit="pixels")
-        self.va_invert = model.BooleanVA(False)
+        self.va_invert = model.BooleanVA(True)
 
         sem_stream = self._get_sem_stream()
         projection = AlignmentProjection(sem_stream)
@@ -258,13 +258,12 @@ class AutomaticOverlayPlugin(Plugin):
         self._temStream = projection
 
     def align(self, dlg):
-        ima = preprocess(self._semStream.raw, True, self.va_invert.value, crop,\
+        crop = (self.va_crop_top.value, self.va_crop_bottom.value,\
+                self.va_crop_left.value, self.va_crop_right.value)
+        ima = preprocess(self._semStream.raw[0], True, self.va_invert.value, (0, 0, 0, 0),\
                 self.va_blur_window.value, 10)
-        imb = preprocess(self._temStream.raw, False, False, crop, 21, 5)
+        imb = preprocess(self._temStream.raw[0], False, False, crop, 21, 5)
         tmat = keypoint.FindTransform(ima, imb)
-        # warped_im = cv2.warpPerspective(ima, tmat, (imb.shape[1], imb.shape[0]))
-        # merged_im = cv2.addWeighted(imb, 0.5, warped_im, 0.5, 0.0)
-        # cv2.imwrite(imgs_folder + 'warped.jpg', merged_im)
 
         transf_md = get_img_transformation_md(tmat, ima)
         logging.debug(tmat)
@@ -301,7 +300,7 @@ class AutomaticOverlayPlugin(Plugin):
 
         tabs = self.main_app.tab_controller.get_tabs()
         for tab in tabs:
-            tab.stream_bar_controller.addStream(self._semStream, add_to_view=True)
+            tab.stream_bar_controller.addStream(self._temStream.stream, add_to_view=True)
 
     def _on_blur_window(self, stream, i, value):
         logging.debug("blur value %d, va: %d", value, self.va_blur_window.value)
