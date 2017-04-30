@@ -51,6 +51,37 @@ import cv2
 class VAHolder(object):
     pass
 
+class AlignmentAcquisitionDialog(AcquisitionDialog):
+
+    # TODO check if the annotation is necessary: @call_in_wx_main
+    def addStream(self, stream, index):
+        """
+        Adds a stream to the canvas, and a stream entry to the stream panel.
+        It also ensures the panel box and canvas are shown.
+
+        Note: If this method is not called, the stream panel and canvas are hidden.
+        """
+        new_stream_l = index == 0 and not self.viewport_l.IsShown()
+        new_stream_r = index == 1 and not self.viewport_r.IsShown()
+
+        if index == 0:
+            self.viewport_l.Show()
+        else:
+            self.viewport_r.Show()
+
+        if new_stream_l or new_stream_r:
+            self.Layout()
+            self.Fit()
+            self.Update()
+
+        if stream:
+            if index == 0:
+                self.streambar_controller.addStream(stream)
+                self.microscope_view.addStream(stream)
+            else:
+                self.microscope_view2.addStream(stream)
+
+
 def preprocess(ima, flip, invert, crop, gaussian_ksize, gaussian_sigma):
     '''
     invert(bool)
@@ -118,7 +149,7 @@ class AutomaticOverlayPlugin(Plugin):
 
 
     def start(self):
-        dlg = AcquisitionDialog(self, "Automatically change the alignment",
+        dlg = AlignmentAcquisitionDialog(self, "Automatically change the alignment",
                                 text="Automatically change the alignment")
 
         # removing the play overlay from the viewports
@@ -177,7 +208,6 @@ class AutomaticOverlayPlugin(Plugin):
         self.va_crop_right.subscribe(va_on_crop)
         self.va_invert.subscribe(va_on_invert)
 
-        dlg.fp_streams.Hide()
         dlg.addSettings(vah, vaconf)
         dlg.addButton("Align", self.align, face_colour='blue')
         dlg.addButton("Cancel", None)
@@ -225,8 +255,6 @@ class AutomaticOverlayPlugin(Plugin):
         projection = AlignmentProjection(s)
         projection.setPreprocessingParams(False, False, (0, 100, 0, 0), 21, 5)
         dlg.addStream(projection, 1)
-        # after addStream
-        dlg.fp_streams.Hide()
         self._temStream = projection
 
     def align(self, dlg):
