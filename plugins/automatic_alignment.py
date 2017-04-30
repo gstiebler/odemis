@@ -299,6 +299,10 @@ class AutomaticOverlayPlugin(Plugin):
         self._semStream.raw[0].metadata = sem_metadata
         self._semStream._shouldUpdateImage()
 
+        tabs = self.main_app.tab_controller.get_tabs()
+        for tab in tabs:
+            tab.stream_bar_controller.addStream(self._semStream, add_to_view=True)
+
     def _on_blur_window(self, stream, i, value):
         logging.debug("blur value %d, va: %d", value, self.va_blur_window.value)
         self._update_stream(stream)
