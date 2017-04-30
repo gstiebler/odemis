@@ -298,6 +298,10 @@ class AutomaticOverlayPlugin(Plugin):
         self._semStream.raw[0].metadata = sem_metadata
         self._semStream._shouldUpdateImage()
 
+        crop_top, crop_bottom, crop_left, crop_right = crop
+        # remove the bar
+        raw = self._temStream.stream.raw[0]
+        self._temStream.stream.raw[0] = raw[crop_top:raw.shape[0] - crop_bottom, crop_left:raw.shape[1] - crop_right]
         tabs = self.main_app.tab_controller.get_tabs()
         for tab in tabs:
             tab.stream_bar_controller.addStream(self._temStream.stream, add_to_view=True)
