@@ -283,7 +283,7 @@ class AutomaticOverlayPlugin(Plugin):
 
         analysis_tab = self.main_app.main_data.getTabByName('analysis')
         aligned_stream = stream.StaticSEMStream("TEM", raw)
-        analysis_tab.stream_bar_controller.addStream(aligned_stream, add_to_view=True)
+        wx.CallAfter(analysis_tab.stream_bar_controller.addStream, aligned_stream, add_to_view=True)
 
     def _on_blur_window(self, stream, i, value):
         logging.debug("blur value %d, va: %d", value, self.va_blur_window.value)
