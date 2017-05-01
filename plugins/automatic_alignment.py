@@ -247,8 +247,8 @@ class AutomaticOverlayPlugin(Plugin):
         logging.debug(tmat)
         logging.debug(transf_md)
 
-        orig_sem_ps = ima.metadata.get(model.MD_PIXEL_SIZE, (0.0, 0.0))
-        orig_tem_ps = imb.metadata.get(model.MD_PIXEL_SIZE, (0.0, 0.0))
+        orig_sem_ps = ima.metadata.get(model.MD_PIXEL_SIZE, (1e-9, 1e-9))
+        orig_tem_ps = imb.metadata.get(model.MD_PIXEL_SIZE, (1e-9, 1e-9))
         ps_prop = (orig_tem_ps[0] / orig_sem_ps[0], orig_tem_ps[1] / orig_sem_ps[1])
         ps_cor = transf_md[model.MD_PIXEL_SIZE]
         new_pixel_size = (orig_sem_ps[0] * ps_prop[0] * ps_cor[0],\
