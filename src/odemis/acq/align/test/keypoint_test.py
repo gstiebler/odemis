@@ -72,28 +72,31 @@ class TestKeypoint(unittest.TestCase):
 
     def test_first(self):
         image_pairs = [
-            ('Slice69.tif', 'g_009_gray_cropped.tif'),
+            (
+                ('Slice69.tif', True, True, (0, 0, 0, 0), 10), 
+                ('g_009_gray_cropped.tif', False, False, (0, 0, 0, 0), 5)
+            ),
             ('001_CBS_010.jpg', '20141014-113042_1.jpg'),
-            ('t3 DELPHI.tiff', 't3 testoutA3.tif')
+            (
+                ('t3 DELPHI.tiff', False, False, (0, 200, 0, 0), 3),
+                ('t3 testoutA3.tif', False, False, (0, 420, 0, 0), 3)
+            )
         ]
         image_pair = image_pairs[0]
-        tem_img = open_acquisition(imgs_folder + image_pair[0])[0].getData()
-        sem_img = open_acquisition(imgs_folder + image_pair[1])[0].getData()
-        tem_img = preprocess(tem_img, True, True, (0, 0, 0, 0), 10)
-        sem_img = preprocess(sem_img, False, False, (0, 0, 0, 0), 5)
+        tem_img = open_acquisition(imgs_folder + image_pair[0][0])[0].getData()
+        sem_img = open_acquisition(imgs_folder + image_pair[1][0])[0].getData()
+        tem_img = preprocess(tem_img, image_pair[0][1], image_pair[0][2], image_pair[0][3], image_pair[0][4])
+        sem_img = preprocess(sem_img, image_pair[1][1], image_pair[1][2], image_pair[1][3], image_pair[1][4])
         tmat, tem_kp, sem_kp = keypoint.FindTransform(tem_img, sem_img)
 
         tem_painted_kp = cv2.drawKeypoints(tem_img, tem_kp, None, color=(0,255,0), flags=0)
         sem_painted_kp = cv2.drawKeypoints(sem_img, sem_kp, None, color=(0,255,0), flags=0)
-
-        # tmat[2, 0] = 0.0
-        # tmat[2, 1] = 0.0
-        warped_im = cv2.warpPerspective(tem_img, tmat, (sem_img.shape[1], sem_img.shape[0]))
-        merged_im = cv2.addWeighted(sem_img, 0.5, warped_im, 0.5, 0.0)
-        cv2.imwrite(imgs_folder + 'merged_with_warped.jpg', merged_im)
         cv2.imwrite(imgs_folder + 'tem_kp.jpg', tem_painted_kp)
         cv2.imwrite(imgs_folder + 'sem_kp.jpg', sem_painted_kp)
 
+        warped_im = cv2.warpPerspective(tem_img, tmat, (sem_img.shape[1], sem_img.shape[0]))
+        merged_im = cv2.addWeighted(sem_img, 0.5, warped_im, 0.5, 0.0)
+        cv2.imwrite(imgs_folder + 'merged_with_warped.jpg', merged_im)
         print tmat
         print get_img_transformation_md(tmat, tem_img)
 

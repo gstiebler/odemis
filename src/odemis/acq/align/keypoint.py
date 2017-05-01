@@ -74,3 +74,58 @@ def FindTransform(ima, imb):
         raise ValueError("The images does not match")
 
     return mat, ima_kp, imb_kp
+
+
+def FindTransformORB(ima, imb):
+    """
+    ima(DataArray of shape YaXa with int or float): the first image
+    imb(DataArray of shape YbXb with int or float): the second image.
+        Note that the shape doesn't have to be any relationship with the shape of the
+        first dimension(doesn't even need to be the same ratio)
+    return (ndarray of shape 3, 3): transformation matrix to align the second image on the
+        first image. (bottom row is (0, 0, 1), and right column is translation)
+    raises:
+    ValueError: if no good transformation is found.
+    """
+
+    # instantiate the feature detector
+    feature_detector = cv2.ORB()
+
+    # find and compute the descriptors
+    ima_kp, ima_des = feature_detector.detectAndCompute(ima, None)
+    imb_kp, imb_des = feature_detector.detectAndCompute(imb, None)
+
+    FLANN_INDEX_KDTREE = 0
+    index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
+    search_params = dict(checks = 50)
+    matcher = cv2.BFMatcher()
+    # matcher = cv2.FlannBasedMatcher(index_params, search_params)
+    matches = matcher.match(ima_des,imb_des)
+
+    # store all the good matches as per Lowe's ratio test.
+    '''selected_matches = []
+    for m,n in matches:
+        if m.distance < 0.7 * n.distance:
+            selected_matches.append(m)'''
+
+    # Sort them in the order of their distance.
+    matches = sorted(matches, key = lambda x:x.distance)
+    selected_matches = matches[:30]
+
+    # get keypoints for selected matches
+    selected_ima_kp = [list(ima_kp[m.queryIdx].pt) for m in selected_matches]
+    selected_imb_kp = [list(imb_kp[m.trainIdx].pt) for m in selected_matches]
+
+    selected_ima_kp = np.array([selected_ima_kp])
+    selected_imb_kp = np.array([selected_imb_kp])
+
+    # testing detecting the matching points automatically
+    try:
+        mat, mask = cv2.findHomography(selected_ima_kp, selected_imb_kp, cv2.RANSAC)
+    except:
+        return 0, ima_kp, imb_kp
+
+    if mat is None:
+        raise ValueError("The images does not match")
+
+    return mat, ima_kp, imb_kp
