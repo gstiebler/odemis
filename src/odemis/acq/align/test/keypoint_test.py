@@ -71,10 +71,14 @@ def preprocess(ima, flip, invert, crop, gaussian_sigma):
 class TestKeypoint(unittest.TestCase):
 
     def test_first(self):
-        # ima = cv2.imread(imgs_folder + '20141014-113042_1.jpg', 0)
-        # imb = cv2.imread(imgs_folder + '001_CBS_010.jpg', 0)
-        tem_img = open_acquisition(imgs_folder + 'Slice69.tif')[0].getData()
-        sem_img = open_acquisition(imgs_folder + 'g_009_gray_cropped.tif')[0].getData()
+        image_pairs = [
+            ('Slice69.tif', 'g_009_gray_cropped.tif'),
+            ('001_CBS_010.jpg', '20141014-113042_1.jpg'),
+            ('t3 DELPHI.tiff', 't3 testoutA3.tif')
+        ]
+        image_pair = image_pairs[0]
+        tem_img = open_acquisition(imgs_folder + image_pair[0])[0].getData()
+        sem_img = open_acquisition(imgs_folder + image_pair[1])[0].getData()
         tem_img = preprocess(tem_img, True, True, (0, 0, 0, 0), 10)
         sem_img = preprocess(sem_img, False, False, (0, 0, 0, 0), 5)
         tmat = keypoint.FindTransform(tem_img, sem_img)
