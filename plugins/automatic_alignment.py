@@ -48,9 +48,6 @@ import os
 import wx
 import cv2
 
-class VAHolder(object):
-    pass
-
 class AlignmentAcquisitionDialog(AcquisitionDialog):
 
     # TODO check if the annotation is necessary: @call_in_wx_main
@@ -164,8 +161,6 @@ class AutomaticOverlayPlugin(Plugin):
         dlg.viewport_l.canvas.remove_view_overlay(dlg.viewport_l.canvas.play_overlay)
         dlg.viewport_r.canvas.remove_view_overlay(dlg.viewport_r.canvas.play_overlay)
 
-        vah = VAHolder()
-        vah._subscribers = []
         vaconf = OrderedDict()
 
         sem_stream = self._get_sem_stream()
@@ -175,14 +170,6 @@ class AutomaticOverlayPlugin(Plugin):
         projection.setPreprocessingParams(self.va_invert.value, True, crop, self.va_blur_window.value, 10)
         self._semStream = projection
         dlg.addStream(projection, 0)
-
-        # Add the VAs to the holder, and to the vaconf mainly to force the order
-        setattr(vah, "BlurWindow", self.va_blur_window)
-        setattr(vah, "CropTop", self.va_crop_top)
-        setattr(vah, "CropBottom", self.va_crop_bottom)
-        setattr(vah, "CropLeft", self.va_crop_left)
-        setattr(vah, "CropRight", self.va_crop_right)
-        setattr(vah, "Invert", self.va_invert)
 
         vaconf["BlurWindow"] = {"label": "Blur window size"}
         vaconf["CropTop"] = {"label": "Crop top"}
@@ -196,11 +183,6 @@ class AutomaticOverlayPlugin(Plugin):
         va_on_crop = functools.partial(self._on_crop, projection)
         va_on_invert = functools.partial(self._on_invert, projection)
 
-        # We hold a reference to the listeners to prevent automatic subscription
-        vah._subscribers.append(va_on_blur_window)
-        vah._subscribers.append(va_on_crop)
-        vah._subscribers.append(va_on_invert)
-
         self.va_blur_window.subscribe(va_on_blur_window)
         self.va_crop_top.subscribe(va_on_crop)
         self.va_crop_bottom.subscribe(va_on_crop)
@@ -208,7 +190,7 @@ class AutomaticOverlayPlugin(Plugin):
         self.va_crop_right.subscribe(va_on_crop)
         self.va_invert.subscribe(va_on_invert)
 
-        dlg.addSettings(vah, vaconf)
+        dlg.addSettings(self, vaconf)
         dlg.addButton("Align", self.align, face_colour='blue')
         dlg.addButton("Cancel", None)
         self.open_image(dlg)
