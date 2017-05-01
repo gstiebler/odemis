@@ -147,6 +147,14 @@ class AutomaticOverlayPlugin(Plugin):
         super(AutomaticOverlayPlugin, self).__init__(microscope, main_app)
         self.addMenu("Overlay/Automatic alignment corrections", self.start)
 
+        self.va_blur_window = model.IntContinuous(41, range=(1, 81), unit="pixels")
+        # TODO set the limits of the crop VAs based on the size of the image
+        self.va_crop_top = model.IntContinuous(0, range=(0, 100), unit="pixels")
+        self.va_crop_bottom = model.IntContinuous(0, range=(0, 100), unit="pixels")
+        self.va_crop_left = model.IntContinuous(0, range=(0, 100), unit="pixels")
+        self.va_crop_right = model.IntContinuous(0, range=(0, 100), unit="pixels")
+        self.va_invert = model.BooleanVA(True)
+
 
     def start(self):
         dlg = AlignmentAcquisitionDialog(self, "Automatically change the alignment",
@@ -159,14 +167,6 @@ class AutomaticOverlayPlugin(Plugin):
         vah = VAHolder()
         vah._subscribers = []
         vaconf = OrderedDict()
-
-        self.va_blur_window = model.IntContinuous(41, range=(1, 81), unit="pixels")
-        # TODO set the limits of the crop VAs based on the size of the image
-        self.va_crop_top = model.IntContinuous(0, range=(0, 100), unit="pixels")
-        self.va_crop_bottom = model.IntContinuous(0, range=(0, 100), unit="pixels")
-        self.va_crop_left = model.IntContinuous(0, range=(0, 100), unit="pixels")
-        self.va_crop_right = model.IntContinuous(0, range=(0, 100), unit="pixels")
-        self.va_invert = model.BooleanVA(True)
 
         sem_stream = self._get_sem_stream()
         projection = AlignmentProjection(sem_stream)
