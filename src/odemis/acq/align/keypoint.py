@@ -65,12 +65,6 @@ def FindTransform(ima, imb):
     selected_ima_kp = [list(ima_kp[m.queryIdx].pt) for m in selected_matches]
     selected_imb_kp = [list(imb_kp[m.trainIdx].pt) for m in selected_matches]
 
-    # ima_painted_kp = cv2.drawKeypoints(ima, ima_kp, None, color=(0,255,0), flags=0)
-    # imb_painted_kp = cv2.drawKeypoints(imb, imb_kp, None, color=(0,255,0), flags=0)
-    # imgs_folder = 'C:/Projetos/Delmic/iCLEM/images/'
-    # cv2.imwrite(imgs_folder + 'ima_painted_kp.jpg', ima_painted_kp)
-    # cv2.imwrite(imgs_folder + 'imb_painted_kp.jpg', imb_painted_kp)
-
     selected_ima_kp = np.array([selected_ima_kp])
     selected_imb_kp = np.array([selected_imb_kp])
 
@@ -79,4 +73,4 @@ def FindTransform(ima, imb):
     if mat is None:
         raise ValueError("The images does not match")
 
-    return mat
+    return mat, ima_kp, imb_kp
