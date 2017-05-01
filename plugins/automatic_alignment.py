@@ -160,12 +160,12 @@ class AutomaticOverlayPlugin(Plugin):
         vaconf = OrderedDict()
 
         sem_stream = self._get_sem_stream()
-        projection = AlignmentProjection(sem_stream)
+        sem_projection = AlignmentProjection(sem_stream)
         crop = (self.va_crop_top.value, self.va_crop_bottom.value,\
                 self.va_crop_left.value, self.va_crop_right.value)
-        projection.setPreprocessingParams(self.va_invert.value, True, crop, self.va_blur_window.value)
-        self._semStream = projection
-        dlg.addStream(projection, 0)
+        sem_projection.setPreprocessingParams(False, False, (0, 100, 0, 0), 5)
+        self._semStream = sem_projection
+        dlg.addStream(sem_projection, 1)
 
         vaconf["BlurWindow"] = {"label": "Blur window size"}
         vaconf["CropTop"] = {"label": "Crop top"}
@@ -174,17 +174,12 @@ class AutomaticOverlayPlugin(Plugin):
         vaconf["CropRight"] = {"label": "Crop right"}
         vaconf["Invert"] = {"label": "Invert"}
 
-        # Create listeners with information of the stream and dimension
-        va_on_blur_window = functools.partial(self._on_blur_window, projection, 0)
-        va_on_crop = functools.partial(self._on_crop, projection)
-        va_on_invert = functools.partial(self._on_invert, projection)
-
-        self.va_blur_window.subscribe(va_on_blur_window)
-        self.va_crop_top.subscribe(va_on_crop)
-        self.va_crop_bottom.subscribe(va_on_crop)
-        self.va_crop_left.subscribe(va_on_crop)
-        self.va_crop_right.subscribe(va_on_crop)
-        self.va_invert.subscribe(va_on_invert)
+        self.va_blur_window.subscribe(self._on_blur_window)
+        self.va_crop_top.subscribe(self._on_crop)
+        self.va_crop_bottom.subscribe(self._on_crop)
+        self.va_crop_left.subscribe(self._on_crop)
+        self.va_crop_right.subscribe(self._on_crop)
+        self.va_invert.subscribe(self._on_invert)
 
         dlg.addSettings(self, vaconf)
         dlg.addButton("Align", self.align, face_colour='blue')
@@ -230,51 +225,53 @@ class AutomaticOverlayPlugin(Plugin):
         data = open_acquisition(filename)
         s = data_to_static_streams(data)[0]
         s = s.stream if isinstance(s, stream.DataProjection) else s
-        projection = AlignmentProjection(s)
-        projection.setPreprocessingParams(False, False, (0, 100, 0, 0), 5)
-        dlg.addStream(projection, 1)
-        self._temStream = projection
+        tem_projection = AlignmentProjection(s)
+        crop = (self.va_crop_top.value, self.va_crop_bottom.value,\
+                self.va_crop_left.value, self.va_crop_right.value)
+        tem_projection.setPreprocessingParams(self.va_invert.value, True, crop,\
+                self.va_blur_window.value)
+        dlg.addStream(tem_projection, 0)
+        self._temStream = tem_projection
 
     def align(self, dlg):
         crop = (self.va_crop_top.value, self.va_crop_bottom.value,\
                 self.va_crop_left.value, self.va_crop_right.value)
-        ima = preprocess(self._semStream.raw[0], True, self.va_invert.value, (0, 0, 0, 0),\
+        tem_img = preprocess(self._temStream.raw[0], True, self.va_invert.value, (0, 0, 0, 0),\
                 self.va_blur_window.value)
-        imb = preprocess(self._temStream.raw[0], False, False, crop, 5)
-        tmat = keypoint.FindTransform(ima, imb)
+        sem_img = preprocess(self._semStream.raw[0], False, False, crop, 5)
+        tmat = keypoint.FindTransform(tem_img, sem_img)
 
-        transf_md = get_img_transformation_md(tmat, ima)
+        transf_md = get_img_transformation_md(tmat, tem_img)
         logging.debug(tmat)
         logging.debug(transf_md)
 
-        orig_sem_ps = ima.metadata.get(model.MD_PIXEL_SIZE, (1e-9, 1e-9))
-        orig_tem_ps = imb.metadata.get(model.MD_PIXEL_SIZE, (1e-9, 1e-9))
+        orig_tem_ps = tem_img.metadata.get(model.MD_PIXEL_SIZE, (1e-9, 1e-9))
+        orig_sem_ps = sem_img.metadata.get(model.MD_PIXEL_SIZE, (1e-9, 1e-9))
         ps_prop = (orig_tem_ps[0] / orig_sem_ps[0], orig_tem_ps[1] / orig_sem_ps[1])
         ps_cor = transf_md[model.MD_PIXEL_SIZE]
         new_pixel_size = (orig_sem_ps[0] * ps_prop[0] * ps_cor[0],\
                 orig_sem_ps[1] * ps_prop[1] * ps_cor[1])
 
-        orig_pos_sem = ima.metadata.get(model.MD_POS, (0.0, 0.0))
-        orig_pos_tem = imb.metadata.get(model.MD_POS, (0.0, 0.0))
-        orig_centers_diff_phys = (orig_pos_sem[0] - orig_pos_tem[0], orig_pos_sem[1] - orig_pos_tem[1])
+        orig_pos_sem = sem_img.metadata.get(model.MD_POS, (0.0, 0.0))
+        orig_pos_tem = tem_img.metadata.get(model.MD_POS, (0.0, 0.0))
+        orig_centers_diff_phys = (orig_pos_tem[0] - orig_pos_sem[0], orig_pos_tem[1] - orig_pos_sem[1])
 
         pos_cor = transf_md[model.MD_POS]
         pos_cor_phys = (pos_cor[0] * new_pixel_size[0], pos_cor[1] * new_pixel_size[1])
 
         flip = True
-        sem_metadata = self._semStream.raw[0].metadata
-        sem_metadata[model.MD_POS] = (orig_pos_sem[0] - orig_centers_diff_phys[0] + pos_cor_phys[0],\
-                orig_pos_sem[1] - orig_centers_diff_phys[1] + pos_cor_phys[1])
-        sem_metadata[model.MD_PIXEL_SIZE] = new_pixel_size
-        # sem_metadata[model.MD_SHEAR] = transf_md[model.MD_SHEAR]
+        tem_metadata = self._temStream.raw[0].metadata
+        tem_metadata[model.MD_POS] = (orig_pos_tem[0] - orig_centers_diff_phys[0] + pos_cor_phys[0],\
+                orig_pos_tem[1] - orig_centers_diff_phys[1] + pos_cor_phys[1])
+        tem_metadata[model.MD_PIXEL_SIZE] = new_pixel_size
+        # tem_metadata[model.MD_SHEAR] = transf_md[model.MD_SHEAR]
         if flip:
-            self._semStream.raw[0] = self._semStream.raw[0][::-1, :]
-            sem_metadata[model.MD_ROTATION] = -transf_md[model.MD_ROTATION]
+            self._temStream.raw[0] = self._temStream.raw[0][::-1, :]
+            tem_metadata[model.MD_ROTATION] = -transf_md[model.MD_ROTATION]
         else:
-            sem_metadata[model.MD_ROTATION] = transf_md[model.MD_ROTATION]
-        print sem_metadata
-        self._semStream.raw[0].metadata = sem_metadata
-        self._semStream._shouldUpdateImage()
+            tem_metadata[model.MD_ROTATION] = transf_md[model.MD_ROTATION]
+        self._temStream.raw[0].metadata = tem_metadata
+        self._temStream._shouldUpdateImage()
 
         crop_top, crop_bottom, crop_left, crop_right = crop
         # remove the bar
@@ -285,17 +282,17 @@ class AutomaticOverlayPlugin(Plugin):
         aligned_stream = stream.StaticSEMStream("TEM", raw)
         wx.CallAfter(analysis_tab.stream_bar_controller.addStream, aligned_stream, add_to_view=True)
 
-    def _on_blur_window(self, stream, i, value):
+    def _on_blur_window(self, value):
         logging.debug("blur value %d, va: %d", value, self.va_blur_window.value)
-        self._update_stream(stream)
+        self._update_stream(self._temStream)
 
-    def _on_crop(self, stream, value):
+    def _on_crop(self, value):
         logging.debug("on crop %d", value)
-        self._update_stream(stream)
+        self._update_stream(self._temStream)
 
-    def _on_invert(self, stream, value):
+    def _on_invert(self, value):
         logging.debug("_on_invert %d", value)
-        self._update_stream(stream)
+        self._update_stream(self._temStream)
 
     def _update_stream(self, stream):
         crop = (self.va_crop_top.value, self.va_crop_bottom.value,\
