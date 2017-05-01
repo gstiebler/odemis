@@ -81,12 +81,18 @@ class TestKeypoint(unittest.TestCase):
         sem_img = open_acquisition(imgs_folder + image_pair[1])[0].getData()
         tem_img = preprocess(tem_img, True, True, (0, 0, 0, 0), 10)
         sem_img = preprocess(sem_img, False, False, (0, 0, 0, 0), 5)
-        tmat = keypoint.FindTransform(tem_img, sem_img)
+        tmat, tem_kp, sem_kp = keypoint.FindTransform(tem_img, sem_img)
+
+        tem_painted_kp = cv2.drawKeypoints(tem_img, tem_kp, None, color=(0,255,0), flags=0)
+        sem_painted_kp = cv2.drawKeypoints(sem_img, sem_kp, None, color=(0,255,0), flags=0)
+
         # tmat[2, 0] = 0.0
         # tmat[2, 1] = 0.0
         warped_im = cv2.warpPerspective(tem_img, tmat, (sem_img.shape[1], sem_img.shape[0]))
         merged_im = cv2.addWeighted(sem_img, 0.5, warped_im, 0.5, 0.0)
         cv2.imwrite(imgs_folder + 'merged_with_warped.jpg', merged_im)
+        cv2.imwrite(imgs_folder + 'tem_kp.jpg', tem_painted_kp)
+        cv2.imwrite(imgs_folder + 'sem_kp.jpg', sem_painted_kp)
 
         print tmat
         print get_img_transformation_md(tmat, tem_img)
