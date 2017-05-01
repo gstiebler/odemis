@@ -44,6 +44,7 @@ from odemis.acq.align import keypoint
 from odemis.util.conversion import get_img_transformation_md
 import odemis.gui.util as guiutil
 from odemis.gui.conf import get_acqui_conf
+from scipy import ndimage
 import os
 import wx
 import cv2
@@ -79,10 +80,9 @@ class AlignmentAcquisitionDialog(AcquisitionDialog):
                 self.microscope_view2.addStream(stream)
 
 
-def preprocess(ima, flip, invert, crop, gaussian_ksize, gaussian_sigma):
+def preprocess(ima, flip, invert, crop, gaussian_sigma):
     '''
     invert(bool)
-    gaussian_ksize: kernel size for the gaussian processing: Must be odd and positive
     gaussian_sigma: sigma for the gaussian processing
     '''
     metadata_a = ima.metadata
@@ -107,20 +107,17 @@ def preprocess(ima, flip, invert, crop, gaussian_ksize, gaussian_sigma):
     ima = cv2.equalizeHist(ima)
 
     # blur (kernel size must be odd)
-    ima = cv2.GaussianBlur(ima, (gaussian_ksize, gaussian_ksize), gaussian_sigma)
+    ima = ndimage.gaussian_filter(ima, sigma=gaussian_sigma)
 
     return  model.DataArray(ima, metadata_a)
 
 
 class AlignmentProjection(stream.RGBSpatialProjection):
 
-    def setPreprocessingParams(self, invert, flip, crop, gaussian_ksize, gaussian_sigma):
-        # gaussian_ksize must be odd
-        gaussian_ksize = gaussian_ksize + 1 if gaussian_ksize % 2 == 0 else gaussian_ksize
+    def setPreprocessingParams(self, invert, flip, crop, gaussian_sigma):
         self._invert = invert
         self._flip = flip
         self._crop = crop
-        self._gaussian_ksize = gaussian_ksize
         self._gaussian_sigma = gaussian_sigma
 
     def _updateImage(self):
@@ -128,8 +125,7 @@ class AlignmentProjection(stream.RGBSpatialProjection):
         raw = self._projectTile(raw)
 
         metadata = raw.metadata
-        grayscale_im = preprocess(raw, self._flip, self._invert, self._crop,\
-                self._gaussian_ksize, self._gaussian_sigma)
+        grayscale_im = preprocess(raw, self._flip, self._invert, self._crop, self._gaussian_sigma)
         rgb_im = cv2.cvtColor(grayscale_im, cv2.COLOR_GRAY2RGB)
         rgb_im = model.DataArray(rgb_im, metadata)
         self.image.value = rgb_im
@@ -144,7 +140,7 @@ class AutomaticOverlayPlugin(Plugin):
         super(AutomaticOverlayPlugin, self).__init__(microscope, main_app)
         self.addMenu("Overlay/Automatic alignment corrections", self.start)
 
-        self.va_blur_window = model.IntContinuous(41, range=(1, 81), unit="pixels")
+        self.va_blur_window = model.IntContinuous(5, range=(0, 20), unit="pixels")
         # TODO set the limits of the crop VAs based on the size of the image
         self.va_crop_top = model.IntContinuous(0, range=(0, 100), unit="pixels")
         self.va_crop_bottom = model.IntContinuous(0, range=(0, 100), unit="pixels")
@@ -167,7 +163,7 @@ class AutomaticOverlayPlugin(Plugin):
         projection = AlignmentProjection(sem_stream)
         crop = (self.va_crop_top.value, self.va_crop_bottom.value,\
                 self.va_crop_left.value, self.va_crop_right.value)
-        projection.setPreprocessingParams(self.va_invert.value, True, crop, self.va_blur_window.value, 10)
+        projection.setPreprocessingParams(self.va_invert.value, True, crop, self.va_blur_window.value)
         self._semStream = projection
         dlg.addStream(projection, 0)
 
@@ -235,7 +231,7 @@ class AutomaticOverlayPlugin(Plugin):
         s = data_to_static_streams(data)[0]
         s = s.stream if isinstance(s, stream.DataProjection) else s
         projection = AlignmentProjection(s)
-        projection.setPreprocessingParams(False, False, (0, 100, 0, 0), 21, 5)
+        projection.setPreprocessingParams(False, False, (0, 100, 0, 0), 5)
         dlg.addStream(projection, 1)
         self._temStream = projection
 
@@ -243,8 +239,8 @@ class AutomaticOverlayPlugin(Plugin):
         crop = (self.va_crop_top.value, self.va_crop_bottom.value,\
                 self.va_crop_left.value, self.va_crop_right.value)
         ima = preprocess(self._semStream.raw[0], True, self.va_invert.value, (0, 0, 0, 0),\
-                self.va_blur_window.value, 10)
-        imb = preprocess(self._temStream.raw[0], False, False, crop, 21, 5)
+                self.va_blur_window.value)
+        imb = preprocess(self._temStream.raw[0], False, False, crop, 5)
         tmat = keypoint.FindTransform(ima, imb)
 
         transf_md = get_img_transformation_md(tmat, ima)
@@ -303,5 +299,5 @@ class AutomaticOverlayPlugin(Plugin):
     def _update_stream(self, stream):
         crop = (self.va_crop_top.value, self.va_crop_bottom.value,\
                 self.va_crop_left.value, self.va_crop_right.value)
-        stream.setPreprocessingParams(self.va_invert.value, True, crop, self.va_blur_window.value, 10)
+        stream.setPreprocessingParams(self.va_invert.value, True, crop, self.va_blur_window.value)
         stream._shouldUpdateImage()
