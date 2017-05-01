@@ -32,26 +32,60 @@ import cairo
 import math
 from odemis import model
 from numpy.linalg import inv
+from scipy import ndimage
 
 imgs_folder = 'C:/Projetos/Delmic/iCLEM/images/'
+
+
+def preprocess(ima, flip, invert, crop, gaussian_sigma):
+    '''
+    invert(bool)
+    gaussian_sigma: sigma for the gaussian processing
+    '''
+    metadata_a = ima.metadata
+    if ima.ndim > 2:
+        ima = cv2.cvtColor(ima, cv2.COLOR_RGB2GRAY)
+
+    # invert on Y axis
+    if flip:
+        ima = ima[::-1, :]
+
+    # Invert the image brightness
+    if invert:
+        ima = 255 - ima
+
+    ima_height = ima.shape[0]
+
+    crop_top, crop_bottom, crop_left, crop_right = crop
+    # remove the bar
+    ima = ima[crop_top:ima.shape[0] - crop_bottom, crop_left:ima.shape[1] - crop_right]
+
+    # equalize histogram
+    ima = cv2.equalizeHist(ima)
+
+    # blur (kernel size must be odd)
+    ima = ndimage.gaussian_filter(ima, sigma=gaussian_sigma)
+
+    return  model.DataArray(ima, metadata_a)
 
 class TestKeypoint(unittest.TestCase):
 
     def test_first(self):
         # ima = cv2.imread(imgs_folder + '20141014-113042_1.jpg', 0)
         # imb = cv2.imread(imgs_folder + '001_CBS_010.jpg', 0)
-        ima = open_acquisition(imgs_folder + 'Slice69.tif')[0].getData()
-        imb = open_acquisition(imgs_folder + 'g_009_stretched.tif')[0].getData()
-        ima, imb = keypoint.Preprocess(ima, imb)
-        tmat = keypoint.FindTransform(ima, imb)
+        tem_img = open_acquisition(imgs_folder + 'Slice69.tif')[0].getData()
+        sem_img = open_acquisition(imgs_folder + 'g_009_gray_cropped.tif')[0].getData()
+        tem_img = preprocess(tem_img, True, True, (0, 0, 0, 0), 10)
+        sem_img = preprocess(sem_img, False, False, (0, 0, 0, 0), 5)
+        tmat = keypoint.FindTransform(tem_img, sem_img)
         # tmat[2, 0] = 0.0
         # tmat[2, 1] = 0.0
-        warped_im = cv2.warpPerspective(ima, tmat, (imb.shape[1], imb.shape[0]))
-        merged_im = cv2.addWeighted(imb, 0.5, warped_im, 0.5, 0.0)
+        warped_im = cv2.warpPerspective(tem_img, tmat, (sem_img.shape[1], sem_img.shape[0]))
+        merged_im = cv2.addWeighted(sem_img, 0.5, warped_im, 0.5, 0.0)
         cv2.imwrite(imgs_folder + 'merged_with_warped.jpg', merged_im)
 
         print tmat
-        print get_img_transformation_md(tmat, ima)
+        print get_img_transformation_md(tmat, tem_img)
 
     def test_get_img_transformation_md(self):
         rot = 0.2
