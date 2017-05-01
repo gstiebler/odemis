@@ -91,7 +91,7 @@ def preprocess(ima, flip, invert, crop, gaussian_sigma):
 
     # invert on Y axis
     if flip:
-        ima = cv2.flip(ima, 0)
+        ima = ima[::-1, :]
 
     # Invert the image brightness
     if invert:
