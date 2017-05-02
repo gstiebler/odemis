@@ -4,30 +4,21 @@ Created on 10 April 2017
 
 @author: Guilherme Stiebler
 
-Gives ability to manually change the overlay-metadata.
+Gives ability to automatically change the overlay-metadata.
 
-This is free and unencumbered software released into the public domain.
+Copyright © 2017 Éric Piel, Delmic
 
-Anyone is free to copy, modify, publish, use, compile, sell, or
-distribute this software, either in source code form or as a compiled
-binary, for any purpose, commercial or non-commercial, and by any
-means.
+This file is part of Odemis.
 
-In jurisdictions that recognize copyright laws, the author or authors
-of this software dedicate any and all copyright interest in the
-software to the public domain. We make this dedication for the benefit
-of the public at large and to the detriment of our heirs and
-successors. We intend this dedication to be an overt act of
-relinquishment in perpetuity of all present and future rights to this
-software under copyright law.
+Odemis is free software: you can redistribute it and/or modify it under the terms of the GNU
+General Public License version 2 as published by the Free Software Foundation.
 
-The software is provided "as is", without warranty of any kind,
-express or implied, including but not limited to the warranties of
-merchantability, fitness for a particular purpose and non-infringement.
-In no event shall the authors be liable for any claim, damages or
-other liability, whether in an action of contract, tort or otherwise,
-arising from, out of or in connection with the software or the use or
-other dealings in the software.
+Odemis is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even
+the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+Public License for more details.
+
+You should have received a copy of the GNU General Public License along with Odemis. If not,
+see http://www.gnu.org/licenses/.
 '''
 
 from __future__ import division
