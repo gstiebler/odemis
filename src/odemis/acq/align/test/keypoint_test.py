@@ -37,7 +37,7 @@ from scipy import ndimage
 imgs_folder = 'C:/Projetos/Delmic/iCLEM/images/'
 
 
-def preprocess(ima, flip, invert, crop, gaussian_sigma):
+def preprocess(ima, invert, flip, crop, gaussian_sigma):
     '''
     invert(bool)
     gaussian_sigma: sigma for the gaussian processing
@@ -46,13 +46,20 @@ def preprocess(ima, flip, invert, crop, gaussian_sigma):
     if ima.ndim > 2:
         ima = cv2.cvtColor(ima, cv2.COLOR_RGB2GRAY)
 
-    # invert on Y axis
-    if flip:
+    flip_x, flip_y = flip
+    # flip on X axis
+    if flip_x:
+        ima = ima[:, ::-1]
+
+    # flip on Y axis
+    if flip_y:
         ima = ima[::-1, :]
 
     # Invert the image brightness
     if invert:
-        ima = 255 - ima
+        mn = ima.min()
+        mx = ima.max()
+        ima = mx - (ima - mn)
 
     ima_height = ima.shape[0]
 
@@ -73,24 +80,24 @@ class TestKeypoint(unittest.TestCase):
     def test_first(self):
         image_pairs = [
             (
-                ('Slice69.tif', True, True, (0, 0, 0, 0), 5), 
-                ('g_009_gray_cropped.tif', False, False, (0, 0, 0, 0), 2)
+                ('Slice69.tif', True, (False, True), (0, 0, 0, 0), 5),
+                ('g_009_gray_cropped.tif', False, (False, False), (0, 0, 0, 0), 2)
             ),
             (
-                ('001_CBS_010.tif', False, False, (0, 0, 0, 0), 0), 
-                ('20141014-113042_1.tif', False, False, (0, 0, 0, 0), 0)
+                ('001_CBS_010.tif', False, (False, False), (0, 0, 0, 0), 0),
+                ('20141014-113042_1.tif', False, (False, False), (0, 0, 0, 0), 0)
             ),
             (
-                ('t3 DELPHI.tiff', False, False, (0, 200, 0, 0), 3),
-                ('t3 testoutA3.tif', False, False, (0, 420, 0, 0), 3)
+                ('t3 DELPHI.tiff', False, (False, False), (0, 200, 0, 0), 3),
+                ('t3 testoutA3.tif', False, (False, False), (0, 420, 0, 0), 3)
             )
         ]
-        image_pair = image_pairs[2]
+        image_pair = image_pairs[0]
         tem_img = open_acquisition(imgs_folder + image_pair[0][0])[0].getData()
         sem_img = open_acquisition(imgs_folder + image_pair[1][0])[0].getData()
         tem_img = preprocess(tem_img, image_pair[0][1], image_pair[0][2], image_pair[0][3], image_pair[0][4])
         sem_img = preprocess(sem_img, image_pair[1][1], image_pair[1][2], image_pair[1][3], image_pair[1][4])
-        tmat, tem_kp, sem_kp = keypoint.FindTransformORB(tem_img, sem_img)
+        tmat, tem_kp, sem_kp = keypoint.FindTransform(tem_img, sem_img)
 
         tem_painted_kp = cv2.drawKeypoints(tem_img, tem_kp, None, color=(0,255,0), flags=0)
         sem_painted_kp = cv2.drawKeypoints(sem_img, sem_kp, None, color=(0,255,0), flags=0)

@@ -95,9 +95,6 @@ def preprocess(ima, invert, flip, crop, gaussian_sigma):
         mx = ima.max()
         ima = mx - (ima - mn)
 
-
-    ima_height = ima.shape[0]
-
     crop_top, crop_bottom, crop_left, crop_right = crop
     # remove the bar
     ima = ima[crop_top:ima.shape[0] - crop_bottom, crop_left:ima.shape[1] - crop_right]
@@ -176,7 +173,7 @@ class AutomaticOverlayPlugin(Plugin):
         self.crop_right = model.IntContinuous(0, range=(0, 100), unit="pixels")
         self.invert = model.BooleanVA(True)
         self.flip_x = model.BooleanVA(False)
-        self.flip_y = model.BooleanVA(False)
+        self.flip_y = model.BooleanVA(True)
 
         # Any change on the VAs should update the stream
         self.blur.subscribe(self._update_stream)
@@ -201,7 +198,7 @@ class AutomaticOverlayPlugin(Plugin):
         sem_projection = AlignmentProjection(sem_stream)
         crop = (self.crop_top.value, self.crop_bottom.value,\
                 self.crop_left.value, self.crop_right.value)
-        sem_projection.setPreprocessingParams(False, (False, False), (0, 0, 0, 0), 5)
+        sem_projection.setPreprocessingParams(False, (False, False), (0, 0, 0, 0), 2)
         self._semStream = sem_projection
         dlg.addStream(sem_projection, 1)
 
@@ -263,8 +260,8 @@ class AutomaticOverlayPlugin(Plugin):
         flip = (self.flip_x.value, self.flip_y.value)
         tem_img = preprocess(self._temStream.raw[0], self.invert.value, flip, crop,
                 self.blur.value)
-        sem_img = preprocess(self._semStream.raw[0], False, (False, False), (0, 0, 0, 0), 5)
-        tmat = keypoint.FindTransform(tem_img, sem_img)
+        sem_img = preprocess(self._semStream.raw[0], False, (False, False), (0, 0, 0, 0), 2)
+        tmat, kp_tem, kp_sem = keypoint.FindTransform(tem_img, sem_img)
 
         transf_md = get_img_transformation_md(tmat, tem_img)
         logging.debug(tmat)
