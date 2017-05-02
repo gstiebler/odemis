@@ -91,7 +91,10 @@ def preprocess(ima, invert, flip, crop, gaussian_sigma):
 
     # Invert the image brightness
     if invert:
-        ima = 255 - ima
+        mn = ima.min()
+        mx = ima.max()
+        ima = mx - (ima - mn)
+
 
     ima_height = ima.shape[0]
 
