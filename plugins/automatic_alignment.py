@@ -71,7 +71,7 @@ class AlignmentAcquisitionDialog(AcquisitionDialog):
                 self.microscope_view2.addStream(stream)
 
 
-def preprocess(ima, flip, invert, crop, gaussian_sigma):
+def preprocess(ima, invert, flip, crop, gaussian_sigma):
     '''
     invert(bool)
     gaussian_sigma: sigma for the gaussian processing
@@ -80,8 +80,13 @@ def preprocess(ima, flip, invert, crop, gaussian_sigma):
     if ima.ndim > 2:
         ima = cv2.cvtColor(ima, cv2.COLOR_RGB2GRAY)
 
-    # invert on Y axis
-    if flip:
+    flip_x, flip_y = flip
+    # flip on X axis
+    if flip_x:
+        ima = ima[:, ::-1]
+
+    # flip on Y axis
+    if flip_y:
         ima = ima[::-1, :]
 
     # Invert the image brightness
@@ -116,7 +121,7 @@ class AlignmentProjection(stream.RGBSpatialProjection):
         raw = self._projectTile(raw)
 
         metadata = raw.metadata
-        grayscale_im = preprocess(raw, self._flip, self._invert, self._crop, self._gaussian_sigma)
+        grayscale_im = preprocess(raw, self._invert, self._flip, self._crop, self._gaussian_sigma)
         rgb_im = cv2.cvtColor(grayscale_im, cv2.COLOR_GRAY2RGB)
         rgb_im = model.DataArray(rgb_im, metadata)
         self.image.value = rgb_im
@@ -125,19 +130,60 @@ class AutomaticOverlayPlugin(Plugin):
     name = "Automatic Overlay"
     __version__ = "1.0"
     __author__ = "Guilherme Stiebler"
-    __license__ = "Public domain"
+    __license__ = "GPLv2"
+
+        # Describe how the values should be displayed
+    # See odemis.gui.conf.data for all the possibilities
+    vaconf = OrderedDict((
+        ("blur", {
+            "label": "Blur window size"
+        }),
+        ("crop_top", {
+            "label": "Crop top"
+        }),
+        ("crop_bottom", {
+            "label": "Crop bottom"
+        }),
+        ("crop_left", {
+            "label": "Crop left"
+        }),
+        ("crop_right", {
+            "label": "Crop right"
+        }),
+        ("invert", {
+            "label": "Invert brightness"
+        }),
+        ("flip_x", {
+            "label": "Flip on X axis"
+        }),
+        ("flip_y", {
+            "label": "Flip on Y axis"
+        }),
+    ))
 
     def __init__(self, microscope, main_app):
         super(AutomaticOverlayPlugin, self).__init__(microscope, main_app)
         self.addMenu("Overlay/Automatic alignment corrections", self.start)
 
-        self.va_blur_window = model.IntContinuous(5, range=(0, 20), unit="pixels")
+        self.blur = model.IntContinuous(5, range=(0, 20), unit="pixels")
         # TODO set the limits of the crop VAs based on the size of the image
-        self.va_crop_top = model.IntContinuous(0, range=(0, 100), unit="pixels")
-        self.va_crop_bottom = model.IntContinuous(0, range=(0, 100), unit="pixels")
-        self.va_crop_left = model.IntContinuous(0, range=(0, 100), unit="pixels")
-        self.va_crop_right = model.IntContinuous(0, range=(0, 100), unit="pixels")
-        self.va_invert = model.BooleanVA(True)
+        self.crop_top = model.IntContinuous(0, range=(0, 100), unit="pixels")
+        self.crop_bottom = model.IntContinuous(0, range=(0, 100), unit="pixels")
+        self.crop_left = model.IntContinuous(0, range=(0, 100), unit="pixels")
+        self.crop_right = model.IntContinuous(0, range=(0, 100), unit="pixels")
+        self.invert = model.BooleanVA(True)
+        self.flip_x = model.BooleanVA(False)
+        self.flip_y = model.BooleanVA(False)
+
+        # Any change on the VAs should update the stream
+        self.blur.subscribe(self._update_stream)
+        self.crop_top.subscribe(self._update_stream)
+        self.crop_bottom.subscribe(self._update_stream)
+        self.crop_left.subscribe(self._update_stream)
+        self.crop_right.subscribe(self._update_stream)
+        self.invert.subscribe(self._update_stream)
+        self.flip_x.subscribe(self._update_stream)
+        self.flip_y.subscribe(self._update_stream)
 
 
     def start(self):
@@ -148,31 +194,15 @@ class AutomaticOverlayPlugin(Plugin):
         dlg.viewport_l.canvas.remove_view_overlay(dlg.viewport_l.canvas.play_overlay)
         dlg.viewport_r.canvas.remove_view_overlay(dlg.viewport_r.canvas.play_overlay)
 
-        vaconf = OrderedDict()
-
         sem_stream = self._get_sem_stream()
         sem_projection = AlignmentProjection(sem_stream)
-        crop = (self.va_crop_top.value, self.va_crop_bottom.value,\
-                self.va_crop_left.value, self.va_crop_right.value)
-        sem_projection.setPreprocessingParams(False, False, (0, 100, 0, 0), 5)
+        crop = (self.crop_top.value, self.crop_bottom.value,\
+                self.crop_left.value, self.crop_right.value)
+        sem_projection.setPreprocessingParams(False, (False, False), (0, 0, 0, 0), 5)
         self._semStream = sem_projection
         dlg.addStream(sem_projection, 1)
 
-        vaconf["BlurWindow"] = {"label": "Blur window size"}
-        vaconf["CropTop"] = {"label": "Crop top"}
-        vaconf["CropBottom"] = {"label": "Crop bottom"}
-        vaconf["CropLeft"] = {"label": "Crop left"}
-        vaconf["CropRight"] = {"label": "Crop right"}
-        vaconf["Invert"] = {"label": "Invert"}
-
-        self.va_blur_window.subscribe(self._on_blur_window)
-        self.va_crop_top.subscribe(self._on_crop)
-        self.va_crop_bottom.subscribe(self._on_crop)
-        self.va_crop_left.subscribe(self._on_crop)
-        self.va_crop_right.subscribe(self._on_crop)
-        self.va_invert.subscribe(self._on_invert)
-
-        dlg.addSettings(self, vaconf)
+        dlg.addSettings(self, self.vaconf)
         dlg.addButton("Align", self.align, face_colour='blue')
         dlg.addButton("Cancel", None)
         self.open_image(dlg)
@@ -217,19 +247,20 @@ class AutomaticOverlayPlugin(Plugin):
         s = data_to_static_streams(data)[0]
         s = s.stream if isinstance(s, stream.DataProjection) else s
         tem_projection = AlignmentProjection(s)
-        crop = (self.va_crop_top.value, self.va_crop_bottom.value,\
-                self.va_crop_left.value, self.va_crop_right.value)
-        tem_projection.setPreprocessingParams(self.va_invert.value, True, crop,\
-                self.va_blur_window.value)
+        crop = (self.crop_top.value, self.crop_bottom.value,\
+                self.crop_left.value, self.crop_right.value)
+        flip = (self.flip_x.value, self.flip_y.value)
+        tem_projection.setPreprocessingParams(self.invert.value, flip, crop, self.blur.value)
         dlg.addStream(tem_projection, 0)
         self._temStream = tem_projection
 
     def align(self, dlg):
-        crop = (self.va_crop_top.value, self.va_crop_bottom.value,\
-                self.va_crop_left.value, self.va_crop_right.value)
-        tem_img = preprocess(self._temStream.raw[0], True, self.va_invert.value, (0, 0, 0, 0),\
-                self.va_blur_window.value)
-        sem_img = preprocess(self._semStream.raw[0], False, False, crop, 5)
+        crop = (self.crop_top.value, self.crop_bottom.value,\
+                self.crop_left.value, self.crop_right.value)
+        flip = (self.flip_x.value, self.flip_y.value)
+        tem_img = preprocess(self._temStream.raw[0], self.invert.value, flip, crop,
+                self.blur.value)
+        sem_img = preprocess(self._semStream.raw[0], False, (False, False), (0, 0, 0, 0), 5)
         tmat = keypoint.FindTransform(tem_img, sem_img)
 
         transf_md = get_img_transformation_md(tmat, tem_img)
@@ -273,20 +304,9 @@ class AutomaticOverlayPlugin(Plugin):
         aligned_stream = stream.StaticSEMStream("TEM", raw)
         wx.CallAfter(analysis_tab.stream_bar_controller.addStream, aligned_stream, add_to_view=True)
 
-    def _on_blur_window(self, value):
-        logging.debug("blur value %d, va: %d", value, self.va_blur_window.value)
-        self._update_stream(self._temStream)
-
-    def _on_crop(self, value):
-        logging.debug("on crop %d", value)
-        self._update_stream(self._temStream)
-
-    def _on_invert(self, value):
-        logging.debug("_on_invert %d", value)
-        self._update_stream(self._temStream)
-
-    def _update_stream(self, stream):
-        crop = (self.va_crop_top.value, self.va_crop_bottom.value,\
-                self.va_crop_left.value, self.va_crop_right.value)
-        stream.setPreprocessingParams(self.va_invert.value, True, crop, self.va_blur_window.value)
-        stream._shouldUpdateImage()
+    def _update_stream(self, value):
+        crop = (self.crop_top.value, self.crop_bottom.value,
+                self.crop_left.value, self.crop_right.value)
+        flip = (self.flip_x.value, self.flip_y.value)
+        self._temStream.setPreprocessingParams(self.invert.value, flip, crop, self.blur.value)
+        self._temStream._shouldUpdateImage()
