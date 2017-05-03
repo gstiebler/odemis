@@ -94,7 +94,7 @@ def preprocess(ima, invert, flip, crop, gaussian_sigma):
     if invert:
         mn = ima.min()
         mx = ima.max()
-        ima = mx - (ima - mn)
+        ima = mx + mn - ima
 
     crop_top, crop_bottom, crop_left, crop_right = crop
     # remove the bar
