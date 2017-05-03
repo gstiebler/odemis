@@ -80,8 +80,8 @@ class TestKeypoint(unittest.TestCase):
     def test_first(self):
         image_pairs = [
             (
-                ('Slice69.tif', True, (False, True), (0, 0, 0, 0), 5),
-                ('g_009_gray_cropped.tif', False, (False, False), (0, 0, 0, 0), 2)
+                ('Slice69.tif', True, (False, True), (0, 0, 0, 0), 10),
+                ('g_009_gray_cropped.tif', False, (False, False), (0, 0, 0, 0), 5)
             ),
             (
                 ('001_CBS_010.tif', False, (False, False), (0, 0, 0, 0), 0),
