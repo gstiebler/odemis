@@ -121,13 +121,11 @@ class AlignmentProjection(stream.RGBSpatialProjection):
 
     def _updateImage(self):
         raw = self.stream.raw[0]
-        # raw = self._projectTile(raw)
-
         metadata = raw.metadata
         grayscale_im = preprocess(raw, self._invert, self._flip, self._crop,
             self._gaussian_sigma, self._eqhis)
-        # rgb_im = cv2.cvtColor(grayscale_im, cv2.COLOR_GRAY2RGB)
-        rgb_im = model.DataArray(grayscale_im, metadata)
+        rgb_im = cv2.cvtColor(grayscale_im, cv2.COLOR_GRAY2RGB)
+        rgb_im = model.DataArray(rgb_im, metadata)
         self.image.value = rgb_im
 
 class AutomaticOverlayPlugin(Plugin):
@@ -253,12 +251,15 @@ class AutomaticOverlayPlugin(Plugin):
             popup.show_message(dlg.pnl_desc, "Image format not supported", timeout=3)
             return
         elif len(data.shape) == 3:
+            if isinstance(data, model.DataArrayShadow):
+                data = data.getData()
             data = img.ensureYXC(data)
-            if numpy.all(data[:, :, 0] != data[:, :, 1]) or\
-                    numpy.all(data[:, :, 0] != data[:, :, 1]):
+            if numpy.all(data[:, :, 0] == data[:, :, 1]) and\
+                    numpy.all(data[:, :, 0] == data[:, :, 2]):
+                data = data[:, :, 0]
+            else:
                 popup.show_message(dlg.pnl_desc, "Colored RGB image not supported", timeout=3)
                 return
-            data = data[:,:,0]
         s = stream.StaticSEMStream("TEM stream", data)
         tem_projection = AlignmentProjection(s)
         crop = (self.crop_top.value, self.crop_bottom.value,\
