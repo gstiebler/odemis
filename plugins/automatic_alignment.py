@@ -72,7 +72,7 @@ class AlignmentAcquisitionDialog(AcquisitionDialog):
                 self.microscope_view2.addStream(stream)
 
 
-def preprocess(ima, invert, flip, crop, gaussian_sigma):
+def preprocess(ima, invert, flip, crop, gaussian_sigma, eqhis):
     '''
     invert(bool)
     gaussian_sigma: sigma for the gaussian processing
@@ -101,7 +101,7 @@ def preprocess(ima, invert, flip, crop, gaussian_sigma):
     ima = ima[crop_top:ima.shape[0] - crop_bottom, crop_left:ima.shape[1] - crop_right]
 
     # equalize histogram
-    ima = cv2.equalizeHist(ima)
+    ima = cv2.equalizeHist(ima) if eqhis else ima
 
     # blur (kernel size must be odd)
     ima = ndimage.gaussian_filter(ima, sigma=gaussian_sigma)
@@ -111,18 +111,20 @@ def preprocess(ima, invert, flip, crop, gaussian_sigma):
 
 class AlignmentProjection(stream.RGBSpatialProjection):
 
-    def setPreprocessingParams(self, invert, flip, crop, gaussian_sigma):
+    def setPreprocessingParams(self, invert, flip, crop, gaussian_sigma, eqhis):
         self._invert = invert
         self._flip = flip
         self._crop = crop
         self._gaussian_sigma = gaussian_sigma
+        self._eqhis = eqhis
 
     def _updateImage(self):
         raw = self.stream.raw[0]
         raw = self._projectTile(raw)
 
         metadata = raw.metadata
-        grayscale_im = preprocess(raw, self._invert, self._flip, self._crop, self._gaussian_sigma)
+        grayscale_im = preprocess(raw, self._invert, self._flip, self._crop,
+            self._gaussian_sigma, self._eqhis)
         rgb_im = cv2.cvtColor(grayscale_im, cv2.COLOR_GRAY2RGB)
         rgb_im = model.DataArray(rgb_im, metadata)
         self.image.value = rgb_im
@@ -199,7 +201,7 @@ class AutomaticOverlayPlugin(Plugin):
         sem_projection = AlignmentProjection(sem_stream)
         crop = (self.crop_top.value, self.crop_bottom.value,\
                 self.crop_left.value, self.crop_right.value)
-        sem_projection.setPreprocessingParams(False, (False, False), (0, 0, 0, 0), 5)
+        sem_projection.setPreprocessingParams(False, (False, False), (0, 0, 0, 0), 5, True)
         self._semStream = sem_projection
         dlg.addStream(sem_projection, 1)
 
@@ -252,7 +254,7 @@ class AutomaticOverlayPlugin(Plugin):
         crop = (self.crop_top.value, self.crop_bottom.value,\
                 self.crop_left.value, self.crop_right.value)
         flip = (self.flip_x.value, self.flip_y.value)
-        tem_projection.setPreprocessingParams(self.invert.value, flip, crop, self.blur.value)
+        tem_projection.setPreprocessingParams(self.invert.value, flip, crop, self.blur.value, True)
         dlg.addStream(tem_projection, 0)
         self._temStream = tem_projection
 
@@ -261,8 +263,8 @@ class AutomaticOverlayPlugin(Plugin):
                 self.crop_left.value, self.crop_right.value)
         flip = (self.flip_x.value, self.flip_y.value)
         tem_img = preprocess(self._temStream.raw[0], self.invert.value, flip, crop,
-                self.blur.value)
-        sem_img = preprocess(self._semStream.raw[0], False, (False, False), (0, 0, 0, 0), 2)
+                self.blur.value, True)
+        sem_img = preprocess(self._semStream.raw[0], False, (False, False), (0, 0, 0, 0), 5, True)
         tmat, kp_tem, kp_sem = keypoint.FindTransform(tem_img, sem_img)
 
         transf_md = get_img_transformation_md(tmat, tem_img)
@@ -283,26 +285,17 @@ class AutomaticOverlayPlugin(Plugin):
         pos_cor = transf_md[model.MD_POS]
         pos_cor_phys = (pos_cor[0] * new_pixel_size[0], pos_cor[1] * new_pixel_size[1])
 
-        flip = True
         tem_metadata = self._temStream.raw[0].metadata
         tem_metadata[model.MD_POS] = (orig_pos_tem[0] - orig_centers_diff_phys[0] + pos_cor_phys[0],\
                 orig_pos_tem[1] - orig_centers_diff_phys[1] + pos_cor_phys[1])
         tem_metadata[model.MD_PIXEL_SIZE] = new_pixel_size
         # tem_metadata[model.MD_SHEAR] = transf_md[model.MD_SHEAR]
-        if flip:
-            self._temStream.raw[0] = self._temStream.raw[0][::-1, :]
-            tem_metadata[model.MD_ROTATION] = -transf_md[model.MD_ROTATION]
-        else:
-            tem_metadata[model.MD_ROTATION] = transf_md[model.MD_ROTATION]
+
         logging.debug(tem_metadata)
         self._temStream.raw[0].metadata = tem_metadata
         self._temStream._shouldUpdateImage()
 
-        crop_top, crop_bottom, crop_left, crop_right = crop
-        # remove the bar
-        raw = self._temStream.stream.raw[0]
-        raw = raw[crop_top:raw.shape[0] - crop_bottom, crop_left:raw.shape[1] - crop_right]
-
+        raw = preprocess(self._temStream.stream.raw[0], False, flip, crop, 0, False)
         analysis_tab = self.main_app.main_data.getTabByName('analysis')
         aligned_stream = stream.StaticSEMStream("TEM", raw)
         wx.CallAfter(analysis_tab.stream_bar_controller.addStream, aligned_stream, add_to_view=True)
@@ -311,5 +304,6 @@ class AutomaticOverlayPlugin(Plugin):
         crop = (self.crop_top.value, self.crop_bottom.value,
                 self.crop_left.value, self.crop_right.value)
         flip = (self.flip_x.value, self.flip_y.value)
-        self._temStream.setPreprocessingParams(self.invert.value, flip, crop, self.blur.value)
+        self._temStream.setPreprocessingParams(self.invert.value, flip,
+                crop, self.blur.value, True)
         self._temStream._shouldUpdateImage()
