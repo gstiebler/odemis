@@ -41,6 +41,8 @@ import wx
 import cv2
 from odemis.gui.util import call_in_wx_main
 from odemis.gui.comp import popup
+from odemis.util import img
+import numpy
 
 class AlignmentAcquisitionDialog(AcquisitionDialog):
 
@@ -79,8 +81,6 @@ def preprocess(ima, invert, flip, crop, gaussian_sigma, eqhis):
     gaussian_sigma: sigma for the gaussian processing
     '''
     metadata_a = ima.metadata
-    if ima.ndim > 2:
-        ima = cv2.cvtColor(ima, cv2.COLOR_RGB2GRAY)
 
     flip_x, flip_y = flip
     # flip on X axis
@@ -121,13 +121,13 @@ class AlignmentProjection(stream.RGBSpatialProjection):
 
     def _updateImage(self):
         raw = self.stream.raw[0]
-        raw = self._projectTile(raw)
+        # raw = self._projectTile(raw)
 
         metadata = raw.metadata
         grayscale_im = preprocess(raw, self._invert, self._flip, self._crop,
             self._gaussian_sigma, self._eqhis)
-        rgb_im = cv2.cvtColor(grayscale_im, cv2.COLOR_GRAY2RGB)
-        rgb_im = model.DataArray(rgb_im, metadata)
+        # rgb_im = cv2.cvtColor(grayscale_im, cv2.COLOR_GRAY2RGB)
+        rgb_im = model.DataArray(grayscale_im, metadata)
         self.image.value = rgb_im
 
 class AutomaticOverlayPlugin(Plugin):
@@ -248,8 +248,18 @@ class AutomaticOverlayPlugin(Plugin):
         # Detect the format to use
         filename = dialog.GetPath()
 
-        data = open_acquisition(filename)
-        s = stream.StaticSEMStream("TEM stream", data[0])
+        data = open_acquisition(filename)[0]
+        if len(data.shape) > 3:
+            popup.show_message(dlg.pnl_desc, "Image format not supported", timeout=3)
+            return
+        elif len(data.shape) == 3:
+            data = img.ensureYXC(data)
+            if numpy.all(data[:, :, 0] != data[:, :, 1]) or\
+                    numpy.all(data[:, :, 0] != data[:, :, 1]):
+                popup.show_message(dlg.pnl_desc, "Colored RGB image not supported", timeout=3)
+                return
+            data = data[:,:,0]
+        s = stream.StaticSEMStream("TEM stream", data)
         tem_projection = AlignmentProjection(s)
         crop = (self.crop_top.value, self.crop_bottom.value,\
                 self.crop_left.value, self.crop_right.value)
