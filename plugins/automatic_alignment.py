@@ -249,8 +249,7 @@ class AutomaticOverlayPlugin(Plugin):
         filename = dialog.GetPath()
 
         data = open_acquisition(filename)
-        s = data_to_static_streams(data)[0]
-        s = s.stream if isinstance(s, stream.DataProjection) else s
+        s = stream.StaticSEMStream("TEM stream", data[0])
         tem_projection = AlignmentProjection(s)
         crop = (self.crop_top.value, self.crop_bottom.value,\
                 self.crop_left.value, self.crop_right.value)
