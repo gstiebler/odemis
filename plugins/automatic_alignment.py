@@ -42,7 +42,7 @@ import cv2
 
 class AlignmentAcquisitionDialog(AcquisitionDialog):
 
-    # TODO check if the annotation is necessary: @call_in_wx_main
+    @call_in_wx_main
     def addStream(self, stream, index):
         """
         Adds a stream to the canvas, and a stream entry to the stream panel.
@@ -165,7 +165,7 @@ class AutomaticOverlayPlugin(Plugin):
         super(AutomaticOverlayPlugin, self).__init__(microscope, main_app)
         self.addMenu("Overlay/Automatic alignment corrections", self.start)
 
-        self.blur = model.IntContinuous(5, range=(0, 20), unit="pixels")
+        self.blur = model.IntContinuous(10, range=(0, 20), unit="pixels")
         # TODO set the limits of the crop VAs based on the size of the image
         self.crop_top = model.IntContinuous(0, range=(0, 100), unit="pixels")
         self.crop_bottom = model.IntContinuous(0, range=(0, 100), unit="pixels")
@@ -198,7 +198,7 @@ class AutomaticOverlayPlugin(Plugin):
         sem_projection = AlignmentProjection(sem_stream)
         crop = (self.crop_top.value, self.crop_bottom.value,\
                 self.crop_left.value, self.crop_right.value)
-        sem_projection.setPreprocessingParams(False, (False, False), (0, 0, 0, 0), 2)
+        sem_projection.setPreprocessingParams(False, (False, False), (0, 0, 0, 0), 5)
         self._semStream = sem_projection
         dlg.addStream(sem_projection, 1)
 
