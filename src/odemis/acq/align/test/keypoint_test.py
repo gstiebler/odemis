@@ -79,7 +79,7 @@ class TestKeypoint(unittest.TestCase):
     def test_first(self):
         image_pairs = [
             (
-                ('Slice69.tif', True, (False, True), (0, 0, 0, 0), 10),
+                ('Slice69_TEM_stretched.tif', True, (False, True), (0, 0, 0, 0), 7),
                 ('g_009_gray_cropped.tif', False, (False, False), (0, 0, 0, 0), 5)
             ),
             (
@@ -109,7 +109,7 @@ class TestKeypoint(unittest.TestCase):
         merged_im = cv2.addWeighted(sem_img, 0.5, warped_im, 0.5, 0.0)
         cv2.imwrite(imgs_folder + 'merged_with_warped.jpg', merged_im)
         print tmat
-        print get_img_transformation_md(tmat, tem_img)
+        print get_img_transformation_md(tmat, tem_img, sem_img)
 
     def test_get_img_transformation_md(self):
         rot = 0.2

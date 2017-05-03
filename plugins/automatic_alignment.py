@@ -282,7 +282,7 @@ class AutomaticOverlayPlugin(Plugin):
             popup.show_message(dlg.pnl_desc, str(exception), timeout=3)
             return
 
-        transf_md = get_img_transformation_md(tmat, tem_img)
+        transf_md = get_img_transformation_md(tmat, tem_img, sem_img)
         logging.debug(tmat)
         logging.debug(transf_md)
 
@@ -304,6 +304,7 @@ class AutomaticOverlayPlugin(Plugin):
         tem_metadata[model.MD_POS] = (orig_pos_tem[0] - orig_centers_diff_phys[0] + pos_cor_phys[0],\
                 orig_pos_tem[1] - orig_centers_diff_phys[1] + pos_cor_phys[1])
         tem_metadata[model.MD_PIXEL_SIZE] = new_pixel_size
+        tem_metadata[model.MD_ROTATION] = transf_md[model.MD_ROTATION]
         # tem_metadata[model.MD_SHEAR] = transf_md[model.MD_SHEAR]
 
         logging.debug(tem_metadata)
@@ -311,6 +312,7 @@ class AutomaticOverlayPlugin(Plugin):
         self._temStream._shouldUpdateImage()
 
         raw = preprocess(self._temStream.stream.raw[0], False, flip, crop, 0, False)
+        raw.metadata = tem_metadata
         analysis_tab = self.main_app.main_data.getTabByName('analysis')
         aligned_stream = stream.StaticSEMStream("TEM", raw)
         wx.CallAfter(analysis_tab.stream_bar_controller.addStream, aligned_stream, add_to_view=True)

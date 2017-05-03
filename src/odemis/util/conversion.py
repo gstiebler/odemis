@@ -366,7 +366,7 @@ def get_tile_md_pos(i, tile_size, tileda, origda):
     tile_pos_world_final = md_pos + new_tile_pos_rel
     return tuple(tile_pos_world_final)
 
-def get_img_transformation_md(mat, image):
+def get_img_transformation_md(mat, image, src_img):
     """
     Computes the metadata of the transformations from the transformation matrix
     mat (ndarray of shape 3,3): transformation matrix
@@ -394,6 +394,8 @@ def get_img_transformation_md(mat, image):
     rot = math.atan2(sin_full, cos_full)
 
     half_size = ((image.shape[1] / 2, image.shape[0] / 2))
+    img_src_center = ((src_img.shape[1] / 2, src_img.shape[0] / 2))
+    centers_dif = (img_src_center[0] - half_size[0], img_src_center[1] - half_size[1])
 
     def convert_point(point):
         point1 = numpy.matrix([point[0], point[1], 1.0]).getT()
@@ -420,21 +422,24 @@ def get_img_transformation_md(mat, image):
     # rot = math.atan2(dif_y, dif_x)
 
     top_length = math.sqrt(math.pow(dif_x, 2) + math.pow(dif_y, 2))
-    # scale_x = top_length / image.shape[1]
+    scale_x = top_length / image.shape[1]
 
     dif_x = bottom_left_point[0] - top_left_point[0]
     dif_y = bottom_left_point[1] - top_left_point[1]
     left_length = math.sqrt(math.pow(dif_x, 2) + math.pow(dif_y, 2))
-    # scale_y = left_length / image.shape[0]
+    scale_y = left_length / image.shape[0]
 
-    translation_x = center_point[0] - half_size[0]
-    translation_y = center_point[1] - half_size[1]
+    # translation_x = center_point[0] - half_size[0]
+    # translation_y = center_point[1] - half_size[1]
+
+    translation_x = center_point[0] - img_src_center[0]
+    translation_y = center_point[1] - img_src_center[1]
 
     metadata = {}
     metadata[model.MD_POS] = (translation_x, -translation_y)
     # TODO needs the original PIXEL SIZE?
     metadata[model.MD_PIXEL_SIZE] = (scale_x, scale_y)
-    metadata[model.MD_ROTATION] = rot
+    metadata[model.MD_ROTATION] = -rot
     metadata[model.MD_SHEAR] = -shear
 
     return metadata
