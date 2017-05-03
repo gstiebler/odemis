@@ -34,10 +34,10 @@ from odemis import model
 from numpy.linalg import inv
 from scipy import ndimage
 
-imgs_folder = 'C:/Projetos/Delmic/iCLEM/images/'
+imgs_folder = '/home/gstiebler/Projetos/Delmic/iCLEM/Images/'
 
 
-def preprocess(ima, invert, flip, crop, gaussian_sigma):
+def preprocess(ima, invert, flip, crop, gaussian_sigma, eqhis):
     '''
     invert(bool)
     gaussian_sigma: sigma for the gaussian processing
@@ -59,21 +59,20 @@ def preprocess(ima, invert, flip, crop, gaussian_sigma):
     if invert:
         mn = ima.min()
         mx = ima.max()
-        ima = mx - (ima - mn)
-
-    ima_height = ima.shape[0]
+        ima = mx + mn - ima
 
     crop_top, crop_bottom, crop_left, crop_right = crop
     # remove the bar
     ima = ima[crop_top:ima.shape[0] - crop_bottom, crop_left:ima.shape[1] - crop_right]
 
     # equalize histogram
-    ima = cv2.equalizeHist(ima)
+    ima = cv2.equalizeHist(ima) if eqhis else ima
 
     # blur (kernel size must be odd)
     ima = ndimage.gaussian_filter(ima, sigma=gaussian_sigma)
 
     return  model.DataArray(ima, metadata_a)
+
 
 class TestKeypoint(unittest.TestCase):
 
@@ -95,8 +94,10 @@ class TestKeypoint(unittest.TestCase):
         image_pair = image_pairs[0]
         tem_img = open_acquisition(imgs_folder + image_pair[0][0])[0].getData()
         sem_img = open_acquisition(imgs_folder + image_pair[1][0])[0].getData()
-        tem_img = preprocess(tem_img, image_pair[0][1], image_pair[0][2], image_pair[0][3], image_pair[0][4])
-        sem_img = preprocess(sem_img, image_pair[1][1], image_pair[1][2], image_pair[1][3], image_pair[1][4])
+        tem_img = preprocess(tem_img, image_pair[0][1], image_pair[0][2],
+                image_pair[0][3], image_pair[0][4], True)
+        sem_img = preprocess(sem_img, image_pair[1][1], image_pair[1][2],
+                image_pair[1][3], image_pair[1][4], True)
         tmat, tem_kp, sem_kp = keypoint.FindTransform(tem_img, sem_img)
 
         tem_painted_kp = cv2.drawKeypoints(tem_img, tem_kp, None, color=(0,255,0), flags=0)

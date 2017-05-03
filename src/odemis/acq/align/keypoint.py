@@ -69,7 +69,11 @@ def FindTransform(ima, imb):
     selected_imb_kp = np.array([selected_imb_kp])
 
     # testing detecting the matching points automatically
-    mat, mask = cv2.findHomography(selected_ima_kp, selected_imb_kp, cv2.RANSAC)
+    try:
+        mat, mask = cv2.findHomography(selected_ima_kp, selected_imb_kp, cv2.RANSAC)
+    except Exception:
+        raise ValueError("The images does not match")
+
     if mat is None:
         raise ValueError("The images does not match")
 
