@@ -40,6 +40,7 @@ import os
 import wx
 import cv2
 from odemis.gui.util import call_in_wx_main
+from odemis.gui.comp import popup
 
 class AlignmentAcquisitionDialog(AcquisitionDialog):
 
@@ -265,7 +266,11 @@ class AutomaticOverlayPlugin(Plugin):
         tem_img = preprocess(self._temStream.raw[0], self.invert.value, flip, crop,
                 self.blur.value, True)
         sem_img = preprocess(self._semStream.raw[0], False, (False, False), (0, 0, 0, 0), 5, True)
-        tmat, kp_tem, kp_sem = keypoint.FindTransform(tem_img, sem_img)
+        try:
+            tmat, kp_tem, kp_sem = keypoint.FindTransform(tem_img, sem_img)
+        except ValueError as exception:
+            popup.show_message(dlg.pnl_desc, str(exception), timeout=3)
+            return
 
         transf_md = get_img_transformation_md(tmat, tem_img)
         logging.debug(tmat)
