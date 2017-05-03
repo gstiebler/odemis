@@ -4986,7 +4986,7 @@
                 <flag>wxEXPAND</flag>
               </object>
               <object class="sizeritem">
-                <object class="wxPanel">
+                <object class="wxPanel" name="pnl_gauge">
                   <object class="wxBoxSizer">
                     <object class="sizeritem">
                       <object class="wxGauge" name="gauge_progress">
@@ -5044,6 +5044,9 @@
                     <orient>wxVERTICAL</orient>
                   </object>
                   <bg>#4D4D4D</bg>
+                  <XRCED>
+                    <assign_var>1</assign_var>
+                  </XRCED>
                 </object>
                 <flag>wxEXPAND</flag>
               </object>

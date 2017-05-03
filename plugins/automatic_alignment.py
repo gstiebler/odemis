@@ -39,6 +39,7 @@ from scipy import ndimage
 import os
 import wx
 import cv2
+from odemis.gui.util import call_in_wx_main
 
 class AlignmentAcquisitionDialog(AcquisitionDialog):
 
@@ -205,6 +206,7 @@ class AutomaticOverlayPlugin(Plugin):
         dlg.addSettings(self, self.vaconf)
         dlg.addButton("Align", self.align, face_colour='blue')
         dlg.addButton("Cancel", None)
+        dlg.pnl_gauge.Hide()
         self.open_image(dlg)
         dlg.ShowModal()
 
