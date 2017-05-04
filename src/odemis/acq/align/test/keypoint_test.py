@@ -34,7 +34,7 @@ from odemis import model
 from numpy.linalg import inv
 from scipy import ndimage
 
-imgs_folder = '/home/gstiebler/Projetos/Delmic/iCLEM/Images/'
+imgs_folder = '/home/gstiebler/Projetos/Delmic/odemis/src/odemis/acq/align/test/images/'
 
 
 def preprocess(ima, invert, flip, crop, gaussian_sigma, eqhis):
@@ -43,8 +43,6 @@ def preprocess(ima, invert, flip, crop, gaussian_sigma, eqhis):
     gaussian_sigma: sigma for the gaussian processing
     '''
     metadata_a = ima.metadata
-    if ima.ndim > 2:
-        ima = cv2.cvtColor(ima, cv2.COLOR_RGB2GRAY)
 
     flip_x, flip_y = flip
     # flip on X axis
@@ -55,18 +53,21 @@ def preprocess(ima, invert, flip, crop, gaussian_sigma, eqhis):
     if flip_y:
         ima = ima[::-1, :]
 
+    crop_top, crop_bottom, crop_left, crop_right = crop
+    # remove the bar
+    ima = ima[crop_top:ima.shape[0] - crop_bottom, crop_left:ima.shape[1] - crop_right]
+
     # Invert the image brightness
     if invert:
         mn = ima.min()
         mx = ima.max()
         ima = mx + mn - ima
 
-    crop_top, crop_bottom, crop_left, crop_right = crop
-    # remove the bar
-    ima = ima[crop_top:ima.shape[0] - crop_bottom, crop_left:ima.shape[1] - crop_right]
-
     # equalize histogram
-    ima = cv2.equalizeHist(ima) if eqhis else ima
+    if eqhis:
+        if ima.dtype == numpy.uint16:
+            ima = cv2.convertScaleAbs(ima, alpha=(255.0/65535.0))
+        ima = cv2.equalizeHist(ima)
 
     # blur (kernel size must be odd)
     ima = ndimage.gaussian_filter(ima, sigma=gaussian_sigma)
@@ -79,8 +80,8 @@ class TestKeypoint(unittest.TestCase):
     def test_first(self):
         image_pairs = [
             (
-                ('Slice69_TEM_stretched.tif', True, (False, True), (0, 0, 0, 0), 7),
-                ('g_009_gray_cropped.tif', False, (False, False), (0, 0, 0, 0), 5)
+                ('Slice69_stretched.tif', True, (False, True), (0, 0, 0, 0), 7),
+                ('g_009_cropped.tif', False, (False, False), (0, 0, 0, 0), 5)
             ),
             (
                 ('001_CBS_010.tif', False, (False, False), (0, 0, 0, 0), 0),
@@ -185,13 +186,13 @@ class TestKeypoint(unittest.TestCase):
         rotated = cv2.warpAffine(image, rot_mat, (1000, 1000),\
                 borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
 
-        tmat_odemis = keypoint.FindTransform(rotated, image)
+        tmat_odemis, _, _ = keypoint.FindTransform(rotated, image)
         warped_im = cv2.warpPerspective(rotated, tmat_odemis, (rotated.shape[1], rotated.shape[0]),\
                 borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
 
         print 'tmat_odemis'
         print tmat_odemis
-        transf_md = get_img_transformation_md(tmat_odemis, image)
+        transf_md = get_img_transformation_md(tmat_odemis, rotated, image)
         print transf_md
 
         cv2.imwrite(imgs_folder + 'test.jpg', image)
