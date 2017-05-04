@@ -123,8 +123,14 @@ class TestKeypoint(unittest.TestCase):
         '''warped_im = cv2.warpPerspective(tem_img, tmat, (sem_img.shape[1], sem_img.shape[0]))
         merged_im = cv2.addWeighted(sem_img, 0.5, warped_im, 0.5, 0.0)
         cv2.imwrite(imgs_folder + 'merged_with_warped.jpg', merged_im)'''
-        print tmat
-        print get_img_transformation_md(tmat, tem_img, sem_img)
+
+        tmetadata = get_img_transformation_md(tmat, tem_img, sem_img)
+        # comparing based on a successful alignment validated from the warped image
+        self.assertAlmostEqual(0.9046560337827241, tmetadata[model.MD_PIXEL_SIZE][0])
+        self.assertAlmostEqual(1.4188154594260145, tmetadata[model.MD_PIXEL_SIZE][1])
+        self.assertAlmostEqual(0.1734484003427465, tmetadata[model.MD_ROTATION])
+        self.assertAlmostEqual(179.37792038862722, tmetadata[model.MD_POS][0])
+        self.assertAlmostEqual(-154.15625938805169, tmetadata[model.MD_POS][1])
 
     def test_get_img_transformation_md(self):
         rot = 0.2
