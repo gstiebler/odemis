@@ -40,7 +40,6 @@ import os
 import wx
 import cv2
 from odemis.gui.util import call_in_wx_main
-from odemis.gui.comp import popup
 from odemis.util import img
 import numpy
 
@@ -91,15 +90,15 @@ def preprocess(ima, invert, flip, crop, gaussian_sigma, eqhis):
     if flip_y:
         ima = ima[::-1, :]
 
+    crop_top, crop_bottom, crop_left, crop_right = crop
+    # remove the bar
+    ima = ima[crop_top:ima.shape[0] - crop_bottom, crop_left:ima.shape[1] - crop_right]
+
     # Invert the image brightness
     if invert:
         mn = ima.min()
         mx = ima.max()
         ima = mx + mn - ima
-
-    crop_top, crop_bottom, crop_left, crop_right = crop
-    # remove the bar
-    ima = ima[crop_top:ima.shape[0] - crop_bottom, crop_left:ima.shape[1] - crop_right]
 
     # equalize histogram
     ima = cv2.equalizeHist(ima) if eqhis else ima
@@ -224,6 +223,20 @@ class AutomaticOverlayPlugin(Plugin):
         logging.warning("No SEM stream found")
         return None
 
+    def _ensureGrayscale(self, data):
+        if len(data.shape) > 3:
+            raise ValueError("Image format not supported")
+        elif len(data.shape) == 3:
+            if isinstance(data, model.DataArrayShadow):
+                data = data.getData()
+            data = img.ensureYXC(data)
+            if numpy.all(data[:, :, 0] == data[:, :, 1]) and\
+                    numpy.all(data[:, :, 0] == data[:, :, 2]):
+                data = data[:, :, 0]
+            else:
+                raise ValueError("Colored RGB image not supported")
+        return data
+
     def open_image(self, dlg):
         # Find the available formats (and corresponding extensions)
         formats_to_ext = dataio.get_available_formats(os.O_RDONLY)
@@ -241,25 +254,22 @@ class AutomaticOverlayPlugin(Plugin):
 
         # Show the dialog and check whether is was accepted or cancelled
         if dialog.ShowModal() != wx.ID_OK:
-            return False
+            dlg.Destroy()
+            return
 
         # Detect the format to use
         filename = dialog.GetPath()
 
         data = open_acquisition(filename)[0]
-        if len(data.shape) > 3:
-            popup.show_message(dlg.pnl_desc, "Image format not supported", timeout=3)
+        try:
+            data = self._ensureGrayscale(data)
+        except ValueError, exception:
+            box = wx.MessageDialog(dlg, str(exception), "Exit", wx.OK | wx.ICON_STOP)
+            box.ShowModal()
+            box.Destroy()
+            dlg.Destroy()
             return
-        elif len(data.shape) == 3:
-            if isinstance(data, model.DataArrayShadow):
-                data = data.getData()
-            data = img.ensureYXC(data)
-            if numpy.all(data[:, :, 0] == data[:, :, 1]) and\
-                    numpy.all(data[:, :, 0] == data[:, :, 2]):
-                data = data[:, :, 0]
-            else:
-                popup.show_message(dlg.pnl_desc, "Colored RGB image not supported", timeout=3)
-                return
+
         s = stream.StaticSEMStream("TEM stream", data)
         tem_projection = AlignmentProjection(s)
         crop = (self.crop_top.value, self.crop_bottom.value,\
@@ -279,7 +289,10 @@ class AutomaticOverlayPlugin(Plugin):
         try:
             tmat, kp_tem, kp_sem = keypoint.FindTransform(tem_img, sem_img)
         except ValueError as exception:
-            popup.show_message(dlg.pnl_desc, str(exception), timeout=3)
+            box = wx.MessageDialog(dlg, str(exception), "Exit", wx.OK | wx.ICON_STOP)
+            box.ShowModal()
+            box.Destroy()
+            dlg.Destroy()
             return
 
         transf_md = get_img_transformation_md(tmat, tem_img, sem_img)
