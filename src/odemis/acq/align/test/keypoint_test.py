@@ -37,47 +37,56 @@ from scipy import ndimage
 imgs_folder = '/home/gstiebler/Projetos/Delmic/odemis/src/odemis/acq/align/test/images/'
 
 
-def preprocess(ima, invert, flip, crop, gaussian_sigma, eqhis):
+def preprocess(img, invert, flip, crop, gaussian_sigma, eqhis):
     '''
-    invert(bool)
-    gaussian_sigma: sigma for the gaussian processing
+    The pre-processing function like the one on the alignment plugin
+    img (DataArray): Input image
+    invert (bool): Invert the brightness levels of the image
+    flip (tuple(bool, bool)): Determine if the image should be flipped on the X and Y axis
+    crop (tuple(t,b,l,r): Crop values in pixels
+    gaussian_sigma (int): Blur intensity
+    eqhis (bool): Determine if an histogram equalization should be executed
+    return: Processed image
     '''
-    metadata_a = ima.metadata
+    metadata = img.metadata
 
     flip_x, flip_y = flip
     # flip on X axis
     if flip_x:
-        ima = ima[:, ::-1]
+        img = img[:, ::-1]
 
     # flip on Y axis
     if flip_y:
-        ima = ima[::-1, :]
+        img = img[::-1, :]
 
     crop_top, crop_bottom, crop_left, crop_right = crop
     # remove the bar
-    ima = ima[crop_top:ima.shape[0] - crop_bottom, crop_left:ima.shape[1] - crop_right]
+    img = img[crop_top:img.shape[0] - crop_bottom, crop_left:img.shape[1] - crop_right]
 
     # Invert the image brightness
     if invert:
-        mn = ima.min()
-        mx = ima.max()
-        ima = mx + mn - ima
+        mn = img.min()
+        mx = img.max()
+        img = mx + mn - img
 
     # equalize histogram
     if eqhis:
-        if ima.dtype == numpy.uint16:
-            ima = cv2.convertScaleAbs(ima, alpha=(255.0/65535.0))
-        ima = cv2.equalizeHist(ima)
+        if img.dtype == numpy.uint16:
+            img = cv2.convertScaleAbs(img, alpha=(255.0/65535.0))
+        img = cv2.equalizeHist(img)
 
-    # blur (kernel size must be odd)
-    ima = ndimage.gaussian_filter(ima, sigma=gaussian_sigma)
+    # blur the image using a gaussian filter
+    img = ndimage.gaussian_filter(img, sigma=gaussian_sigma)
 
-    return  model.DataArray(ima, metadata_a)
+    # return a new DataArray with the metadata of the original image
+    return  model.DataArray(img, metadata)
 
 
 class TestKeypoint(unittest.TestCase):
 
     def test_first(self):
+        # only one image will be used, but this structure helps to test
+        # different images
         image_pairs = [
             (
                 ('Slice69_stretched.tif', True, (False, True), (0, 0, 0, 0), 7),
@@ -93,22 +102,27 @@ class TestKeypoint(unittest.TestCase):
             )
         ]
         image_pair = image_pairs[0]
+        # open the images
         tem_img = open_acquisition(imgs_folder + image_pair[0][0])[0].getData()
         sem_img = open_acquisition(imgs_folder + image_pair[1][0])[0].getData()
+        # preprocess
         tem_img = preprocess(tem_img, image_pair[0][1], image_pair[0][2],
                 image_pair[0][3], image_pair[0][4], True)
         sem_img = preprocess(sem_img, image_pair[1][1], image_pair[1][2],
                 image_pair[1][3], image_pair[1][4], True)
+        # execute the algorithm to find the transform between the images
         tmat, tem_kp, sem_kp = keypoint.FindTransform(tem_img, sem_img)
 
-        tem_painted_kp = cv2.drawKeypoints(tem_img, tem_kp, None, color=(0,255,0), flags=0)
+        # uncomment this if you want to see the keypoint images
+        '''tem_painted_kp = cv2.drawKeypoints(tem_img, tem_kp, None, color=(0,255,0), flags=0)
         sem_painted_kp = cv2.drawKeypoints(sem_img, sem_kp, None, color=(0,255,0), flags=0)
         cv2.imwrite(imgs_folder + 'tem_kp.jpg', tem_painted_kp)
-        cv2.imwrite(imgs_folder + 'sem_kp.jpg', sem_painted_kp)
+        cv2.imwrite(imgs_folder + 'sem_kp.jpg', sem_painted_kp)'''
 
-        warped_im = cv2.warpPerspective(tem_img, tmat, (sem_img.shape[1], sem_img.shape[0]))
+        # uncomment this if you want to see the warped image
+        '''warped_im = cv2.warpPerspective(tem_img, tmat, (sem_img.shape[1], sem_img.shape[0]))
         merged_im = cv2.addWeighted(sem_img, 0.5, warped_im, 0.5, 0.0)
-        cv2.imwrite(imgs_folder + 'merged_with_warped.jpg', merged_im)
+        cv2.imwrite(imgs_folder + 'merged_with_warped.jpg', merged_im)'''
         print tmat
         print get_img_transformation_md(tmat, tem_img, sem_img)
 
