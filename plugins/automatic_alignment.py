@@ -101,7 +101,10 @@ def preprocess(ima, invert, flip, crop, gaussian_sigma, eqhis):
         ima = mx + mn - ima
 
     # equalize histogram
-    ima = cv2.equalizeHist(ima) if eqhis else ima
+    if eqhis:
+        if ima.dtype != numpy.uint8:
+            ima = cv2.convertScaleAbs(ima, alpha=(255.0/65535.0))
+        ima = cv2.equalizeHist(ima)
 
     # blur (kernel size must be odd)
     ima = ndimage.gaussian_filter(ima, sigma=gaussian_sigma)
