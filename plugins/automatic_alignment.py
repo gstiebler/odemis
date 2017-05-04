@@ -102,7 +102,7 @@ def preprocess(ima, invert, flip, crop, gaussian_sigma, eqhis):
 
     # equalize histogram
     if eqhis:
-        if ima.dtype != numpy.uint8:
+        if ima.dtype == numpy.uint16:
             ima = cv2.convertScaleAbs(ima, alpha=(255.0/65535.0))
         ima = cv2.equalizeHist(ima)
 
@@ -314,7 +314,7 @@ class AutomaticOverlayPlugin(Plugin):
         orig_centers_diff_phys = (orig_pos_tem[0] - orig_pos_sem[0], orig_pos_tem[1] - orig_pos_sem[1])
 
         pos_cor = transf_md[model.MD_POS]
-        pos_cor_phys = (pos_cor[0] * new_pixel_size[0], pos_cor[1] * new_pixel_size[1])
+        pos_cor_phys = (pos_cor[0] * orig_sem_ps[0], pos_cor[1] * orig_sem_ps[1])
 
         tem_metadata = self._temStream.raw[0].metadata
         tem_metadata[model.MD_POS] = (orig_pos_tem[0] - orig_centers_diff_phys[0] + pos_cor_phys[0],\

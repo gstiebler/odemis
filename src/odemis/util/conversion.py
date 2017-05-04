@@ -386,13 +386,6 @@ def get_img_transformation_md(mat, image, src_img):
 
     shear = (cos * c - sin * a) / (cos * a + sin * c)
 
-    scale_y = d / cos
-    scale_x = a / (cos - sin * shear)
-
-    sin_full = -b / scale_y
-    cos_full = d / scale_y
-    rot = math.atan2(sin_full, cos_full)
-
     half_size = ((image.shape[1] / 2, image.shape[0] / 2))
     img_src_center = ((src_img.shape[1] / 2, src_img.shape[0] / 2))
     centers_dif = (img_src_center[0] - half_size[0], img_src_center[1] - half_size[1])
@@ -429,8 +422,9 @@ def get_img_transformation_md(mat, image, src_img):
     left_length = math.sqrt(math.pow(dif_x, 2) + math.pow(dif_y, 2))
     scale_y = left_length / image.shape[0]
 
-    # translation_x = center_point[0] - half_size[0]
-    # translation_y = center_point[1] - half_size[1]
+    sin_full = -b / scale_y
+    cos_full = d / scale_y
+    rot = math.atan2(sin_full, cos_full)
 
     translation_x = center_point[0] - img_src_center[0]
     translation_y = center_point[1] - img_src_center[1]
