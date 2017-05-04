@@ -329,6 +329,7 @@ class AutomaticOverlayPlugin(Plugin):
         analysis_tab = self.main_app.main_data.getTabByName('analysis')
         aligned_stream = stream.StaticSEMStream("TEM", raw)
         wx.CallAfter(analysis_tab.stream_bar_controller.addStream, aligned_stream, add_to_view=True)
+        dlg.Destroy()
 
     def _update_stream(self, value):
         crop = (self.crop_top.value, self.crop_bottom.value,
