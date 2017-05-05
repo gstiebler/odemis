@@ -426,14 +426,11 @@ def get_img_transformation_md(mat, timage, src_img):
     translation_x = center_point[0] - img_src_center[0]
     translation_y = center_point[1] - img_src_center[1]
 
-    orig_timage_ps = timage.metadata.get(model.MD_PIXEL_SIZE, (1e-9, 1e-9))
     orig_src_img_ps = src_img.metadata.get(model.MD_PIXEL_SIZE, (1e-9, 1e-9))
-    # the proportion between the original SEM and TEM images
-    ps_prop = (orig_src_img_ps[0] / orig_timage_ps[0], orig_src_img_ps[1] / orig_timage_ps[1])
     ps_cor = (scale_x, scale_y)
     # The new pixel size of the TEM image
-    new_pixel_size = (orig_timage_ps[0] * ps_prop[0] * ps_cor[0],\
-            orig_timage_ps[1] * ps_prop[1] * ps_cor[1])
+    new_pixel_size = (orig_src_img_ps[0] * ps_cor[0],\
+            orig_src_img_ps[1] * ps_cor[1])
 
     orig_pos_src_img = src_img.metadata.get(model.MD_POS, (0.0, 0.0))
     orig_pos_timage = timage.metadata.get(model.MD_POS, (0.0, 0.0))
