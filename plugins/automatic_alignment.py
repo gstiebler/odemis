@@ -66,7 +66,6 @@ class AlignmentAcquisitionDialog(AcquisitionDialog):
 
         if stream:
             if index == 0:
-                self.streambar_controller.addStream(stream)
                 self.microscope_view.addStream(stream)
             else:
                 self.microscope_view_r.addStream(stream)
