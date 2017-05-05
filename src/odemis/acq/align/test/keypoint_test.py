@@ -94,14 +94,14 @@ class TestKeypoint(unittest.TestCase):
                 ('Slice69_stretched.tif', True, (False, True), (0, 0, 0, 0), 7),
                 ('g_009_cropped.tif', False, (False, False), (0, 0, 0, 0), 5)
             ),
-            (
+            '''(
                 ('001_CBS_010.tif', False, (False, False), (0, 0, 0, 0), 0),
                 ('20141014-113042_1.tif', False, (False, False), (0, 0, 0, 0), 0)
             ),
             (
                 ('t3 DELPHI.tiff', False, (False, False), (0, 200, 0, 0), 3),
                 ('t3 testoutA3.tif', False, (False, False), (0, 420, 0, 0), 3)
-            )
+            )'''
         ]
         image_pair = image_pairs[0]
         # open the images
