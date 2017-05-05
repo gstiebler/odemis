@@ -204,12 +204,16 @@ class TestKeypoint(unittest.TestCase):
         tmat_odemis, _, _ = keypoint.FindTransform(timg, image)
 
         timg_md = {
-            model.MD_PIXEL_SIZE: (1e-6, 1e-6)
+            model.MD_PIXEL_SIZE: (1e-6, 1e-6),
+            model.MD_ROTATION: 0.1,
+            model.MD_SHEAR: 0.1
         }
         timg = model.DataArray(timg, timg_md)
         image_md = {
             model.MD_PIXEL_SIZE: (1e-6, 1e-6),
-            model.MD_POS: (35e-6, 25e-6)
+            model.MD_POS: (35e-6, 25e-6),
+            model.MD_ROTATION: 0.15,
+            model.MD_SHEAR: 0.15
         }
         image = model.DataArray(image, image_md)
         # use the invert matrix to get the original values
@@ -217,11 +221,14 @@ class TestKeypoint(unittest.TestCase):
         # the matching algorithm is not that accurate, so the values are approximated
         self.assertAlmostEqual(0.6989929643344752e-6, tmetadata[model.MD_PIXEL_SIZE][0])
         self.assertAlmostEqual(0.6992058385109082e-6, tmetadata[model.MD_PIXEL_SIZE][1])
-        self.assertAlmostEqual(0.29446353275792725, tmetadata[model.MD_ROTATION])
+        # 0.3 + 0.15
+        self.assertAlmostEqual(0.44446353275792726, tmetadata[model.MD_ROTATION])
         # (100 + 35) * PS
         self.assertAlmostEqual(134.80058380419755e-06, tmetadata[model.MD_POS][0])
         # (-50 + 25) * PS
         self.assertAlmostEqual(-25.155552827377845e-06, tmetadata[model.MD_POS][1])
+        # 0.0 (there's no shear on the image) + 0.15
+        self.assertAlmostEqual(0.15725256343582006, tmetadata[model.MD_SHEAR])
 
         # uncomment this if you want to see the images used on this test
         '''

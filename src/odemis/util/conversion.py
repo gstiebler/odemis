@@ -449,7 +449,11 @@ def get_img_transformation_md(mat, timage, src_img):
     metadata[model.MD_POS] = (orig_pos_timage[0] - orig_centers_diff_phys[0] + pos_cor_phys[0],\
             orig_pos_timage[1] - orig_centers_diff_phys[1] + pos_cor_phys[1])
     metadata[model.MD_PIXEL_SIZE] = new_pixel_size
-    metadata[model.MD_ROTATION] = -rot
-    metadata[model.MD_SHEAR] = shear
+
+    orig_src_img_rot = src_img.metadata.get(model.MD_ROTATION, 0.0)
+    metadata[model.MD_ROTATION] = orig_src_img_rot + -rot
+
+    orig_src_img_shear = src_img.metadata.get(model.MD_SHEAR, 0.0)
+    metadata[model.MD_SHEAR] = orig_src_img_shear + shear
 
     return metadata
