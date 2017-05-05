@@ -282,7 +282,7 @@ class AutomaticOverlayPlugin(Plugin):
         data = open_acquisition(filename)[0]
         try:
             data = self._ensureGrayscale(data)
-        except ValueError, exception:
+        except ValueError as exception:
             box = wx.MessageDialog(dlg, str(exception), "Exit", wx.OK | wx.ICON_STOP)
             box.ShowModal()
             box.Destroy()
