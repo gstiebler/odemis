@@ -320,38 +320,8 @@ class AutomaticOverlayPlugin(Plugin):
 
         # get the metadata corresponding to the transformation
         transf_md = get_img_transformation_md(tmat, tem_img, sem_img)
-
-        orig_tem_ps = tem_img.metadata.get(model.MD_PIXEL_SIZE, (1e-9, 1e-9))
-        orig_sem_ps = sem_img.metadata.get(model.MD_PIXEL_SIZE, (1e-9, 1e-9))
-        # the proportion between the original SEM and TEM images
-        ps_prop = (orig_sem_ps[0] / orig_tem_ps[0], orig_sem_ps[1] / orig_tem_ps[1])
-        ps_cor = transf_md[model.MD_PIXEL_SIZE]
-        # The new pixel size of the TEM image
-        new_pixel_size = (orig_tem_ps[0] * ps_prop[0] * ps_cor[0],\
-                orig_tem_ps[1] * ps_prop[1] * ps_cor[1])
-
-        orig_pos_sem = sem_img.metadata.get(model.MD_POS, (0.0, 0.0))
-        orig_pos_tem = tem_img.metadata.get(model.MD_POS, (0.0, 0.0))
-        # Difference of the centers in physical coordinates between the SEM and TEM images
-        orig_centers_diff_phys = (orig_pos_tem[0] - orig_pos_sem[0],
-                orig_pos_tem[1] - orig_pos_sem[1])
-
-        pos_cor = transf_md[model.MD_POS]
-        # TEM displacement in physical coordinates
-        pos_cor_phys = (pos_cor[0] * orig_sem_ps[0], pos_cor[1] * orig_sem_ps[1])
-
-        tem_metadata = self._temStream.raw[0].metadata
-        tem_metadata[model.MD_POS] = (orig_pos_tem[0] - orig_centers_diff_phys[0] + pos_cor_phys[0],\
-                orig_pos_tem[1] - orig_centers_diff_phys[1] + pos_cor_phys[1])
-        tem_metadata[model.MD_PIXEL_SIZE] = new_pixel_size
-        tem_metadata[model.MD_ROTATION] = transf_md[model.MD_ROTATION]
-        tem_metadata[model.MD_SHEAR] = transf_md[model.MD_SHEAR]
-
-        self._temStream.raw[0].metadata = tem_metadata
-        self._temStream._shouldUpdateImage()
-
         raw = preprocess(self._temStream.stream.raw[0], False, flip, crop, 0, False)
-        raw.metadata = tem_metadata
+        raw.metadata = transf_md
         analysis_tab = self.main_app.main_data.getTabByName('analysis')
         aligned_stream = stream.StaticSEMStream("TEM", raw)
         wx.CallAfter(analysis_tab.stream_bar_controller.addStream, aligned_stream, add_to_view=True)

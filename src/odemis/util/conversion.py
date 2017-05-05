@@ -426,9 +426,29 @@ def get_img_transformation_md(mat, image, src_img):
     translation_x = center_point[0] - img_src_center[0]
     translation_y = center_point[1] - img_src_center[1]
 
+    orig_tem_ps = image.metadata.get(model.MD_PIXEL_SIZE, (1e-9, 1e-9))
+    orig_sem_ps = src_img.metadata.get(model.MD_PIXEL_SIZE, (1e-9, 1e-9))
+    # the proportion between the original SEM and TEM images
+    ps_prop = (orig_sem_ps[0] / orig_tem_ps[0], orig_sem_ps[1] / orig_tem_ps[1])
+    ps_cor = (scale_x, scale_y)
+    # The new pixel size of the TEM image
+    new_pixel_size = (orig_tem_ps[0] * ps_prop[0] * ps_cor[0],\
+            orig_tem_ps[1] * ps_prop[1] * ps_cor[1])
+
+    orig_pos_sem = src_img.metadata.get(model.MD_POS, (0.0, 0.0))
+    orig_pos_tem = image.metadata.get(model.MD_POS, (0.0, 0.0))
+    # Difference of the centers in physical coordinates between the SEM and TEM images
+    orig_centers_diff_phys = (orig_pos_tem[0] - orig_pos_sem[0],
+            orig_pos_tem[1] - orig_pos_sem[1])
+
+    pos_cor = (translation_x, -translation_y)
+    # TEM displacement in physical coordinates
+    pos_cor_phys = (pos_cor[0] * orig_sem_ps[0], pos_cor[1] * orig_sem_ps[1])
+
     metadata = {}
-    metadata[model.MD_POS] = (translation_x, -translation_y)
-    metadata[model.MD_PIXEL_SIZE] = (scale_x, scale_y)
+    metadata[model.MD_POS] = (orig_pos_tem[0] - orig_centers_diff_phys[0] + pos_cor_phys[0],\
+            orig_pos_tem[1] - orig_centers_diff_phys[1] + pos_cor_phys[1])
+    metadata[model.MD_PIXEL_SIZE] = new_pixel_size
     metadata[model.MD_ROTATION] = -rot
     metadata[model.MD_SHEAR] = shear
 
