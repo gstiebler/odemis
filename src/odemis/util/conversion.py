@@ -365,13 +365,13 @@ def get_tile_md_pos(i, tile_size, tileda, origda):
     tile_pos_world_final = md_pos + new_tile_pos_rel
     return tuple(tile_pos_world_final)
 
-def get_img_transformation_md(mat, image, src_img):
+def get_img_transformation_md(mat, timage, src_img):
     """
     Computes the metadata of the transformations from the transformation matrix
     It is an approximation, as a 3 x 3 matrix cannot be fully represented only
     with translation, scale, rotation and shear.
     mat (ndarray of shape 3,3): transformation matrix
-    image (numpy.array): Transformed image
+    timage (numpy.array): Transformed image
     src_image (numpy.array): Source image
     return (dict str value): metadata with MD_POS, MD_PIXEL_SIZE, MD_ROTATION, MD_SHEAR.
     """
@@ -379,16 +379,16 @@ def get_img_transformation_md(mat, image, src_img):
     b = mat[0, 1]
     d = mat[1, 1]
 
-    half_size = ((image.shape[1] / 2, image.shape[0] / 2))
+    half_size = ((timage.shape[1] / 2, timage.shape[0] / 2))
     img_src_center = ((src_img.shape[1] / 2, src_img.shape[0] / 2))
     centers_dif = (img_src_center[0] - half_size[0], img_src_center[1] - half_size[1])
 
     points = [
         [half_size[0], half_size[1]],
         [0.0, 0.0],
-        [image.shape[1], 0.0],
-        [0.0, image.shape[0]],
-        [image.shape[1], image.shape[0]]
+        [timage.shape[1], 0.0],
+        [0.0, timage.shape[0]],
+        [timage.shape[1], timage.shape[0]]
     ]
     converted_points = cv2.perspectiveTransform(numpy.array([numpy.array(points)]), mat)[0]
 
@@ -402,7 +402,7 @@ def get_img_transformation_md(mat, image, src_img):
     dif_y = top_right_point[1] - top_left_point[1]
 
     top_length = math.sqrt(math.pow(dif_x, 2) + math.pow(dif_y, 2))
-    scale_x = top_length / image.shape[1]
+    scale_x = top_length / timage.shape[1]
 
     def length(p1, p2):
         dif_x = p2[0] - p1[0]
@@ -410,7 +410,7 @@ def get_img_transformation_md(mat, image, src_img):
         return math.sqrt(math.pow(dif_x, 2) + math.pow(dif_y, 2))
 
     left_length = length(top_left_point, bottom_left_point)
-    scale_y = left_length / image.shape[0]
+    scale_y = left_length / timage.shape[0]
 
     top_length = length(top_left_point, top_right_point)
     diag_length = length(bottom_left_point, top_right_point)
@@ -426,28 +426,28 @@ def get_img_transformation_md(mat, image, src_img):
     translation_x = center_point[0] - img_src_center[0]
     translation_y = center_point[1] - img_src_center[1]
 
-    orig_tem_ps = image.metadata.get(model.MD_PIXEL_SIZE, (1e-9, 1e-9))
-    orig_sem_ps = src_img.metadata.get(model.MD_PIXEL_SIZE, (1e-9, 1e-9))
+    orig_timage_ps = timage.metadata.get(model.MD_PIXEL_SIZE, (1e-9, 1e-9))
+    orig_src_img_ps = src_img.metadata.get(model.MD_PIXEL_SIZE, (1e-9, 1e-9))
     # the proportion between the original SEM and TEM images
-    ps_prop = (orig_sem_ps[0] / orig_tem_ps[0], orig_sem_ps[1] / orig_tem_ps[1])
+    ps_prop = (orig_src_img_ps[0] / orig_timage_ps[0], orig_src_img_ps[1] / orig_timage_ps[1])
     ps_cor = (scale_x, scale_y)
     # The new pixel size of the TEM image
-    new_pixel_size = (orig_tem_ps[0] * ps_prop[0] * ps_cor[0],\
-            orig_tem_ps[1] * ps_prop[1] * ps_cor[1])
+    new_pixel_size = (orig_timage_ps[0] * ps_prop[0] * ps_cor[0],\
+            orig_timage_ps[1] * ps_prop[1] * ps_cor[1])
 
-    orig_pos_sem = src_img.metadata.get(model.MD_POS, (0.0, 0.0))
-    orig_pos_tem = image.metadata.get(model.MD_POS, (0.0, 0.0))
+    orig_pos_src_img = src_img.metadata.get(model.MD_POS, (0.0, 0.0))
+    orig_pos_timage = timage.metadata.get(model.MD_POS, (0.0, 0.0))
     # Difference of the centers in physical coordinates between the SEM and TEM images
-    orig_centers_diff_phys = (orig_pos_tem[0] - orig_pos_sem[0],
-            orig_pos_tem[1] - orig_pos_sem[1])
+    orig_centers_diff_phys = (orig_pos_timage[0] - orig_pos_src_img[0],
+            orig_pos_timage[1] - orig_pos_src_img[1])
 
     pos_cor = (translation_x, -translation_y)
     # TEM displacement in physical coordinates
-    pos_cor_phys = (pos_cor[0] * orig_sem_ps[0], pos_cor[1] * orig_sem_ps[1])
+    pos_cor_phys = (pos_cor[0] * orig_src_img_ps[0], pos_cor[1] * orig_src_img_ps[1])
 
     metadata = {}
-    metadata[model.MD_POS] = (orig_pos_tem[0] - orig_centers_diff_phys[0] + pos_cor_phys[0],\
-            orig_pos_tem[1] - orig_centers_diff_phys[1] + pos_cor_phys[1])
+    metadata[model.MD_POS] = (orig_pos_timage[0] - orig_centers_diff_phys[0] + pos_cor_phys[0],\
+            orig_pos_timage[1] - orig_centers_diff_phys[1] + pos_cor_phys[1])
     metadata[model.MD_PIXEL_SIZE] = new_pixel_size
     metadata[model.MD_ROTATION] = -rot
     metadata[model.MD_SHEAR] = shear
