@@ -34,7 +34,7 @@ from odemis import model
 from numpy.linalg import inv
 from scipy import ndimage
 
-imgs_folder = '/home/gstiebler/Projetos/Delmic/odemis/src/odemis/acq/align/test/images/'
+imgs_folder = './src/odemis/acq/align/test/images/'
 
 
 def preprocess(img, invert, flip, crop, gaussian_sigma, eqhis):
