@@ -627,12 +627,10 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
         numpy.testing.assert_almost_equal(init_pos, self.view.view_pos.value)
         # remove green picture
         result_im = get_image_from_buffer(self.canvas)
-        #result_im.SaveFile('/home/gstiebler/Projetos/Delmic/tmp3.bmp', wx.BITMAP_TYPE_BMP)
         self.view.removeStream(stream1)
         test.gui_loop(0.5)
         # copy the buffer into a nice image here
         result_im = get_image_from_buffer(self.canvas)
-        #result_im.SaveFile('/home/gstiebler/Projetos/Delmic/tmp4.bmp', wx.BITMAP_TYPE_BMP)
         self.canvas.fit_view_to_content(recenter=True)
         # only .mpp changes, but the image keeps centered
         self.assertAlmostEqual(5.89442e-06, self.view.mpp.value)
@@ -706,7 +704,6 @@ class TestDblMicroscopeCanvas(test.GuiTestCase):
         test.gui_loop(0.5)
 
         result_im = get_image_from_buffer(self.canvas)
-        result_im.SaveFile('/home/gstiebler/Projetos/Delmic/big.bmp', wx.BITMAP_TYPE_BMP)
         px2 = get_rgb(result_im, result_im.Width // 2, result_im.Height // 2)
         # center pixel, 1/3 green, 2/3 blue. The red image is the largest image
         self.assertEqual(px2, (0, 76, 179))
