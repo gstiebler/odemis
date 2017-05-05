@@ -203,16 +203,25 @@ class TestKeypoint(unittest.TestCase):
         # and the transformed image
         tmat_odemis, _, _ = keypoint.FindTransform(timg, image)
 
-        timg = model.DataArray(timg, {})
-        image = model.DataArray(image, {})
+        timg_md = {
+            model.MD_PIXEL_SIZE: (1e-6, 1e-6)
+        }
+        timg = model.DataArray(timg, timg_md)
+        image_md = {
+            model.MD_PIXEL_SIZE: (1e-6, 1e-6),
+            model.MD_POS: (35e-6, 25e-6)
+        }
+        image = model.DataArray(image, image_md)
         # use the invert matrix to get the original values
         tmetadata = get_img_transformation_md(inv(tmat_odemis), timg, image)
         # the matching algorithm is not that accurate, so the values are approximated
-        self.assertAlmostEqual(6.989929643344752e-10, tmetadata[model.MD_PIXEL_SIZE][0])
-        self.assertAlmostEqual(6.992058385109082e-10, tmetadata[model.MD_PIXEL_SIZE][1])
+        self.assertAlmostEqual(0.6989929643344752e-6, tmetadata[model.MD_PIXEL_SIZE][0])
+        self.assertAlmostEqual(0.6992058385109082e-6, tmetadata[model.MD_PIXEL_SIZE][1])
         self.assertAlmostEqual(0.29446353275792725, tmetadata[model.MD_ROTATION])
-        self.assertAlmostEqual(9.9800583804197582e-08, tmetadata[model.MD_POS][0])
-        self.assertAlmostEqual(-5.0155552827377851e-08, tmetadata[model.MD_POS][1])
+        # (100 + 35) * PS
+        self.assertAlmostEqual(134.80058380419755e-06, tmetadata[model.MD_POS][0])
+        # (-50 + 25) * PS
+        self.assertAlmostEqual(-25.155552827377845e-06, tmetadata[model.MD_POS][1])
 
         # uncomment this if you want to see the images used on this test
         '''
