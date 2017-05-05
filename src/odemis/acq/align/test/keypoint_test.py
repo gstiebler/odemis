@@ -84,7 +84,9 @@ def preprocess(img, invert, flip, crop, gaussian_sigma, eqhis):
 
 class TestKeypoint(unittest.TestCase):
 
-    def test_first(self):
+    def test_image_pair(self):
+        ''' Testing a pair of images
+        '''
         # only one image will be used, but this structure helps to test
         # different images
         image_pairs = [
@@ -133,6 +135,11 @@ class TestKeypoint(unittest.TestCase):
         self.assertAlmostEqual(-154.15625938805169, tmetadata[model.MD_POS][1])
 
     def test_synthetic_images(self):
+        ''' Testing the matching of a synthetic image. The image is generated with
+        a rotation and scale, and then it checks if the matching algorithm
+        came up with the same result
+        '''
+        # generate a syntyetic image
         image = numpy.zeros((1000, 1000, 4), dtype=numpy.uint8)
         surface = cairo.ImageSurface.create_for_data(image, cairo.FORMAT_ARGB32, 1000, 1000)
         cr = cairo.Context(surface)
@@ -170,36 +177,49 @@ class TestKeypoint(unittest.TestCase):
         cr.arc(600, 500, 50, 0, 2*math.pi)
         cr.fill()
 
+        # center circle
+        cr.arc(500, 500, 5, 0, 2*math.pi)
+        cr.fill()
+
         # rectangle
         cr.rectangle(600, 700, 200, 100)
         cr.fill()
 
         angle = 0.3
         scale = 0.7
-        translation_x = 150.0
-        translation_y = 160.0
-        print 'cos', math.cos(angle)
-        print 'sin', math.sin(angle)
-        rot_mat = cv2.getRotationMatrix2D((500.0, 500.0), math.degrees(angle), scale)
-        print 'rot_mat'
-        print rot_mat
-        rot_mat[0, 2] += translation_x
-        rot_mat[1, 2] += translation_y
-        rotated = cv2.warpAffine(image, rot_mat, (1000, 1000),\
+        translation_x = 100
+        translation_y = 50
+        # generate a rotation/scale matrix, with the rotation centered on the center of the image
+        rot_scale_mat = cv2.getRotationMatrix2D((500.0, 500.0), math.degrees(angle), scale)
+        # generate the transformed image with scale and rotation
+        timg = cv2.warpAffine(image, rot_scale_mat, (1000, 1000),\
                 borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
-
-        tmat_odemis, _, _ = keypoint.FindTransform(rotated, image)
-        warped_im = cv2.warpPerspective(rotated, tmat_odemis, (rotated.shape[1], rotated.shape[0]),\
+        # generate a transformation matrix with translation
+        translation_mat = numpy.float32([[1,0,translation_x],[0,1,translation_y]])
+        # generate the transformed image with translation
+        timg = cv2.warpAffine(timg, translation_mat, (1000, 1000),\
                 borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
+        # execute the matching algorithm, and find the transformation matrix between the original
+        # and the transformed image
+        tmat_odemis, _, _ = keypoint.FindTransform(timg, image)
 
-        print 'tmat_odemis'
-        print tmat_odemis
-        transf_md = get_img_transformation_md(tmat_odemis, rotated, image)
-        print transf_md
+        # use the invert matrix to get the original values
+        tmetadata = get_img_transformation_md(inv(tmat_odemis), timg, image)
 
+        # the matching algorithm is not that accurate, so the values are approximated
+        self.assertAlmostEqual(0.6989929643344752, tmetadata[model.MD_PIXEL_SIZE][0])
+        self.assertAlmostEqual(0.6992058385109081, tmetadata[model.MD_PIXEL_SIZE][1])
+        self.assertAlmostEqual(0.29446353275792725, tmetadata[model.MD_ROTATION])
+        self.assertAlmostEqual(99.800583804197572, tmetadata[model.MD_POS][0])
+        self.assertAlmostEqual(-50.155552827377846, tmetadata[model.MD_POS][1])
+
+        # uncomment this if you want to see the images used on this test
+        '''
+        warped_im = cv2.warpPerspective(timg, tmat_odemis, (timg.shape[1], timg.shape[0]),\
+                borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
         cv2.imwrite(imgs_folder + 'test.jpg', image)
-        cv2.imwrite(imgs_folder + 'rotated.jpg', rotated)
-        cv2.imwrite(imgs_folder + 'rotated_opencv.jpg', warped_im)
+        cv2.imwrite(imgs_folder + 'transformed_image.jpg', timg)
+        cv2.imwrite(imgs_folder + 'rotated_opencv.jpg', warped_im)'''
 
 
 if __name__ == '__main__':

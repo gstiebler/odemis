@@ -26,7 +26,6 @@ import re
 import yaml
 from odemis import model
 import numpy
-from numpy.linalg import inv
 import cv2
 import math
 
@@ -389,11 +388,6 @@ def get_img_transformation_md(mat, image, src_img):
     half_size = ((image.shape[1] / 2, image.shape[0] / 2))
     img_src_center = ((src_img.shape[1] / 2, src_img.shape[0] / 2))
     centers_dif = (img_src_center[0] - half_size[0], img_src_center[1] - half_size[1])
-
-    def convert_point(point):
-        point1 = numpy.matrix([point[0], point[1], 1.0]).getT()
-        point2 = mat * point1
-        return numpy.ravel(point2)
 
     points = [
         [half_size[0], half_size[1]],
