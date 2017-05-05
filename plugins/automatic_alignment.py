@@ -327,7 +327,7 @@ class AutomaticOverlayPlugin(Plugin):
                 orig_pos_tem[1] - orig_centers_diff_phys[1] + pos_cor_phys[1])
         tem_metadata[model.MD_PIXEL_SIZE] = new_pixel_size
         tem_metadata[model.MD_ROTATION] = transf_md[model.MD_ROTATION]
-        # tem_metadata[model.MD_SHEAR] = transf_md[model.MD_SHEAR]
+        tem_metadata[model.MD_SHEAR] = transf_md[model.MD_SHEAR]
 
         logging.debug(tem_metadata)
         self._temStream.raw[0].metadata = tem_metadata

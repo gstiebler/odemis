@@ -368,22 +368,16 @@ def get_tile_md_pos(i, tile_size, tileda, origda):
 def get_img_transformation_md(mat, image, src_img):
     """
     Computes the metadata of the transformations from the transformation matrix
+    It is an approximation, as a 3 x 3 matrix cannot be fully represented only
+    with translation, scale, rotation and shear.
     mat (ndarray of shape 3,3): transformation matrix
-    image TODO
+    image (numpy.array): Transformed image
+    src_image (numpy.array): Source image
     return (dict str value): metadata MD_POS, MD_PIXEL_SIZE, MD_ROTATION, MD_SHEAR.
     """
-    translation_x = mat[0, 2]
-    translation_y = mat[1, 2]
 
-    a = mat[0, 0]
     b = mat[0, 1]
-    c = mat[1, 0]
     d = mat[1, 1]
-
-    sin = math.sqrt(1 / (math.pow(d, 2) / math.pow(b, 2) + 1))
-    cos = math.sqrt(1 - math.pow(sin, 2))
-
-    shear = (cos * c - sin * a) / (cos * a + sin * c)
 
     half_size = ((image.shape[1] / 2, image.shape[0] / 2))
     img_src_center = ((src_img.shape[1] / 2, src_img.shape[0] / 2))
@@ -398,23 +392,32 @@ def get_img_transformation_md(mat, image, src_img):
     ]
     converted_points = cv2.perspectiveTransform(numpy.array([numpy.array(points)]), mat)[0]
 
+    # project some key points from the original image on the transformed image
     center_point = converted_points[0]
     top_left_point = converted_points[1]
     top_right_point = converted_points[2]
     bottom_left_point = converted_points[3]
-    bottom_right_point = converted_points[4]
 
     dif_x = top_right_point[0] - top_left_point[0]
     dif_y = top_right_point[1] - top_left_point[1]
-    # rot = math.atan2(dif_y, dif_x)
 
     top_length = math.sqrt(math.pow(dif_x, 2) + math.pow(dif_y, 2))
     scale_x = top_length / image.shape[1]
 
-    dif_x = bottom_left_point[0] - top_left_point[0]
-    dif_y = bottom_left_point[1] - top_left_point[1]
-    left_length = math.sqrt(math.pow(dif_x, 2) + math.pow(dif_y, 2))
+    def length(p1, p2):
+        dif_x = p2[0] - p1[0]
+        dif_y = p2[1] - p1[1]
+        return math.sqrt(math.pow(dif_x, 2) + math.pow(dif_y, 2))
+
+    left_length = length(top_left_point, bottom_left_point)
     scale_y = left_length / image.shape[0]
+
+    top_length = length(top_left_point, top_right_point)
+    diag_length = length(bottom_left_point, top_right_point)
+    # using the law of cosines
+    corner_ang = math.acos((math.pow(left_length, 2) + math.pow(top_length, 2) - math.pow(diag_length, 2)) /
+            (2 * left_length * top_length))
+    shear = math.tan(corner_ang - math.pi / 2)
 
     sin_full = -b / scale_y
     cos_full = d / scale_y
@@ -425,9 +428,8 @@ def get_img_transformation_md(mat, image, src_img):
 
     metadata = {}
     metadata[model.MD_POS] = (translation_x, -translation_y)
-    # TODO needs the original PIXEL SIZE?
     metadata[model.MD_PIXEL_SIZE] = (scale_x, scale_y)
     metadata[model.MD_ROTATION] = -rot
-    metadata[model.MD_SHEAR] = -shear
+    metadata[model.MD_SHEAR] = shear
 
     return metadata
