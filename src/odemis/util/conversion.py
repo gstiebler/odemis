@@ -373,7 +373,7 @@ def get_img_transformation_md(mat, image, src_img):
     mat (ndarray of shape 3,3): transformation matrix
     image (numpy.array): Transformed image
     src_image (numpy.array): Source image
-    return (dict str value): metadata MD_POS, MD_PIXEL_SIZE, MD_ROTATION, MD_SHEAR.
+    return (dict str value): metadata with MD_POS, MD_PIXEL_SIZE, MD_ROTATION, MD_SHEAR.
     """
 
     b = mat[0, 1]

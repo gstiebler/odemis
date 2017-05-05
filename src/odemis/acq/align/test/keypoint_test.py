@@ -128,11 +128,11 @@ class TestKeypoint(unittest.TestCase):
 
         tmetadata = get_img_transformation_md(tmat, tem_img, sem_img)
         # comparing based on a successful alignment validated from the warped image
-        self.assertAlmostEqual(0.9046560337827241, tmetadata[model.MD_PIXEL_SIZE][0])
-        self.assertAlmostEqual(1.4188154594260145, tmetadata[model.MD_PIXEL_SIZE][1])
+        self.assertAlmostEqual(9.04656033782724e-07, tmetadata[model.MD_PIXEL_SIZE][0])
+        self.assertAlmostEqual(1.4188154594260145e-06, tmetadata[model.MD_PIXEL_SIZE][1])
         self.assertAlmostEqual(0.1734484003427465, tmetadata[model.MD_ROTATION])
-        self.assertAlmostEqual(179.37792038862722, tmetadata[model.MD_POS][0])
-        self.assertAlmostEqual(-154.15625938805169, tmetadata[model.MD_POS][1])
+        self.assertAlmostEqual(0.0001793779203886272, tmetadata[model.MD_POS][0])
+        self.assertAlmostEqual(-0.00015415625938805169, tmetadata[model.MD_POS][1])
 
     def test_synthetic_images(self):
         ''' Testing the matching of a synthetic image. The image is generated with
@@ -203,15 +203,16 @@ class TestKeypoint(unittest.TestCase):
         # and the transformed image
         tmat_odemis, _, _ = keypoint.FindTransform(timg, image)
 
+        timg = model.DataArray(timg, {})
+        image = model.DataArray(image, {})
         # use the invert matrix to get the original values
         tmetadata = get_img_transformation_md(inv(tmat_odemis), timg, image)
-
         # the matching algorithm is not that accurate, so the values are approximated
-        self.assertAlmostEqual(0.6989929643344752, tmetadata[model.MD_PIXEL_SIZE][0])
-        self.assertAlmostEqual(0.6992058385109081, tmetadata[model.MD_PIXEL_SIZE][1])
+        self.assertAlmostEqual(6.989929643344752e-10, tmetadata[model.MD_PIXEL_SIZE][0])
+        self.assertAlmostEqual(6.992058385109082e-10, tmetadata[model.MD_PIXEL_SIZE][1])
         self.assertAlmostEqual(0.29446353275792725, tmetadata[model.MD_ROTATION])
-        self.assertAlmostEqual(99.800583804197572, tmetadata[model.MD_POS][0])
-        self.assertAlmostEqual(-50.155552827377846, tmetadata[model.MD_POS][1])
+        self.assertAlmostEqual(9.9800583804197582e-08, tmetadata[model.MD_POS][0])
+        self.assertAlmostEqual(-5.0155552827377851e-08, tmetadata[model.MD_POS][1])
 
         # uncomment this if you want to see the images used on this test
         '''
