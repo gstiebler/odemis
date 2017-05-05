@@ -117,6 +117,14 @@ def preprocess(img, invert, flip, crop, gaussian_sigma, eqhis):
 
 class AlignmentProjection(stream.RGBSpatialProjection):
 
+    def __init__(self, in_stream):
+        super(AlignmentProjection, self).__init__(in_stream)
+        self._invert = False
+        self._flip = (False, False)
+        self._crop = (0, 0, 0, 0)
+        self._gaussian_sigma = 0
+        self._eqhis = False
+
     def setPreprocessingParams(self, invert, flip, crop, gaussian_sigma, eqhis):
         ''' Sets the parameters for the preprocessing function called on ._updateImage
         invert (bool): Invert the brightness levels of the image
@@ -256,6 +264,7 @@ class AutomaticOverlayPlugin(Plugin):
                 raise ValueError("Colored RGB image not supported")
         return data
 
+    @call_in_wx_main
     def open_image(self, dlg):
         # Find the available formats (and corresponding extensions)
         formats_to_ext = dataio.get_available_formats(os.O_RDONLY)
@@ -283,7 +292,8 @@ class AutomaticOverlayPlugin(Plugin):
         try:
             data = self._ensureGrayscale(data)
         except ValueError as exception:
-            box = wx.MessageDialog(dlg, str(exception), "Exit", wx.OK | wx.ICON_STOP)
+            exception_msg = str(exception)
+            box = wx.MessageDialog(dlg, exception_msg, "Exit", wx.OK | wx.ICON_STOP)
             box.ShowModal()
             box.Destroy()
             dlg.Destroy()
@@ -298,6 +308,7 @@ class AutomaticOverlayPlugin(Plugin):
         dlg.addStream(tem_projection, 0)
         self._temStream = tem_projection
 
+    @call_in_wx_main
     def align(self, dlg):
         ''' Executes the alignment. If the alignment is successful, the aligned stream is
             added to the main window. If not, an error message is shown.
@@ -312,10 +323,10 @@ class AutomaticOverlayPlugin(Plugin):
         try:
             tmat, kp_tem, kp_sem = keypoint.FindTransform(tem_img, sem_img)
         except ValueError as exception:
-            box = wx.MessageDialog(dlg, str(exception), "Exit", wx.OK | wx.ICON_STOP)
+            exception_msg = str(exception)
+            box = wx.MessageDialog(dlg, exception_msg, "Exit", wx.OK | wx.ICON_STOP)
             box.ShowModal()
             box.Destroy()
-            dlg.Destroy()
             return
 
         # get the metadata corresponding to the transformation
