@@ -26,49 +26,50 @@ import cv2
 import math
 from odemis import model
 
-BAR_LEN_FACTOR = 0.06
-NUM_SELECTED_KP = 10
-
 def FindTransform(ima, imb, fd_type='SIFT'):
     """
-    ima(DataArray of shape YaXa with int or float): the first image
-    imb(DataArray of shape YbXb with int or float): the second image.
+    ima(DataArray of shape YaXa with int or float): Image to be aligned
+    imb(DataArray of shape YbXb with int or float): Base image
         Note that the shape doesn't have to be any relationship with the shape of the
         first dimension(doesn't even need to be the same ratio)
-    return (ndarray of shape 3, 3): transformation matrix to align the second image on the
-        first image. (bottom row is (0, 0, 1), and right column is translation)
+    fd_type(string): Feature detector type. Must be 'SIFT' or 'ORB'. ORB is faster,
+        but SIFT usually has better results.
+    return (ndarray of shape 3, 3): transformation matrix to align the first image on the
+        base image. (right column is translation)
     raises:
     ValueError: if no good transformation is found.
     """
 
-    # instantiate the feature detector
+    # Instantiate the feature detector and the matcher
+    # The brute force matcher used for ORB can be used also for SIFT,
+    # but the opposite is not true. The Flann matcher cannot be used on ORB.
+    # A Flann based matcher is used for SIFT because it is faster than the brute force
+    # used on ORB, and it also showed better results on the tests.
     if fd_type == 'ORB':
         feature_detector = cv2.ORB()
+        matcher = cv2.BFMatcher()
     else:
         feature_detector = cv2.SIFT()
+        FLANN_INDEX_KDTREE = 0
+        index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
+        search_params = dict(checks=50)
+        matcher = cv2.FlannBasedMatcher(index_params, search_params)
 
     # find and compute the descriptors
     ima_kp, ima_des = feature_detector.detectAndCompute(ima, None)
     imb_kp, imb_des = feature_detector.detectAndCompute(imb, None)
 
-    if fd_type == 'ORB':
-        matcher = cv2.BFMatcher()
-        matches = matcher.match(ima_des, imb_des)
-        # Sort them in the order of their distance.
-        matches = sorted(matches, key=lambda x: x.distance)
-        selected_matches = matches[:30]
-    else:
-        FLANN_INDEX_KDTREE = 0
-        index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
-        search_params = dict(checks=50)
-        matcher = cv2.FlannBasedMatcher(index_params, search_params)
-        matches = matcher.knnMatch(ima_des, imb_des, k=2)
+    # run the matcher of the detected features
+    matches = matcher.knnMatch(ima_des, imb_des, k=2)
 
-        # store all the good matches as per Lowe's ratio test.
-        selected_matches = []
-        for m, n in matches:
-            if m.distance < 0.7 * n.distance:
-                selected_matches.append(m)
+    # store all the good matches as per Lowe's ratio test.
+    selected_matches = []
+    for m, n in matches:
+        if m.distance < 0.7 * n.distance:
+            selected_matches.append(m)
+
+    if len(selected_matches) < 5:
+        raise ValueError("Less than 5 common features detected on the images")
 
     # get keypoints for selected matches
     selected_ima_kp = [list(ima_kp[m.queryIdx].pt) for m in selected_matches]
