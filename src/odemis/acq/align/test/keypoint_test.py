@@ -203,11 +203,7 @@ class TestKeypoint(unittest.TestCase):
         # and the transformed image
         tmat_odemis, _, _ = keypoint.FindTransform(timg, image)
 
-        timg_md = {
-            model.MD_PIXEL_SIZE: (1e-6, 1e-6),
-            model.MD_ROTATION: 0.1,
-            model.MD_SHEAR: 0.1
-        }
+        timg_md = {}
         timg = model.DataArray(timg, timg_md)
         image_md = {
             model.MD_PIXEL_SIZE: (1e-6, 1e-6),

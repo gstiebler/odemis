@@ -433,18 +433,14 @@ def get_img_transformation_md(mat, timage, src_img):
             orig_src_img_ps[1] * ps_cor[1])
 
     orig_pos_src_img = src_img.metadata.get(model.MD_POS, (0.0, 0.0))
-    orig_pos_timage = timage.metadata.get(model.MD_POS, (0.0, 0.0))
-    # Difference of the centers in physical coordinates between the SEM and TEM images
-    orig_centers_diff_phys = (orig_pos_timage[0] - orig_pos_src_img[0],
-            orig_pos_timage[1] - orig_pos_src_img[1])
 
     pos_cor = (translation_x, -translation_y)
     # TEM displacement in physical coordinates
     pos_cor_phys = (pos_cor[0] * orig_src_img_ps[0], pos_cor[1] * orig_src_img_ps[1])
 
     metadata = {}
-    metadata[model.MD_POS] = (orig_pos_timage[0] - orig_centers_diff_phys[0] + pos_cor_phys[0],\
-            orig_pos_timage[1] - orig_centers_diff_phys[1] + pos_cor_phys[1])
+    metadata[model.MD_POS] = (orig_pos_src_img[0] + pos_cor_phys[0],\
+            orig_pos_src_img[1] + pos_cor_phys[1])
     metadata[model.MD_PIXEL_SIZE] = new_pixel_size
 
     orig_src_img_rot = src_img.metadata.get(model.MD_ROTATION, 0.0)
